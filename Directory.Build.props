@@ -1,0 +1,21 @@
+<Project>
+
+  <!-- Shared settings applied to every project in the OpenTrack solution. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TargetFramework Condition="'$(TargetFramework)' == ''">net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <!-- Project / package metadata -->
+  <PropertyGroup>
+    <Product>OpenTrack</Product>
+    <Company>OpenTrack</Company>
+    <Authors>KE4CON</Authors>
+    <RepositoryUrl>https://github.com/KE4CON/OpenTrack</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+  </PropertyGroup>
+
+</Project>

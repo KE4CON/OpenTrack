@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OpenTrack.API/OpenTrack.API.csproj" />
+    <Project Path="src/OpenTrack.Core/OpenTrack.Core.csproj" />
+    <Project Path="src/OpenTrack.Infrastructure/OpenTrack.Infrastructure.csproj" />
+    <Project Path="src/OpenTrack.UI/OpenTrack.UI.csproj" />
+    <Project Path="src/OpenTrack.Web/OpenTrack.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OpenTrack.API.Tests/OpenTrack.API.Tests.csproj" />
+    <Project Path="tests/OpenTrack.Core.Tests/OpenTrack.Core.Tests.csproj" />
+    <Project Path="tests/OpenTrack.Web.Tests/OpenTrack.Web.Tests.csproj" />
+  </Folder>
+</Solution>
