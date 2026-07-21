@@ -1,0 +1,173 @@
+// OpenTrack — open-source issue tracker
+// Copyright (C) 2026 KE4CON
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option) any
+// later version. This program is distributed WITHOUT ANY WARRANTY; without even
+// the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
+// more details.
+
+using Microsoft.EntityFrameworkCore;
+using OpenTrack.Core.Entities;
+
+namespace OpenTrack.Infrastructure.Data;
+
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+{
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<ProjectMembership> ProjectMemberships => Set<ProjectMembership>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<ProjectVersion> Versions => Set<ProjectVersion>();
+    public DbSet<Issue> Issues => Set<Issue>();
+    public DbSet<IssueNote> IssueNotes => Set<IssueNote>();
+    public DbSet<IssueHistory> IssueHistory => Set<IssueHistory>();
+    public DbSet<IssueAttachment> IssueAttachments => Set<IssueAttachment>();
+
+    protected override void OnModelCreating(ModelBuilder b)
+    {
+        // ---- User ----
+        b.Entity<User>(e =>
+        {
+            e.Property(u => u.Username).HasMaxLength(50).IsRequired();
+            e.Property(u => u.Email).HasMaxLength(256).IsRequired();
+            e.Property(u => u.PasswordHash).HasMaxLength(256).IsRequired();
+            e.HasIndex(u => u.Username).IsUnique();
+            e.HasIndex(u => u.Email).IsUnique();
+        });
+
+        // ---- Project ----
+        b.Entity<Project>(e =>
+        {
+            e.Property(p => p.Name).HasMaxLength(100).IsRequired();
+            e.Property(p => p.Description).HasMaxLength(2000);
+            e.HasOne(p => p.Owner)
+                .WithMany()
+                .HasForeignKey(p => p.OwnerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---- ProjectMembership (composite key) ----
+        b.Entity<ProjectMembership>(e =>
+        {
+            e.HasKey(m => new { m.UserId, m.ProjectId });
+            e.HasOne(m => m.User)
+                .WithMany(u => u.Memberships)
+                .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(m => m.Project)
+                .WithMany(p => p.Members)
+                .HasForeignKey(m => m.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ---- Category ----
+        b.Entity<Category>(e =>
+        {
+            e.Property(c => c.Name).HasMaxLength(100).IsRequired();
+            e.HasOne(c => c.Project)
+                .WithMany(p => p.Categories)
+                .HasForeignKey(c => c.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(c => new { c.ProjectId, c.Name }).IsUnique();
+        });
+
+        // ---- ProjectVersion ----
+        b.Entity<ProjectVersion>(e =>
+        {
+            e.Property(v => v.Name).HasMaxLength(50).IsRequired();
+            e.Property(v => v.Description).HasMaxLength(2000);
+            e.HasOne(v => v.Project)
+                .WithMany(p => p.Versions)
+                .HasForeignKey(v => v.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(v => new { v.ProjectId, v.Name }).IsUnique();
+        });
+
+        // ---- Issue ----
+        b.Entity<Issue>(e =>
+        {
+            e.Property(i => i.Title).HasMaxLength(200).IsRequired();
+            e.Property(i => i.Description).IsRequired();
+
+            e.HasOne(i => i.Project)
+                .WithMany(p => p.Issues)
+                .HasForeignKey(i => i.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(i => i.Category)
+                .WithMany(c => c.Issues)
+                .HasForeignKey(i => i.CategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(i => i.Reporter)
+                .WithMany(u => u.ReportedIssues)
+                .HasForeignKey(i => i.ReporterId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(i => i.Assignee)
+                .WithMany(u => u.AssignedIssues)
+                .HasForeignKey(i => i.AssigneeId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(i => i.AffectsVersion)
+                .WithMany()
+                .HasForeignKey(i => i.AffectsVersionId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(i => i.FixVersion)
+                .WithMany()
+                .HasForeignKey(i => i.FixVersionId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasIndex(i => i.Status);
+            e.HasIndex(i => i.ProjectId);
+        });
+
+        // ---- IssueNote ----
+        b.Entity<IssueNote>(e =>
+        {
+            e.Property(n => n.Text).IsRequired();
+            e.HasOne(n => n.Issue)
+                .WithMany(i => i.Notes)
+                .HasForeignKey(n => n.IssueId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(n => n.Author)
+                .WithMany()
+                .HasForeignKey(n => n.AuthorId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---- IssueHistory ----
+        b.Entity<IssueHistory>(e =>
+        {
+            e.Property(h => h.FieldChanged).HasMaxLength(100).IsRequired();
+            e.HasOne(h => h.Issue)
+                .WithMany(i => i.History)
+                .HasForeignKey(h => h.IssueId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(h => h.User)
+                .WithMany()
+                .HasForeignKey(h => h.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---- IssueAttachment ----
+        b.Entity<IssueAttachment>(e =>
+        {
+            e.Property(a => a.FileName).HasMaxLength(260).IsRequired();
+            e.Property(a => a.FilePath).HasMaxLength(1024).IsRequired();
+            e.Property(a => a.ContentType).HasMaxLength(128).IsRequired();
+            e.HasOne(a => a.Issue)
+                .WithMany(i => i.Attachments)
+                .HasForeignKey(a => a.IssueId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(a => a.UploadedBy)
+                .WithMany()
+                .HasForeignKey(a => a.UploadedById)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+}

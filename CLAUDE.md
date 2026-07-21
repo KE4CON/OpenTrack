@@ -98,11 +98,16 @@ running and log-in-able before expanding.**
 - **Phase 3 — Reporting & integrations:** dashboards, roadmap/changelog, CSV/Excel export, REST API polish, Git webhooks
 - **Phase 4 — Enterprise:** LDAP/AD, configurable workflow, plugins, localization framework (English only; community translations later), Docker publish, **desktop app packaging/signing/installers** (Windows + macOS)
 
-**➡️ Current status: Phase 1 — IN PROGRESS.** Solution skeleton built and verified
-(8 projects, builds clean with 0 warnings, all tests pass, Blazor web app runs). Still on
-.NET 10 / SQLite as planned. **Next actions:** (1) add the `OpenTrack.Desktop` MAUI project
-after installing the MAUI workload; (2) add EF Core + the domain models; (3) Identity auth;
-(4) first issue/project CRUD.
+**➡️ Current status: Phase 1 — IN PROGRESS.**
+Done so far: (a) solution skeleton (8 projects, builds clean, tests pass, web app runs);
+(b) **EF Core data layer** — all domain entities (`User`, `Project`, `ProjectMembership`,
+`Category`, `ProjectVersion`, `Issue`, `IssueNote`, `IssueHistory`, `IssueAttachment`) + the
+enums, an `AppDbContext` wired to **SQLite**, and the `InitialCreate` migration. The web app
+auto-applies migrations on startup, so `opentrack.db` is created automatically when it runs
+(verified: 9 tables created, app serves HTTP 200).
+**Next actions:** (1) ASP.NET Core Identity auth — integrate the `User` entity; (2) first
+project/issue CRUD UI in Blazor; (3) add the `OpenTrack.Desktop` MAUI shell (after
+`dotnet workload install maui`).
 
 ---
 
@@ -214,3 +219,26 @@ the **web app**, which is fully cross-platform; they don't need a native desktop
 server (shared issues, collaborative — recommended default), or a **standalone single-user**
 instance with local SQLite? → *Leaning thin-client; standalone possible as a later option.*
 ❓ confirm.
+
+---
+
+## 13. Implementation notes (Phase 1)
+
+- **Data layer location:** entities + enums live in `OpenTrack.Core` (`Entities/`, `Enums/`);
+  `AppDbContext`, the design-time factory, and `Migrations/` live in `OpenTrack.Infrastructure`
+  (`Data/`). `OpenTrack.Web` registers it via `AddOpenTrackInfrastructure(connectionString)`.
+- **DB auto-creates:** `Program.cs` calls `db.Database.Migrate()` at startup, so running the web
+  app creates/updates `opentrack.db`. Connection string is in `appsettings.json`
+  (`ConnectionStrings:Default`). In dev the file sits next to the running app; the production
+  `D:` drive path is just a connection-string change at deploy time.
+- **`ProjectVersion`, not `Version`:** the product-version entity is named `ProjectVersion` to
+  avoid clashing with `System.Version`. Its `DbSet` is still `Versions`.
+- **User & auth:** `User` is a plain entity for now (has `PasswordHash` + `Role`). When we add
+  **ASP.NET Core Identity** in the auth step, we'll integrate this entity with Identity rather
+  than keep a second user type. Kept int-keyed and email/username-based to make that smooth.
+- **Enum values:** enums use explicit Mantis-style numeric values (e.g. `IssueStatus.Resolved = 80`)
+  and are stored as integers in the DB.
+- **Security patches applied:** pinned `Microsoft.OpenApi` 2.11.0 (API project) and
+  `SQLitePCLRaw.bundle_e_sqlite3` 2.1.12 (Infrastructure) to clear transitive advisories that the
+  default templates/packages pulled in. Build is 0 warnings / 0 errors.
+- **`opentrack.db` is git-ignored** (added `*.db` to `.gitignore`) — never commit the runtime database.
