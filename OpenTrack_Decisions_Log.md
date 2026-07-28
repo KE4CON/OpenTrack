@@ -20,7 +20,7 @@
 | 6 | Localization (Mantis parity item) | 🟣 **SETTLED — English only, i18n framework in place** |
 | 7 | Legacy source control (Mantis parity item) | 🟣 **SETTLED — Git only** |
 | 8 | Build desktop app alongside web app | 🟣 **SETTLED — yes, shared components + thin MAUI shell** |
-| 9 | Desktop architecture: thin client vs. standalone | 🟠 **OPEN** |
+| 9 | Desktop architecture: thin client vs. standalone | 🟣 **SETTLED — thin client** |
 | 10 | Hardware / deployment drive layout (Beelink EQi12) | 🟣 **SETTLED** |
 | 11 | Documentation & user manual format | 🟣 **SETTLED** (incremental approach); tooling choice deferred to ~Phase 3 |
 | 12 | Phase 1 — solution skeleton | 🟣 **SETTLED — built & verified** |
@@ -30,7 +30,11 @@
 | 16 | Git incident (nested clone / deleted `.git`) | 🟣 **SETTLED — resolved, no work lost** |
 | 17 | First Blazor CRUD screens + `[Authorize]` | 🟣 **SETTLED — built & verified** |
 | 18 | Role-based authorization policies (`UserRole` enum) | 🟣 **SETTLED — built & verified** |
-| 19 | `OpenTrack.Desktop` MAUI shell (install MAUI workload) | 🟠 **OPEN — next up** |
+| 19 | `OpenTrack.API` REST endpoints (for thin client) | 🟣 **SETTLED — built & verified** |
+| 20 | Shared database path (Web + API use one DB) | 🟣 **SETTLED — built & verified** |
+| 21 | `OpenTrack.Desktop` MAUI shell | 🟠 **OPEN — scaffolded; needs a Windows/Mac build session** |
+| 22 | Data-abstraction layer so `OpenTrack.UI` works over HTTP | 🟠 **OPEN — prerequisite for desktop** |
+| 23 | First-user-admin rule for API-registered accounts | 🟠 **OPEN — known gap (see Item #19 note)** |
 
 ---
 
@@ -102,13 +106,18 @@ Jim confirmed the stack directly: **.NET 10 LTS / C# 14**, **Blazor Web App** (S
 
 ---
 
-## Item #9 — Thin Client vs. Standalone Desktop 🟠 OPEN
+## Item #9 — Thin Client vs. Standalone Desktop 🟣 SETTLED — thin client
 
 Is the desktop app a **thin client** talking to the `OpenTrack.API` server (shared issues, collaborative), or a **standalone single-user** instance with its own local SQLite?
 
-**Claude's recommendation, not yet confirmed by Jim:** default to thin client — a bug tracker is inherently collaborative — with standalone left as a possible later option.
+**Decision: thin client.** Jim confirmed he'll mostly be near the home server when using the desktop app, which tips the balance clearly — thin client gives one true, always-current set of issues viewable from web or desktop interchangeably, at the cost of needing the server reachable (a rare constraint given his actual usage pattern). Standalone would trade that away for offline capability that isn't really needed day-to-day, and would make real sync harder to add later if ever wanted (two independently-evolving databases to reconcile, vs. just adding offline queuing to a client that already talks to one source of truth).
 
-**Next step:** confirm before the `OpenTrack.Desktop` MAUI shell is scaffolded (Item #19), since it affects how that project is wired to the API from day one.
+**Real implication surfaced during this decision, important for scoping Item #19:** the Projects/Issues CRUD pages built in `OpenTrack.UI` currently call `AppDbContext` directly via EF Core — they do **not** go through `OpenTrack.API`. This was fine for the web app (same machine, same process), but a genuine thin-client desktop app needs real HTTP endpoints to talk to. So "add the desktop shell" is no longer just a MAUI scaffolding task — it now requires:
+1. Building out REST endpoints in `OpenTrack.API` for the CRUD operations already built (projects, issues, notes, history).
+2. Deciding whether `OpenTrack.UI`'s existing pages get rewired to call HTTP instead of `AppDbContext` directly (so web and desktop share the exact same code path), or whether the desktop app gets its own thinner UI layer that calls the API while the web app keeps its direct DB access. The former is more work up front but keeps the "write once" promise from the original shared-`OpenTrack.UI` architecture (Item #3); the latter is faster short-term but reintroduces some duplication.
+3. Authentication over HTTP for the desktop client (the current cookie-based Identity setup is web-session-oriented; a desktop client typically needs a token-based flow instead).
+
+None of this is decided yet — it's the honest scope of Item #19 now that thin client is confirmed, not a surprise to be discovered mid-build.
 
 ---
 
@@ -204,9 +213,43 @@ This relinked the existing on-disk files to GitHub's history directly, without t
 
 ## Open / Not Yet Discussed
 
-- **Item #9:** Thin client vs. standalone desktop architecture — confirm before scaffolding `OpenTrack.Desktop`.
-- **Item #19:** Add the `OpenTrack.Desktop` MAUI shell — requires installing the MAUI workload first.
+- **Item #21:** Add the `OpenTrack.Desktop` MAUI shell — scaffolded (MAUI workload installed, project trimmed to Windows + Mac targets, wired to `OpenTrack.UI`), but MAUI platform heads can only be compiled on their target OS (Windows head on Windows, Mac head on a Mac), so this needs a working session on Jim's Windows laptop rather than the Linux container everything else was verified in.
+- **Item #22:** Data-abstraction layer (e.g. `IOpenTrackDataService`) so `OpenTrack.UI`'s CRUD pages can run over HTTP in the desktop client instead of injecting `AppDbContext` directly — prerequisite for the thin-client desktop app to actually function.
+- **Item #23:** First-user-becomes-Administrator rule only exists on the web app's Register page; API-registered accounts default to Reporter with no promotion path yet. Practical rule for now: create the first/admin account via the web app. A proper role-management endpoint is future work.
 - **Item #11 (tooling sub-decision):** MkDocs Material vs. DocFX for the manual — target ~Phase 3.
+- **Deployment (future):** getting Web + API running as persistent services on the Beelink (not `dotnet run` in a terminal), reachable across the home network (Kestrel bound to the LAN interface, Windows Firewall port opened), with the database on the D: drive via a `ConnectionStrings:Default` entry.
+
+---
+
+## Item #19 — OpenTrack.API REST Endpoints 🟣 SETTLED — built & verified
+
+Built the real REST API the thin-client desktop app will talk to. `OpenTrack.API` now references the domain/infrastructure layers and exposes:
+- **Bearer-token auth** via ASP.NET Core Identity's built-in API endpoints (`/api/auth/register`, `/api/auth/login`, `/api/auth/refresh`) — token-based rather than the web app's cookie-based flow, because a native desktop client can't use cookies the same way. Same `User` type and same `AppDbContext`, so an account works identically via web or API.
+- **Projects**: list, get, create (Manager+), update (Manager+).
+- **Issues**: global list (optional project filter), get detail (with notes), create, update (Updater+), add note.
+- **Shared authorization**: the role-claims factory and the `RequireUpdater/Developer/Manager/Administrator` policies were moved into `OpenTrack.Infrastructure/Identity/` so the Web app and API enforce identical rules from one source instead of two copies. The web app's local copy of the factory was deleted.
+
+**Two real bugs found and fixed during verification:**
+1. The API's Identity setup was missing `options.Stores.SchemaVersion = IdentitySchemaVersions.Version3` (which the web app has), causing a startup crash from an EF `PendingModelChangesWarning` model mismatch.
+2. Enum values (`"Major"`, `"High"`, etc.) failed to deserialize from JSON — the API expected raw integers. Fixed by registering a `JsonStringEnumConverter`, so the API accepts/returns friendly string names.
+
+**Verified end-to-end** with real HTTP calls: register → login (token) → create project → create issue → get → update status → add note → confirm status+note reflected → global list. Plus role-gating: a plain Reporter (403 on create-project, 201 on file-issue) and unauthenticated requests (401). No schema changes were needed (confirmed by generating a migration that came back empty, then removing it).
+
+**Known gap (Item #23):** the "first user → Administrator" rule lives only on the web app's Register page, so API-registered accounts land as Reporter. Create the admin account via the web app for now.
+
+**Delivered as:** `OpenTrack-Phase3-api.zip`. On apply, delete the superseded `src/OpenTrack.Web/Components/Account/RoleClaimsPrincipalFactory.cs` (now shared in Infrastructure) or you'll get a duplicate-registration conflict.
+
+---
+
+## Item #20 — Shared Database Path 🟣 SETTLED — built & verified
+
+Fixed the latent two-databases problem: previously both Web and API fell back to `"Data Source=opentrack.db"` resolved relative to their own launch directory, so running them from different folders silently created two separate databases. Added `ResolveOpenTrackConnectionString()` in `OpenTrack.Infrastructure`: if `ConnectionStrings:Default` is configured it's used as-is (this is where the Beelink points at the D: drive); otherwise both hosts fall back to the SAME absolute path — one `opentrack.db` under the per-machine LocalApplicationData folder. The explicit per-folder connection string was removed from the Web `appsettings.json` so it uses the shared resolver in dev too.
+
+**Verified:** registered an account through the API, then logged into that same account through the web app — succeeds because they now share one database. Confirmed exactly one DB file is created (at the shared path) and none in the project folders.
+
+**Note on first run after applying:** the database moves from the project folder to the shared LocalAppData location, so the app creates a fresh empty DB there on first run — any previously-registered dev accounts won't carry over (just re-register). The old `src/OpenTrack.Web/opentrack.db` is now unused and can be deleted.
+
+**Delivered as:** `OpenTrack-shared-db-fix.zip` (touches `DependencyInjection.cs`, both `Program.cs` files, and the Web `appsettings.json`).
 
 ---
 

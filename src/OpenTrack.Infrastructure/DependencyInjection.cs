@@ -11,6 +11,7 @@
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTrack.Core.Entities;
 using OpenTrack.Infrastructure.Data;
@@ -25,6 +26,28 @@ public static class DependencyInjection
     {
         services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
         return services;
+    }
+
+    /// <summary>
+    /// Resolves the SQLite connection string all OpenTrack hosts should share. If the
+    /// configuration provides ConnectionStrings:Default it's used as-is (this is where the
+    /// Beelink deployment points at the D: drive). Otherwise every host falls back to the
+    /// SAME absolute path — a single opentrack.db in a shared per-machine data folder —
+    /// rather than each resolving "opentrack.db" relative to its own launch directory,
+    /// which would silently create separate databases for the web app and the API.
+    /// </summary>
+    public static string ResolveOpenTrackConnectionString(this IConfiguration configuration)
+    {
+        var configured = configuration.GetConnectionString("Default");
+        if (!string.IsNullOrWhiteSpace(configured))
+            return configured;
+
+        var dataDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "OpenTrack");
+        Directory.CreateDirectory(dataDir);
+        var dbPath = Path.Combine(dataDir, "opentrack.db");
+        return $"Data Source={dbPath};Cache=Shared";
     }
 
     /// <summary>Registers ASP.NET Core Identity (cookie auth + EF Core stores), scoped to

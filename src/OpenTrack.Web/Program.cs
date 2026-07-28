@@ -12,9 +12,9 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using OpenTrack.Core.Enums;
 using OpenTrack.Infrastructure;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Infrastructure.Identity;
 using OpenTrack.Web.Components;
 using OpenTrack.Web.Components.Account;
 
@@ -28,26 +28,12 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
-// Role-based authorization policies, built on the UserRole enum. Each policy accepts
-// its own role and everything above it in privilege, since UserRole values are ordered
-// ascending (Viewer=10 ... Administrator=90).
-builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("RequireUpdater", p => p.RequireAssertion(ctx => HasRoleAtLeast(ctx, UserRole.Updater)))
-    .AddPolicy("RequireDeveloper", p => p.RequireAssertion(ctx => HasRoleAtLeast(ctx, UserRole.Developer)))
-    .AddPolicy("RequireManager", p => p.RequireAssertion(ctx => HasRoleAtLeast(ctx, UserRole.Manager)))
-    .AddPolicy("RequireAdministrator", p => p.RequireAssertion(ctx => HasRoleAtLeast(ctx, UserRole.Administrator)));
-
-static bool HasRoleAtLeast(Microsoft.AspNetCore.Authorization.AuthorizationHandlerContext ctx, UserRole minimum)
-{
-    var roleClaim = ctx.User.FindFirst("OpenTrack.Role")?.Value;
-    return roleClaim is not null
-        && Enum.TryParse<UserRole>(roleClaim, out var role)
-        && (int)role >= (int)minimum;
-}
+// Role-based authorization policies — shared with OpenTrack.API so both surfaces
+// enforce identical access rules.
+builder.Services.AddOpenTrackAuthorizationPolicies();
 
 // OpenTrack data layer (EF Core + SQLite) and Identity (auth).
-var connectionString = builder.Configuration.GetConnectionString("Default")
-    ?? "Data Source=opentrack.db";
+var connectionString = builder.Configuration.ResolveOpenTrackConnectionString();
 builder.Services.AddOpenTrackInfrastructure(connectionString);
 builder.Services.AddOpenTrackIdentity();
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
