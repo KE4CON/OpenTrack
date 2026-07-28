@@ -252,5 +252,27 @@ Fixed the latent two-databases problem: previously both Web and API fell back to
 **Delivered as:** `OpenTrack-shared-db-fix.zip` (touches `DependencyInjection.cs`, both `Program.cs` files, and the Web `appsettings.json`).
 
 ---
+Item #22 — Data-Abstraction Layer (Shared UI over HTTP) 🟣 SETTLED — built & verified
+
+The key enabler for the thin-client desktop app. Previously the seven CRUD pages in OpenTrack.UI injected AppDbContext directly, which a thin client can't do. Introduced IOpenTrackDataService (in OpenTrack.UI/Services/) as the single data seam, with matching view-model records. The web app implements it with direct EF Core access (DbOpenTrackDataService, resolving the current user from the Blazor circuit); the desktop app implements it over HTTP against OpenTrack.API (HttpOpenTrackDataService).
+
+All seven pages (Projects Index/Create/Details/Edit, Issues Index/Create/Details/Edit) were refactored off AppDbContext onto the interface. The full web flow was re-run through the abstraction — register → create project → create issue → edit/status-change → notes → global list — with identical behavior and zero exceptions, confirming the refactor is behavior-preserving.
+
+Architectural cleanup this unlocked: OpenTrack.UI no longer references OpenTrack.Infrastructure or EF Core at all — it now depends only on OpenTrack.Core plus Blazor packages. This is what lets the thin-client desktop consume the shared pages without dragging in the database layer. Authorization policies, which had briefly lived in Infrastructure, are now registered inline per-host (Web, API, Desktop each register the identical four Require* policies) with only the policy-name constants shared in OpenTrack.UI/Services/PolicyNames.cs.
+
+Two new API endpoints were added to support the desktop create/edit forms: GET /api/projects/{id}/categories and GET /api/projects/{id}/members — both tested and working.
+
+Delivery gotcha (resolved): the overlay relocated RoleClaimsPrincipalFactory to OpenTrack.Infrastructure/Identity/ (shared by Web + API). Because that move predated this session's zip it had to be delivered as a small follow-up (OpenTrack-factory-fix.zip) plus manually deleting the old src/OpenTrack.Web/Components/Account/RoleClaimsPrincipalFactory.cs. Applied and building clean on Jim's machine (0 errors, the 5 usual harmless BL0008 form-model warnings), verified running in the browser, committed and pushed.
+
+Delivered as: OpenTrack-Phase4-shared-ui-verified.zip + OpenTrack-factory-fix.zip.
+
+Item #21 — OpenTrack.Desktop MAUI Shell 🟠 OPEN — written, not yet compiled
+
+The full desktop client is now written: HttpOpenTrackDataService, a bearer-token AuthTokenHandler, DesktopAuthState (session/login), a DesktopAuthenticationStateProvider bridging the JWT to Blazor's auth system so the shared pages' [Authorize]/<AuthorizeView> work unchanged, a login page, MauiProgram DI wiring, and the router pointed at the shared OpenTrack.UI pages. The project targets Windows + Mac only (mobile heads dropped).
+
+Not yet compiled — MAUI platform heads only build on their target OS, so the first compile must happen on Jim's Windows laptop, where iteration on first-build errors is expected. This is the one part of the project not verified in the Linux build environment. Still needed after it compiles: confirming the JWT actually carries the OpenTrack.Role claim (bearer tokens don't include custom claims unless configured — may need an API-side adjustment), a nav shell/home redirect, and end-to-end testing against a running API.
+
+Delivered as: OpenTrack-Desktop-UNVERIFIED.zip (clearly marked unverified).
+---
 
 *Document generated from full project chat history. Update and re-save after each future session before ending.*
