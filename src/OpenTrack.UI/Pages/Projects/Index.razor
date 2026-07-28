@@ -1,6 +1,6 @@
 @page "/projects"
 @attribute [Authorize]
-@inject AppDbContext DbContext
+@inject IOpenTrackDataService Data
 @inject AuthenticationStateProvider AuthState
 
 <PageTitle>Projects</PageTitle>
@@ -65,10 +65,8 @@ else
 }
 
 @code {
-    private List<ProjectRow>? projects;
+    private IReadOnlyList<ProjectRow>? projects;
     private bool canManage;
-
-    private sealed record ProjectRow(int Id, string Name, string? Description, bool IsPublic, int OpenIssueCount);
 
     protected override async Task OnInitializedAsync()
     {
@@ -77,14 +75,6 @@ else
             && Enum.TryParse<UserRole>(claim.Value, out var role)
             && role >= UserRole.Manager;
 
-        projects = await DbContext.Projects
-            .OrderBy(p => p.Name)
-            .Select(p => new ProjectRow(
-                p.Id,
-                p.Name,
-                p.Description,
-                p.IsPublic,
-                p.Issues.Count(i => i.Status != IssueStatus.Closed)))
-            .ToListAsync();
+        projects = await Data.GetProjectsAsync();
     }
 }

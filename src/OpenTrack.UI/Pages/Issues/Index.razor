@@ -1,6 +1,6 @@
 @page "/issues"
 @attribute [Authorize]
-@inject AppDbContext DbContext
+@inject IOpenTrackDataService Data
 
 <PageTitle>Issues</PageTitle>
 
@@ -51,27 +51,19 @@ else
 }
 
 @code {
-    private List<IssueRow> allIssues = [];
+    private IReadOnlyList<IssueRow> allIssues = [];
     private List<(int Id, string Name)> projectOptions = [];
     private int selectedProjectId;
 
-    private sealed record IssueRow(int Id, int ProjectId, string ProjectName, string Title,
-        IssueStatus Status, IssuePriority Priority, string ReporterName);
-
-    private List<IssueRow> FilteredIssues =>
+    private IReadOnlyList<IssueRow> FilteredIssues =>
         selectedProjectId == 0 ? allIssues : allIssues.Where(i => i.ProjectId == selectedProjectId).ToList();
 
     protected override async Task OnInitializedAsync()
     {
-        projectOptions = await DbContext.Projects.AsNoTracking()
-            .OrderBy(p => p.Name)
-            .Select(p => new ValueTuple<int, string>(p.Id, p.Name))
-            .ToListAsync();
+        projectOptions = (await Data.GetProjectsAsync())
+            .Select(p => (p.Id, p.Name))
+            .ToList();
 
-        allIssues = await DbContext.Issues.AsNoTracking()
-            .OrderByDescending(i => i.UpdatedAt)
-            .Select(i => new IssueRow(i.Id, i.ProjectId, i.Project.Name, i.Title, i.Status, i.Priority,
-                i.Reporter.UserName ?? "unknown"))
-            .ToListAsync();
+        allIssues = await Data.GetIssuesAsync();
     }
 }

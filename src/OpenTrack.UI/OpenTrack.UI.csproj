@@ -15,12 +15,10 @@
     <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="10.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\OpenTrack.Core\OpenTrack.Core.csproj" />
-    <ProjectReference Include="..\OpenTrack.Infrastructure\OpenTrack.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

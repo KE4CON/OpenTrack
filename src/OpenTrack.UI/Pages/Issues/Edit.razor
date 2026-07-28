@@ -1,7 +1,6 @@
 @page "/issues/{Id:int}/edit"
 @attribute [Authorize(Policy = "RequireUpdater")]
-@inject AppDbContext DbContext
-@inject AuthenticationStateProvider AuthState
+@inject IOpenTrackDataService Data
 @inject NavigationManager Nav
 
 <PageTitle>Edit Issue</PageTitle>
@@ -115,28 +114,18 @@ else
 
     private bool found;
     private string projectName = string.Empty;
-    private List<Category> categories = [];
-    private List<User> projectMembers = [];
-
-    // Snapshot of pre-edit values (captured once, at first load), used to write
-    // IssueHistory rows for what actually changed between GET and the eventual POST.
-    private IssueStatus originalStatus;
-    private int? originalAssigneeId;
+    private IReadOnlyList<CategoryView> categories = [];
+    private IReadOnlyList<ProjectMemberView> projectMembers = [];
 
     protected override async Task OnParametersSetAsync()
     {
-        var issue = await DbContext.Issues.Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == Id);
+        var issue = await Data.GetIssueAsync(Id);
         if (issue is null) return;
         found = true;
-        projectName = issue.Project.Name;
+        projectName = issue.ProjectName;
 
-        categories = await DbContext.Categories.AsNoTracking()
-            .Where(c => c.ProjectId == issue.ProjectId).OrderBy(c => c.Name).ToListAsync();
-
-        var memberIds = await DbContext.ProjectMemberships.AsNoTracking()
-            .Where(m => m.ProjectId == issue.ProjectId).Select(m => m.UserId).ToListAsync();
-        projectMembers = await DbContext.Users.AsNoTracking()
-            .Where(u => memberIds.Contains(u.Id)).OrderBy(u => u.UserName).ToListAsync();
+        categories = await Data.GetProjectCategoriesAsync(issue.ProjectId);
+        projectMembers = await Data.GetProjectMembersAsync(issue.ProjectId);
 
         if (!model.Loaded)
         {
@@ -152,53 +141,15 @@ else
             model.IsPrivate = issue.IsPrivate;
             model.Loaded = true;
         }
-
-        originalStatus = issue.Status;
-        originalAssigneeId = issue.AssigneeId;
     }
 
     private async Task HandleSubmit()
     {
-        var issue = await DbContext.Issues.FirstOrDefaultAsync(i => i.Id == Id);
-        if (issue is null) return;
-
-        var authState = await AuthState.GetAuthenticationStateAsync();
-        var userIdClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        int.TryParse(userIdClaim, out var userId);
-
-        issue.Title = model.Title;
-        issue.Description = model.Description;
-        issue.Status = model.Status;
-        issue.Severity = model.Severity;
-        issue.Priority = model.Priority;
-        issue.Resolution = model.Resolution;
-        issue.AssigneeId = model.AssigneeId;
-        issue.CategoryId = model.CategoryId;
-        issue.IsSticky = model.IsSticky;
-        issue.IsPrivate = model.IsPrivate;
-        issue.UpdatedAt = DateTime.UtcNow;
-
-        if (issue.Status != originalStatus)
-        {
-            DbContext.IssueHistories.Add(new IssueHistory
-            {
-                IssueId = issue.Id, UserId = userId, FieldChanged = "Status",
-                OldValue = originalStatus.ToString(), NewValue = issue.Status.ToString(),
-                ChangedAt = DateTime.UtcNow
-            });
-        }
-
-        if (issue.AssigneeId != originalAssigneeId)
-        {
-            DbContext.IssueHistories.Add(new IssueHistory
-            {
-                IssueId = issue.Id, UserId = userId, FieldChanged = "Assignee",
-                OldValue = originalAssigneeId?.ToString(), NewValue = issue.AssigneeId?.ToString(),
-                ChangedAt = DateTime.UtcNow
-            });
-        }
-
-        await DbContext.SaveChangesAsync();
+        // Change-tracking for IssueHistory (status/assignee) is handled inside the
+        // data service, so the page just submits the new values.
+        await Data.UpdateIssueAsync(Id, new UpdateIssueInput(
+            model.Title, model.Description, model.Status, model.Severity, model.Priority,
+            model.Resolution, model.AssigneeId, model.CategoryId, model.IsSticky, model.IsPrivate));
         Nav.NavigateTo($"issues/{Id}");
     }
 

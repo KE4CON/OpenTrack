@@ -1,7 +1,6 @@
 @page "/projects/create"
 @attribute [Authorize(Policy = "RequireManager")]
-@inject AppDbContext DbContext
-@inject AuthenticationStateProvider AuthState
+@inject IOpenTrackDataService Data
 @inject NavigationManager Nav
 
 <PageTitle>New Project</PageTitle>
@@ -44,34 +43,15 @@
 
     private async Task HandleSubmit()
     {
-        var authState = await AuthState.GetAuthenticationStateAsync();
-        var userIdClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (userIdClaim is null || !int.TryParse(userIdClaim, out var userId))
+        try
         {
-            error = "Could not determine the signed-in user.";
-            return;
+            var id = await Data.CreateProjectAsync(new CreateProjectInput(model.Name, model.Description, model.IsPublic));
+            Nav.NavigateTo($"projects/{id}");
         }
-
-        var project = new Project
+        catch (InvalidOperationException ex)
         {
-            Name = model.Name,
-            Description = model.Description,
-            IsPublic = model.IsPublic,
-            OwnerId = userId
-        };
-
-        // The owner is automatically a Manager-level member of their own project.
-        // Using the Project navigation property (rather than ProjectId) lets EF Core's
-        // change tracker fix up the foreign key once the new Project.Id is generated.
-        project.Members.Add(new ProjectMembership
-        {
-            UserId = userId,
-            Role = UserRole.Manager
-        });
-
-        DbContext.Projects.Add(project);
-        await DbContext.SaveChangesAsync();
-        Nav.NavigateTo($"projects/{project.Id}");
+            error = ex.Message;
+        }
     }
 
     private sealed class ProjectFormModel

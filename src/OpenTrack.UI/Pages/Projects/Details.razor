@@ -1,6 +1,6 @@
 @page "/projects/{Id:int}"
 @attribute [Authorize]
-@inject AppDbContext DbContext
+@inject IOpenTrackDataService Data
 
 <PageTitle>@(project?.Name ?? "Project")</PageTitle>
 
@@ -64,22 +64,13 @@ else
 @code {
     [Parameter] public int Id { get; set; }
 
-    private Project? project;
-    private List<IssueRow> issues = [];
-
-    private sealed record IssueRow(int Id, string Title, IssueStatus Status, IssueSeverity Severity,
-        IssuePriority Priority, string? AssigneeName);
+    private ProjectDetail? project;
+    private IReadOnlyList<IssueRow> issues = [];
 
     protected override async Task OnParametersSetAsync()
     {
-        project = await DbContext.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == Id);
-
-        issues = await DbContext.Issues.AsNoTracking()
-            .Where(i => i.ProjectId == Id)
-            .OrderByDescending(i => i.IsSticky).ThenByDescending(i => i.UpdatedAt)
-            .Select(i => new IssueRow(i.Id, i.Title, i.Status, i.Severity, i.Priority,
-                i.Assignee != null ? i.Assignee.UserName : null))
-            .ToListAsync();
+        project = await Data.GetProjectAsync(Id);
+        issues = await Data.GetIssuesAsync(Id);
     }
 
     private static string StatusBadge(IssueStatus status) => status switch

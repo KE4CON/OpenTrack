@@ -1,7 +1,6 @@
 @page "/projects/{ProjectId:int}/issues/create"
 @attribute [Authorize]
-@inject AppDbContext DbContext
-@inject AuthenticationStateProvider AuthState
+@inject IOpenTrackDataService Data
 @inject NavigationManager Nav
 
 <PageTitle>New Issue</PageTitle>
@@ -90,60 +89,31 @@ else
 @code {
     [Parameter] public int ProjectId { get; set; }
 
-    private Project? project;
-    private List<Category> categories = [];
+    private ProjectDetail? project;
+    private IReadOnlyList<CategoryView> categories = [];
     [SupplyParameterFromForm]
     private IssueFormModel model { get; set; } = new();
     private string? error;
 
     protected override async Task OnParametersSetAsync()
     {
-        project = await DbContext.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == ProjectId);
-        categories = await DbContext.Categories.AsNoTracking()
-            .Where(c => c.ProjectId == ProjectId).OrderBy(c => c.Name).ToListAsync();
+        project = await Data.GetProjectAsync(ProjectId);
+        categories = await Data.GetProjectCategoriesAsync(ProjectId);
     }
 
     private async Task HandleSubmit()
     {
-        var authState = await AuthState.GetAuthenticationStateAsync();
-        var userIdClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (userIdClaim is null || !int.TryParse(userIdClaim, out var userId))
+        try
         {
-            error = "Could not determine the signed-in user.";
-            return;
+            var id = await Data.CreateIssueAsync(ProjectId, new CreateIssueInput(
+                model.Title, model.Description, model.StepsToReproduce, model.CategoryId,
+                model.Severity, model.Priority, model.Reproducibility));
+            Nav.NavigateTo($"issues/{id}");
         }
-
-        var issue = new Issue
+        catch (InvalidOperationException ex)
         {
-            ProjectId = ProjectId,
-            Title = model.Title,
-            Description = model.Description,
-            StepsToReproduce = model.StepsToReproduce,
-            CategoryId = model.CategoryId,
-            Severity = model.Severity,
-            Priority = model.Priority,
-            Reproducibility = model.Reproducibility,
-            ReporterId = userId,
-            Status = IssueStatus.New,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        DbContext.Issues.Add(issue);
-        await DbContext.SaveChangesAsync();
-
-        DbContext.IssueHistories.Add(new IssueHistory
-        {
-            IssueId = issue.Id,
-            UserId = userId,
-            FieldChanged = "Status",
-            OldValue = null,
-            NewValue = IssueStatus.New.ToString(),
-            ChangedAt = DateTime.UtcNow
-        });
-        await DbContext.SaveChangesAsync();
-
-        Nav.NavigateTo($"issues/{issue.Id}");
+            error = ex.Message;
+        }
     }
 
     private sealed class IssueFormModel

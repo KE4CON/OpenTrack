@@ -1,6 +1,6 @@
 @page "/projects/{Id:int}/edit"
 @attribute [Authorize(Policy = "RequireManager")]
-@inject AppDbContext DbContext
+@inject IOpenTrackDataService Data
 @inject NavigationManager Nav
 
 <PageTitle>Edit Project</PageTitle>
@@ -52,7 +52,7 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        var project = await DbContext.Projects.FirstOrDefaultAsync(p => p.Id == Id);
+        var project = await Data.GetProjectAsync(Id);
         if (project is null) return;
         found = true;
 
@@ -70,14 +70,7 @@ else
 
     private async Task HandleSubmit()
     {
-        var project = await DbContext.Projects.FirstOrDefaultAsync(p => p.Id == Id);
-        if (project is null) return;
-
-        project.Name = model.Name;
-        project.Description = model.Description;
-        project.IsPublic = model.IsPublic;
-
-        await DbContext.SaveChangesAsync();
+        await Data.UpdateProjectAsync(Id, new UpdateProjectInput(model.Name, model.Description, model.IsPublic));
         Nav.NavigateTo($"projects/{Id}");
     }
 

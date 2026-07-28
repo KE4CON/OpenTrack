@@ -1,7 +1,6 @@
 @page "/issues/{Id:int}"
 @attribute [Authorize]
-@inject AppDbContext DbContext
-@inject AuthenticationStateProvider AuthState
+@inject IOpenTrackDataService Data
 
 <PageTitle>@(issue?.Title ?? "Issue")</PageTitle>
 
@@ -13,7 +12,7 @@ else
 {
     <div class="d-flex justify-content-between align-items-start mb-2">
         <div>
-            <p class="text-muted mb-0">@issue.Project.Name / Issue #@issue.Id</p>
+            <p class="text-muted mb-0">@issue.ProjectName / Issue #@issue.Id</p>
             <h1>@issue.Title</h1>
         </div>
         <AuthorizeView Policy="RequireUpdater">
@@ -30,9 +29,9 @@ else
         <div class="col-md-3"><strong>Reproducibility:</strong> @issue.Reproducibility</div>
     </div>
     <div class="row mb-3">
-        <div class="col-md-3"><strong>Reporter:</strong> @issue.Reporter.UserName</div>
-        <div class="col-md-3"><strong>Assignee:</strong> @(issue.Assignee?.UserName ?? "Unassigned")</div>
-        <div class="col-md-3"><strong>Category:</strong> @(issue.Category?.Name ?? "—")</div>
+        <div class="col-md-3"><strong>Reporter:</strong> @issue.ReporterName</div>
+        <div class="col-md-3"><strong>Assignee:</strong> @(issue.AssigneeName ?? "Unassigned")</div>
+        <div class="col-md-3"><strong>Category:</strong> @(issue.CategoryName ?? "—")</div>
         <div class="col-md-3"><strong>Updated:</strong> @issue.UpdatedAt.ToString("g")</div>
     </div>
 
@@ -52,10 +51,10 @@ else
     }
     else
     {
-        @foreach (var note in issue.Notes.OrderBy(n => n.CreatedAt))
+        @foreach (var note in issue.Notes)
         {
             <div class="border rounded p-2 mb-2">
-                <div class="small text-muted">@note.Author.UserName &mdash; @note.CreatedAt.ToString("g")</div>
+                <div class="small text-muted">@note.AuthorName &mdash; @note.CreatedAt.ToString("g")</div>
                 <div style="white-space: pre-wrap">@note.Text</div>
             </div>
         }
@@ -69,7 +68,7 @@ else
 
 @code {
     [Parameter] public int Id { get; set; }
-    private Issue? issue;
+    private IssueDetail? issue;
     [SupplyParameterFromForm]
     private NoteFormModel noteModel { get; set; } = new();
 
@@ -80,32 +79,13 @@ else
 
     private async Task LoadIssue()
     {
-        issue = await DbContext.Issues
-            .Include(i => i.Project)
-            .Include(i => i.Category)
-            .Include(i => i.Reporter)
-            .Include(i => i.Assignee)
-            .Include(i => i.Notes).ThenInclude(n => n.Author)
-            .FirstOrDefaultAsync(i => i.Id == Id);
+        issue = await Data.GetIssueAsync(Id);
     }
 
     private async Task AddNote()
     {
         if (string.IsNullOrWhiteSpace(noteModel.Text)) return;
-
-        var authState = await AuthState.GetAuthenticationStateAsync();
-        var userIdClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (userIdClaim is null || !int.TryParse(userIdClaim, out var userId)) return;
-
-        DbContext.IssueNotes.Add(new IssueNote
-        {
-            IssueId = Id,
-            AuthorId = userId,
-            Text = noteModel.Text,
-            CreatedAt = DateTime.UtcNow
-        });
-        await DbContext.SaveChangesAsync();
-
+        await Data.AddIssueNoteAsync(Id, noteModel.Text);
         noteModel.Text = string.Empty;
         await LoadIssue();
     }

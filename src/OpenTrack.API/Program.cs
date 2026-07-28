@@ -11,8 +11,10 @@
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using OpenTrack.API;
 using OpenTrack.API.Endpoints;
 using OpenTrack.Core.Entities;
+using OpenTrack.Core.Enums;
 using OpenTrack.Infrastructure;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Identity;
@@ -48,7 +50,13 @@ builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, RoleClaimsPrincipa
 
 // Role-based authorization policies — shared with OpenTrack.Web so both surfaces
 // enforce identical access rules.
-builder.Services.AddOpenTrackAuthorizationPolicies();
+// Role-based authorization policies built on the UserRole enum, matching the web/desktop
+// definitions. Kept inline here so the API doesn't need to reference the Blazor UI project.
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("RequireUpdater", p => p.RequireAssertion(ctx => ApiRoleCheck.HasRoleAtLeast(ctx, UserRole.Updater)))
+    .AddPolicy("RequireDeveloper", p => p.RequireAssertion(ctx => ApiRoleCheck.HasRoleAtLeast(ctx, UserRole.Developer)))
+    .AddPolicy("RequireManager", p => p.RequireAssertion(ctx => ApiRoleCheck.HasRoleAtLeast(ctx, UserRole.Manager)))
+    .AddPolicy("RequireAdministrator", p => p.RequireAssertion(ctx => ApiRoleCheck.HasRoleAtLeast(ctx, UserRole.Administrator)));
 
 var app = builder.Build();
 

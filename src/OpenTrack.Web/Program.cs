@@ -12,9 +12,12 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using OpenTrack.Core.Entities;
+using OpenTrack.Core.Enums;
 using OpenTrack.Infrastructure;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Identity;
+using OpenTrack.UI.Services;
 using OpenTrack.Web.Components;
 using OpenTrack.Web.Components.Account;
 
@@ -30,7 +33,22 @@ builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuth
 
 // Role-based authorization policies — shared with OpenTrack.API so both surfaces
 // enforce identical access rules.
-builder.Services.AddOpenTrackAuthorizationPolicies();
+// Role-based authorization policies built on the UserRole enum. Registered inline (rather
+// than via a shared helper) because the DI extension lives in ASP.NET Core packages; the
+// desktop and API hosts register the identical four policies the same way.
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("RequireUpdater", p => p.RequireAssertion(ctx => WebRoleCheck(ctx, UserRole.Updater)))
+    .AddPolicy("RequireDeveloper", p => p.RequireAssertion(ctx => WebRoleCheck(ctx, UserRole.Developer)))
+    .AddPolicy("RequireManager", p => p.RequireAssertion(ctx => WebRoleCheck(ctx, UserRole.Manager)))
+    .AddPolicy("RequireAdministrator", p => p.RequireAssertion(ctx => WebRoleCheck(ctx, UserRole.Administrator)));
+
+static bool WebRoleCheck(Microsoft.AspNetCore.Authorization.AuthorizationHandlerContext ctx, UserRole minimum)
+{
+    var roleClaim = ctx.User.FindFirst("OpenTrack.Role")?.Value;
+    return roleClaim is not null
+        && Enum.TryParse<UserRole>(roleClaim, out var role)
+        && (int)role >= (int)minimum;
+}
 
 // OpenTrack data layer (EF Core + SQLite) and Identity (auth).
 var connectionString = builder.Configuration.ResolveOpenTrackConnectionString();
@@ -41,6 +59,9 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 // Adds the user's OpenTrack.Role as a claim on sign-in so [Authorize(Policy = "...")] and
 // AuthorizeView can check it without an extra DB round trip on every request.
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<OpenTrack.Core.Entities.User>, RoleClaimsPrincipalFactory>();
+
+// The shared UI's data seam, backed by direct EF Core access in the web app.
+builder.Services.AddScoped<OpenTrack.UI.Services.IOpenTrackDataService, OpenTrack.Web.Services.DbOpenTrackDataService>();
 
 builder.Services.AddSingleton<IEmailSender<OpenTrack.Core.Entities.User>, IdentityNoOpEmailSender>();
 
