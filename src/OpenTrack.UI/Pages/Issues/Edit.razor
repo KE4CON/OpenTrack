@@ -1,0 +1,224 @@
+@page "/issues/{Id:int}/edit"
+@attribute [Authorize(Policy = "RequireUpdater")]
+@inject AppDbContext DbContext
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<PageTitle>Edit Issue</PageTitle>
+
+@if (!found)
+{
+    <p><em>Loading&hellip;</em></p>
+}
+else
+{
+    <p class="text-muted mb-0">@projectName / Issue #@Id</p>
+    <h1>Edit Issue</h1>
+
+    <EditForm Model="model" OnValidSubmit="HandleSubmit" FormName="editIssue" class="col-md-8">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" />
+        <input type="hidden" name="model.Loaded" value="true" />
+
+        <div class="mb-3">
+            <label class="form-label">Title</label>
+            <InputText @bind-Value="model.Title" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            <InputTextArea @bind-Value="model.Description" class="form-control" rows="4" />
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Status</label>
+                <InputSelect @bind-Value="model.Status" class="form-select">
+                    @foreach (var s in Enum.GetValues<IssueStatus>())
+                    {
+                        <option value="@s">@s</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Severity</label>
+                <InputSelect @bind-Value="model.Severity" class="form-select">
+                    @foreach (var s in Enum.GetValues<IssueSeverity>())
+                    {
+                        <option value="@s">@s</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Priority</label>
+                <InputSelect @bind-Value="model.Priority" class="form-select">
+                    @foreach (var p in Enum.GetValues<IssuePriority>())
+                    {
+                        <option value="@p">@p</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Resolution</label>
+                <InputSelect @bind-Value="model.Resolution" class="form-select">
+                    @foreach (var r in Enum.GetValues<IssueResolution>())
+                    {
+                        <option value="@r">@r</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Assignee</label>
+                <InputSelect @bind-Value="model.AssigneeId" class="form-select">
+                    <option value="">Unassigned</option>
+                    @foreach (var m in projectMembers)
+                    {
+                        <option value="@m.Id">@m.UserName</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Category</label>
+                <InputSelect @bind-Value="model.CategoryId" class="form-select">
+                    <option value="">(none)</option>
+                    @foreach (var c in categories)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+
+        <div class="form-check mb-3">
+            <InputCheckbox @bind-Value="model.IsSticky" class="form-check-input" id="sticky" />
+            <label class="form-check-label" for="sticky">Sticky (pinned to top of project issue list)</label>
+        </div>
+
+        <div class="form-check mb-3">
+            <InputCheckbox @bind-Value="model.IsPrivate" class="form-check-input" id="private" />
+            <label class="form-check-label" for="private">Private</label>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="issues/@Id" class="btn btn-link">Cancel</a>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private IssueEditModel model { get; set; } = new();
+
+    private bool found;
+    private string projectName = string.Empty;
+    private List<Category> categories = [];
+    private List<User> projectMembers = [];
+
+    // Snapshot of pre-edit values (captured once, at first load), used to write
+    // IssueHistory rows for what actually changed between GET and the eventual POST.
+    private IssueStatus originalStatus;
+    private int? originalAssigneeId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var issue = await DbContext.Issues.Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == Id);
+        if (issue is null) return;
+        found = true;
+        projectName = issue.Project.Name;
+
+        categories = await DbContext.Categories.AsNoTracking()
+            .Where(c => c.ProjectId == issue.ProjectId).OrderBy(c => c.Name).ToListAsync();
+
+        var memberIds = await DbContext.ProjectMemberships.AsNoTracking()
+            .Where(m => m.ProjectId == issue.ProjectId).Select(m => m.UserId).ToListAsync();
+        projectMembers = await DbContext.Users.AsNoTracking()
+            .Where(u => memberIds.Contains(u.Id)).OrderBy(u => u.UserName).ToListAsync();
+
+        if (!model.Loaded)
+        {
+            model.Title = issue.Title;
+            model.Description = issue.Description;
+            model.Status = issue.Status;
+            model.Severity = issue.Severity;
+            model.Priority = issue.Priority;
+            model.Resolution = issue.Resolution;
+            model.AssigneeId = issue.AssigneeId;
+            model.CategoryId = issue.CategoryId;
+            model.IsSticky = issue.IsSticky;
+            model.IsPrivate = issue.IsPrivate;
+            model.Loaded = true;
+        }
+
+        originalStatus = issue.Status;
+        originalAssigneeId = issue.AssigneeId;
+    }
+
+    private async Task HandleSubmit()
+    {
+        var issue = await DbContext.Issues.FirstOrDefaultAsync(i => i.Id == Id);
+        if (issue is null) return;
+
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var userIdClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        int.TryParse(userIdClaim, out var userId);
+
+        issue.Title = model.Title;
+        issue.Description = model.Description;
+        issue.Status = model.Status;
+        issue.Severity = model.Severity;
+        issue.Priority = model.Priority;
+        issue.Resolution = model.Resolution;
+        issue.AssigneeId = model.AssigneeId;
+        issue.CategoryId = model.CategoryId;
+        issue.IsSticky = model.IsSticky;
+        issue.IsPrivate = model.IsPrivate;
+        issue.UpdatedAt = DateTime.UtcNow;
+
+        if (issue.Status != originalStatus)
+        {
+            DbContext.IssueHistories.Add(new IssueHistory
+            {
+                IssueId = issue.Id, UserId = userId, FieldChanged = "Status",
+                OldValue = originalStatus.ToString(), NewValue = issue.Status.ToString(),
+                ChangedAt = DateTime.UtcNow
+            });
+        }
+
+        if (issue.AssigneeId != originalAssigneeId)
+        {
+            DbContext.IssueHistories.Add(new IssueHistory
+            {
+                IssueId = issue.Id, UserId = userId, FieldChanged = "Assignee",
+                OldValue = originalAssigneeId?.ToString(), NewValue = issue.AssigneeId?.ToString(),
+                ChangedAt = DateTime.UtcNow
+            });
+        }
+
+        await DbContext.SaveChangesAsync();
+        Nav.NavigateTo($"issues/{Id}");
+    }
+
+    private sealed class IssueEditModel
+    {
+        public bool Loaded { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.StringLength(300)]
+        public string Title { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Description { get; set; } = string.Empty;
+
+        public IssueStatus Status { get; set; }
+        public IssueSeverity Severity { get; set; }
+        public IssuePriority Priority { get; set; }
+        public IssueResolution Resolution { get; set; }
+        public int? AssigneeId { get; set; }
+        public int? CategoryId { get; set; }
+        public bool IsSticky { get; set; }
+        public bool IsPrivate { get; set; }
+    }
+}

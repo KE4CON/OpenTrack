@@ -9,34 +9,29 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using OpenTrack.Core.Entities;
 
 namespace OpenTrack.Infrastructure.Data;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options)
+    : IdentityDbContext<User, IdentityRole<int>, int>(options)
 {
-    public DbSet<User> Users => Set<User>();
+    // Users, and the AspNetRoles/AspNetUserRoles/etc. tables, come from IdentityDbContext.
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectMembership> ProjectMemberships => Set<ProjectMembership>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<ProjectVersion> Versions => Set<ProjectVersion>();
     public DbSet<Issue> Issues => Set<Issue>();
     public DbSet<IssueNote> IssueNotes => Set<IssueNote>();
-    public DbSet<IssueHistory> IssueHistory => Set<IssueHistory>();
+    public DbSet<IssueHistory> IssueHistories => Set<IssueHistory>();
     public DbSet<IssueAttachment> IssueAttachments => Set<IssueAttachment>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
-        // ---- User ----
-        b.Entity<User>(e =>
-        {
-            e.Property(u => u.Username).HasMaxLength(50).IsRequired();
-            e.Property(u => u.Email).HasMaxLength(256).IsRequired();
-            e.Property(u => u.PasswordHash).HasMaxLength(256).IsRequired();
-            e.HasIndex(u => u.Username).IsUnique();
-            e.HasIndex(u => u.Email).IsUnique();
-        });
+        base.OnModelCreating(b);
 
         // ---- Project ----
         b.Entity<Project>(e =>

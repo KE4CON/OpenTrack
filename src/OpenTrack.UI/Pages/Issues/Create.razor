@@ -1,0 +1,163 @@
+@page "/projects/{ProjectId:int}/issues/create"
+@attribute [Authorize]
+@inject AppDbContext DbContext
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<PageTitle>New Issue</PageTitle>
+
+@if (project is null)
+{
+    <p><em>Loading&hellip;</em></p>
+}
+else
+{
+    <h1>New Issue &mdash; @project.Name</h1>
+
+    <EditForm Model="model" OnValidSubmit="HandleSubmit" FormName="createIssue" class="col-md-8">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" />
+
+        <div class="mb-3">
+            <label class="form-label">Title</label>
+            <InputText @bind-Value="model.Title" class="form-control" />
+            <ValidationMessage For="() => model.Title" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            <InputTextArea @bind-Value="model.Description" class="form-control" rows="4" />
+            <ValidationMessage For="() => model.Description" />
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Steps to Reproduce</label>
+                <InputTextArea @bind-Value="model.StepsToReproduce" class="form-control" rows="3" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Category</label>
+                <InputSelect @bind-Value="model.CategoryId" class="form-select">
+                    <option value="">(none)</option>
+                    @foreach (var c in categories)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Severity</label>
+                <InputSelect @bind-Value="model.Severity" class="form-select">
+                    @foreach (var s in Enum.GetValues<IssueSeverity>())
+                    {
+                        <option value="@s">@s</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Priority</label>
+                <InputSelect @bind-Value="model.Priority" class="form-select">
+                    @foreach (var p in Enum.GetValues<IssuePriority>())
+                    {
+                        <option value="@p">@p</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Reproducibility</label>
+                <InputSelect @bind-Value="model.Reproducibility" class="form-select">
+                    @foreach (var r in Enum.GetValues<IssueReproducibility>())
+                    {
+                        <option value="@r">@r</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+
+        @if (error is not null)
+        {
+            <p class="text-danger">@error</p>
+        }
+
+        <button type="submit" class="btn btn-primary">Submit Issue</button>
+        <a href="projects/@ProjectId" class="btn btn-link">Cancel</a>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+
+    private Project? project;
+    private List<Category> categories = [];
+    [SupplyParameterFromForm]
+    private IssueFormModel model { get; set; } = new();
+    private string? error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        project = await DbContext.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == ProjectId);
+        categories = await DbContext.Categories.AsNoTracking()
+            .Where(c => c.ProjectId == ProjectId).OrderBy(c => c.Name).ToListAsync();
+    }
+
+    private async Task HandleSubmit()
+    {
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var userIdClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim is null || !int.TryParse(userIdClaim, out var userId))
+        {
+            error = "Could not determine the signed-in user.";
+            return;
+        }
+
+        var issue = new Issue
+        {
+            ProjectId = ProjectId,
+            Title = model.Title,
+            Description = model.Description,
+            StepsToReproduce = model.StepsToReproduce,
+            CategoryId = model.CategoryId,
+            Severity = model.Severity,
+            Priority = model.Priority,
+            Reproducibility = model.Reproducibility,
+            ReporterId = userId,
+            Status = IssueStatus.New,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        DbContext.Issues.Add(issue);
+        await DbContext.SaveChangesAsync();
+
+        DbContext.IssueHistories.Add(new IssueHistory
+        {
+            IssueId = issue.Id,
+            UserId = userId,
+            FieldChanged = "Status",
+            OldValue = null,
+            NewValue = IssueStatus.New.ToString(),
+            ChangedAt = DateTime.UtcNow
+        });
+        await DbContext.SaveChangesAsync();
+
+        Nav.NavigateTo($"issues/{issue.Id}");
+    }
+
+    private sealed class IssueFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.StringLength(300)]
+        public string Title { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Description { get; set; } = string.Empty;
+
+        public string? StepsToReproduce { get; set; }
+        public int? CategoryId { get; set; }
+        public IssueSeverity Severity { get; set; } = IssueSeverity.Minor;
+        public IssuePriority Priority { get; set; } = IssuePriority.Normal;
+        public IssueReproducibility Reproducibility { get; set; } = IssueReproducibility.HaveNotTried;
+    }
+}

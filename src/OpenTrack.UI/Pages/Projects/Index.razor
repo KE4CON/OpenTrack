@@ -1,0 +1,90 @@
+@page "/projects"
+@attribute [Authorize]
+@inject AppDbContext DbContext
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Projects</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Projects</h1>
+    <AuthorizeView Policy="RequireManager">
+        <Authorized>
+            <a class="btn btn-primary" href="projects/create">New Project</a>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+@if (projects is null)
+{
+    <p><em>Loading&hellip;</em></p>
+}
+else if (projects.Count == 0)
+{
+    <p class="text-muted">No projects yet. @(canManage ? "Create the first one to get started." : "Check back once one has been created.")</p>
+}
+else
+{
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Visibility</th>
+                <th>Open Issues</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in projects)
+            {
+                <tr>
+                    <td><a href="projects/@p.Id">@p.Name</a></td>
+                    <td class="text-muted">@p.Description</td>
+                    <td>
+                        @if (p.IsPublic)
+                        {
+                            <span class="badge text-bg-secondary">Public</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-dark">Private</span>
+                        }
+                    </td>
+                    <td>@p.OpenIssueCount</td>
+                    <td class="text-end">
+                        <AuthorizeView Policy="RequireManager" Context="mgrCtx">
+                            <Authorized>
+                                <a class="btn btn-sm btn-outline-secondary" href="projects/@p.Id/edit">Edit</a>
+                            </Authorized>
+                        </AuthorizeView>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ProjectRow>? projects;
+    private bool canManage;
+
+    private sealed record ProjectRow(int Id, string Name, string? Description, bool IsPublic, int OpenIssueCount);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        canManage = authState.User.FindFirst("OpenTrack.Role") is { } claim
+            && Enum.TryParse<UserRole>(claim.Value, out var role)
+            && role >= UserRole.Manager;
+
+        projects = await DbContext.Projects
+            .OrderBy(p => p.Name)
+            .Select(p => new ProjectRow(
+                p.Id,
+                p.Name,
+                p.Description,
+                p.IsPublic,
+                p.Issues.Count(i => i.Status != IssueStatus.Closed)))
+            .ToListAsync();
+    }
+}

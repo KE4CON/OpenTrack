@@ -1,0 +1,94 @@
+@page "/projects/{Id:int}"
+@attribute [Authorize]
+@inject AppDbContext DbContext
+
+<PageTitle>@(project?.Name ?? "Project")</PageTitle>
+
+@if (project is null)
+{
+    <p><em>Loading&hellip;</em></p>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+            <h1>@project.Name</h1>
+            <p class="text-muted mb-0">@project.Description</p>
+        </div>
+        <AuthorizeView Policy="RequireManager">
+            <Authorized>
+                <a class="btn btn-outline-secondary" href="projects/@Id/edit">Edit Project</a>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+        <h2 class="h5 mb-0">Issues</h2>
+        <a class="btn btn-primary btn-sm" href="projects/@Id/issues/create">New Issue</a>
+    </div>
+
+    @if (issues.Count == 0)
+    {
+        <p class="text-muted">No issues reported yet.</p>
+    }
+    else
+    {
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Severity</th>
+                    <th>Priority</th>
+                    <th>Assignee</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var i in issues)
+                {
+                    <tr>
+                        <td>@i.Id</td>
+                        <td><a href="issues/@i.Id">@i.Title</a></td>
+                        <td><span class="badge @StatusBadge(i.Status)">@i.Status</span></td>
+                        <td>@i.Severity</td>
+                        <td>@i.Priority</td>
+                        <td>@(i.AssigneeName ?? "Unassigned")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Project? project;
+    private List<IssueRow> issues = [];
+
+    private sealed record IssueRow(int Id, string Title, IssueStatus Status, IssueSeverity Severity,
+        IssuePriority Priority, string? AssigneeName);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        project = await DbContext.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == Id);
+
+        issues = await DbContext.Issues.AsNoTracking()
+            .Where(i => i.ProjectId == Id)
+            .OrderByDescending(i => i.IsSticky).ThenByDescending(i => i.UpdatedAt)
+            .Select(i => new IssueRow(i.Id, i.Title, i.Status, i.Severity, i.Priority,
+                i.Assignee != null ? i.Assignee.UserName : null))
+            .ToListAsync();
+    }
+
+    private static string StatusBadge(IssueStatus status) => status switch
+    {
+        IssueStatus.New => "text-bg-info",
+        IssueStatus.Feedback or IssueStatus.Acknowledged or IssueStatus.Confirmed => "text-bg-warning",
+        IssueStatus.Assigned => "text-bg-primary",
+        IssueStatus.Resolved => "text-bg-success",
+        IssueStatus.Closed => "text-bg-secondary",
+        _ => "text-bg-light"
+    };
+}

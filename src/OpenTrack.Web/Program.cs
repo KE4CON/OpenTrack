@@ -9,10 +9,14 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using OpenTrack.Core.Enums;
 using OpenTrack.Infrastructure;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Web.Components;
+using OpenTrack.Web.Components.Account;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,15 +24,44 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// OpenTrack data layer (EF Core + SQLite)
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddScoped<IdentityRedirectManager>();
+builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+
+// Role-based authorization policies, built on the UserRole enum. Each policy accepts
+// its own role and everything above it in privilege, since UserRole values are ordered
+// ascending (Viewer=10 ... Administrator=90).
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("RequireUpdater", p => p.RequireAssertion(ctx => HasRoleAtLeast(ctx, UserRole.Updater)))
+    .AddPolicy("RequireDeveloper", p => p.RequireAssertion(ctx => HasRoleAtLeast(ctx, UserRole.Developer)))
+    .AddPolicy("RequireManager", p => p.RequireAssertion(ctx => HasRoleAtLeast(ctx, UserRole.Manager)))
+    .AddPolicy("RequireAdministrator", p => p.RequireAssertion(ctx => HasRoleAtLeast(ctx, UserRole.Administrator)));
+
+static bool HasRoleAtLeast(Microsoft.AspNetCore.Authorization.AuthorizationHandlerContext ctx, UserRole minimum)
+{
+    var roleClaim = ctx.User.FindFirst("OpenTrack.Role")?.Value;
+    return roleClaim is not null
+        && Enum.TryParse<UserRole>(roleClaim, out var role)
+        && (int)role >= (int)minimum;
+}
+
+// OpenTrack data layer (EF Core + SQLite) and Identity (auth).
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? "Data Source=opentrack.db";
 builder.Services.AddOpenTrackInfrastructure(connectionString);
+builder.Services.AddOpenTrackIdentity();
+builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+// Adds the user's OpenTrack.Role as a claim on sign-in so [Authorize(Policy = "...")] and
+// AuthorizeView can check it without an extra DB round trip on every request.
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<OpenTrack.Core.Entities.User>, RoleClaimsPrincipalFactory>();
+
+builder.Services.AddSingleton<IEmailSender<OpenTrack.Core.Entities.User>, IdentityNoOpEmailSender>();
 
 var app = builder.Build();
 
-// Apply any pending EF Core migrations at startup so the SQLite database is
-// created/updated automatically when the app runs.
+// Apply any pending EF Core migrations at startup so the SQLite database (and the
+// Identity tables) are created/updated automatically when the app runs.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -36,7 +69,11 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
+{
+    app.UseMigrationsEndPoint();
+}
+else
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
@@ -49,6 +86,10 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .AddAdditionalAssemblies(typeof(OpenTrack.UI.AssemblyMarker).Assembly);
+
+// Add additional endpoints required by the Identity /Account Razor components.
+app.MapAdditionalIdentityEndpoints();
 
 app.Run();

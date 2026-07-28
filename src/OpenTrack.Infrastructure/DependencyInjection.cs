@@ -9,8 +9,10 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using OpenTrack.Core.Entities;
 using OpenTrack.Infrastructure.Data;
 
 namespace OpenTrack.Infrastructure;
@@ -22,6 +24,30 @@ public static class DependencyInjection
         this IServiceCollection services, string connectionString)
     {
         services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+        return services;
+    }
+
+    /// <summary>Registers ASP.NET Core Identity (cookie auth + EF Core stores), scoped to
+    /// OpenTrack's <see cref="User"/> and int-keyed roles, backed by <see cref="AppDbContext"/>.</summary>
+    public static IServiceCollection AddOpenTrackIdentity(this IServiceCollection services)
+    {
+        services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = IdentityConstants.ApplicationScheme;
+                options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
+            })
+            .AddIdentityCookies();
+
+        services.AddIdentityCore<User>(options =>
+            {
+                options.SignIn.RequireConfirmedAccount = false;
+                options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
+            })
+            .AddRoles<IdentityRole<int>>()
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddSignInManager()
+            .AddDefaultTokenProviders();
+
         return services;
     }
 }

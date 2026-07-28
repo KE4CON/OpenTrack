@@ -1,16 +1,30 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <ItemGroup>
-    <ProjectReference Include="..\OpenTrack.UI\OpenTrack.UI.csproj" />
-    <ProjectReference Include="..\OpenTrack.Core\OpenTrack.Core.csproj" />
-    <ProjectReference Include="..\OpenTrack.Infrastructure\OpenTrack.Infrastructure.csproj" />
-  </ItemGroup>
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>aspnet-OpenTrack_Web-7fce12f2-0a39-400d-bcf4-906c23076dfb</UserSecretsId>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="Data\app.db" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.10" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OpenTrack.Infrastructure\OpenTrack.Infrastructure.csproj" />
+    <ProjectReference Include="..\OpenTrack.Core\OpenTrack.Core.csproj" />
+    <ProjectReference Include="..\OpenTrack.UI\OpenTrack.UI.csproj" />
+  </ItemGroup>
 
 </Project>

@@ -1,0 +1,77 @@
+@page "/issues"
+@attribute [Authorize]
+@inject AppDbContext DbContext
+
+<PageTitle>Issues</PageTitle>
+
+<h1>All Issues</h1>
+
+<div class="mb-3 col-md-4">
+    <label class="form-label">Filter by project</label>
+    <select class="form-select" @bind="selectedProjectId">
+        <option value="0">All Projects</option>
+        @foreach (var p in projectOptions)
+        {
+            <option value="@p.Id">@p.Name</option>
+        }
+    </select>
+</div>
+
+@if (FilteredIssues.Count == 0)
+{
+    <p class="text-muted">No issues match this filter.</p>
+}
+else
+{
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Project</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Reporter</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var i in FilteredIssues)
+            {
+                <tr>
+                    <td>@i.Id</td>
+                    <td>@i.ProjectName</td>
+                    <td><a href="issues/@i.Id">@i.Title</a></td>
+                    <td>@i.Status</td>
+                    <td>@i.Priority</td>
+                    <td>@i.ReporterName</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<IssueRow> allIssues = [];
+    private List<(int Id, string Name)> projectOptions = [];
+    private int selectedProjectId;
+
+    private sealed record IssueRow(int Id, int ProjectId, string ProjectName, string Title,
+        IssueStatus Status, IssuePriority Priority, string ReporterName);
+
+    private List<IssueRow> FilteredIssues =>
+        selectedProjectId == 0 ? allIssues : allIssues.Where(i => i.ProjectId == selectedProjectId).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        projectOptions = await DbContext.Projects.AsNoTracking()
+            .OrderBy(p => p.Name)
+            .Select(p => new ValueTuple<int, string>(p.Id, p.Name))
+            .ToListAsync();
+
+        allIssues = await DbContext.Issues.AsNoTracking()
+            .OrderByDescending(i => i.UpdatedAt)
+            .Select(i => new IssueRow(i.Id, i.ProjectId, i.Project.Name, i.Title, i.Status, i.Priority,
+                i.Reporter.UserName ?? "unknown"))
+            .ToListAsync();
+    }
+}

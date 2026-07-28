@@ -9,19 +9,15 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
+using Microsoft.AspNetCore.Identity;
 using OpenTrack.Core.Enums;
 
 namespace OpenTrack.Core.Entities;
 
-/// <summary>An OpenTrack account. (Auth/Identity integration comes in the auth step;
-/// for now this is a plain entity carrying a password hash and a default role.)</summary>
-public class User
+/// <summary>An OpenTrack account. Integrates with ASP.NET Core Identity — Id, UserName,
+/// Email, PasswordHash, SecurityStamp, etc. come from the IdentityUser&lt;int&gt; base class.</summary>
+public class User : IdentityUser<int>
 {
-    public int Id { get; set; }
-    public string Username { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string PasswordHash { get; set; } = string.Empty;
-
     /// <summary>Default/global role. Per-project roles live on <see cref="ProjectMembership"/>.</summary>
     public UserRole Role { get; set; } = UserRole.Reporter;
 

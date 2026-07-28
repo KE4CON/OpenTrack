@@ -1,0 +1,117 @@
+@page "/issues/{Id:int}"
+@attribute [Authorize]
+@inject AppDbContext DbContext
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>@(issue?.Title ?? "Issue")</PageTitle>
+
+@if (issue is null)
+{
+    <p><em>Loading&hellip;</em></p>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+            <p class="text-muted mb-0">@issue.Project.Name / Issue #@issue.Id</p>
+            <h1>@issue.Title</h1>
+        </div>
+        <AuthorizeView Policy="RequireUpdater">
+            <Authorized>
+                <a class="btn btn-outline-secondary" href="issues/@Id/edit">Edit</a>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-3"><strong>Status:</strong> @issue.Status</div>
+        <div class="col-md-3"><strong>Severity:</strong> @issue.Severity</div>
+        <div class="col-md-3"><strong>Priority:</strong> @issue.Priority</div>
+        <div class="col-md-3"><strong>Reproducibility:</strong> @issue.Reproducibility</div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-3"><strong>Reporter:</strong> @issue.Reporter.UserName</div>
+        <div class="col-md-3"><strong>Assignee:</strong> @(issue.Assignee?.UserName ?? "Unassigned")</div>
+        <div class="col-md-3"><strong>Category:</strong> @(issue.Category?.Name ?? "—")</div>
+        <div class="col-md-3"><strong>Updated:</strong> @issue.UpdatedAt.ToString("g")</div>
+    </div>
+
+    <h2 class="h5">Description</h2>
+    <p style="white-space: pre-wrap">@issue.Description</p>
+
+    @if (!string.IsNullOrWhiteSpace(issue.StepsToReproduce))
+    {
+        <h2 class="h5">Steps to Reproduce</h2>
+        <p style="white-space: pre-wrap">@issue.StepsToReproduce</p>
+    }
+
+    <h2 class="h5 mt-4">Notes</h2>
+    @if (issue.Notes.Count == 0)
+    {
+        <p class="text-muted">No notes yet.</p>
+    }
+    else
+    {
+        @foreach (var note in issue.Notes.OrderBy(n => n.CreatedAt))
+        {
+            <div class="border rounded p-2 mb-2">
+                <div class="small text-muted">@note.Author.UserName &mdash; @note.CreatedAt.ToString("g")</div>
+                <div style="white-space: pre-wrap">@note.Text</div>
+            </div>
+        }
+    }
+
+    <EditForm Model="noteModel" OnValidSubmit="AddNote" FormName="addNote" class="col-md-8 mt-3">
+        <InputTextArea @bind-Value="noteModel.Text" class="form-control mb-2" rows="2" placeholder="Add a note&hellip;" />
+        <button type="submit" class="btn btn-secondary btn-sm">Add Note</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private Issue? issue;
+    [SupplyParameterFromForm]
+    private NoteFormModel noteModel { get; set; } = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadIssue();
+    }
+
+    private async Task LoadIssue()
+    {
+        issue = await DbContext.Issues
+            .Include(i => i.Project)
+            .Include(i => i.Category)
+            .Include(i => i.Reporter)
+            .Include(i => i.Assignee)
+            .Include(i => i.Notes).ThenInclude(n => n.Author)
+            .FirstOrDefaultAsync(i => i.Id == Id);
+    }
+
+    private async Task AddNote()
+    {
+        if (string.IsNullOrWhiteSpace(noteModel.Text)) return;
+
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var userIdClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim is null || !int.TryParse(userIdClaim, out var userId)) return;
+
+        DbContext.IssueNotes.Add(new IssueNote
+        {
+            IssueId = Id,
+            AuthorId = userId,
+            Text = noteModel.Text,
+            CreatedAt = DateTime.UtcNow
+        });
+        await DbContext.SaveChangesAsync();
+
+        noteModel.Text = string.Empty;
+        await LoadIssue();
+    }
+
+    private sealed class NoteFormModel
+    {
+        public string Text { get; set; } = string.Empty;
+    }
+}

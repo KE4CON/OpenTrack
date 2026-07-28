@@ -1,0 +1,87 @@
+@page "/projects/create"
+@attribute [Authorize(Policy = "RequireManager")]
+@inject AppDbContext DbContext
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<PageTitle>New Project</PageTitle>
+
+<h1>New Project</h1>
+
+<EditForm Model="model" OnValidSubmit="HandleSubmit" FormName="createProject" class="col-md-6">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger" />
+
+    <div class="mb-3">
+        <label class="form-label">Name</label>
+        <InputText @bind-Value="model.Name" class="form-control" />
+        <ValidationMessage For="() => model.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Description</label>
+        <InputTextArea @bind-Value="model.Description" class="form-control" rows="3" />
+    </div>
+
+    <div class="form-check mb-3">
+        <InputCheckbox @bind-Value="model.IsPublic" class="form-check-input" id="isPublic" />
+        <label class="form-check-label" for="isPublic">Public (visible to all users, not just members)</label>
+    </div>
+
+    @if (error is not null)
+    {
+        <p class="text-danger">@error</p>
+    }
+
+    <button type="submit" class="btn btn-primary">Create Project</button>
+    <a href="projects" class="btn btn-link">Cancel</a>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm]
+    private ProjectFormModel model { get; set; } = new();
+    private string? error;
+
+    private async Task HandleSubmit()
+    {
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var userIdClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim is null || !int.TryParse(userIdClaim, out var userId))
+        {
+            error = "Could not determine the signed-in user.";
+            return;
+        }
+
+        var project = new Project
+        {
+            Name = model.Name,
+            Description = model.Description,
+            IsPublic = model.IsPublic,
+            OwnerId = userId
+        };
+
+        // The owner is automatically a Manager-level member of their own project.
+        // Using the Project navigation property (rather than ProjectId) lets EF Core's
+        // change tracker fix up the foreign key once the new Project.Id is generated.
+        project.Members.Add(new ProjectMembership
+        {
+            UserId = userId,
+            Role = UserRole.Manager
+        });
+
+        DbContext.Projects.Add(project);
+        await DbContext.SaveChangesAsync();
+        Nav.NavigateTo($"projects/{project.Id}");
+    }
+
+    private sealed class ProjectFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string Name { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Description { get; set; }
+
+        public bool IsPublic { get; set; } = true;
+    }
+}

@@ -1,0 +1,98 @@
+@page "/projects/{Id:int}/edit"
+@attribute [Authorize(Policy = "RequireManager")]
+@inject AppDbContext DbContext
+@inject NavigationManager Nav
+
+<PageTitle>Edit Project</PageTitle>
+
+@if (!found)
+{
+    <p><em>Loading&hellip;</em></p>
+}
+else
+{
+    <h1>Edit Project</h1>
+
+    <EditForm Model="model" OnValidSubmit="HandleSubmit" FormName="editProject" class="col-md-6">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" />
+        <input type="hidden" name="model.Loaded" value="true" />
+
+        <div class="mb-3">
+            <label class="form-label">Name</label>
+            <InputText @bind-Value="model.Name" class="form-control" />
+            <ValidationMessage For="() => model.Name" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            <InputTextArea @bind-Value="model.Description" class="form-control" rows="3" />
+        </div>
+
+        <div class="form-check mb-3">
+            <InputCheckbox @bind-Value="model.IsPublic" class="form-check-input" id="isPublic" />
+            <label class="form-check-label" for="isPublic">Public</label>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="projects/@Id" class="btn btn-link">Cancel</a>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    // Populated fresh on GET from the tracked entity; on POST, ASP.NET Core's form
+    // model binder fills this from posted values before OnParametersSetAsync runs,
+    // so the "already populated" check below skips the DB overwrite on postback.
+    [SupplyParameterFromForm]
+    private ProjectEditModel model { get; set; } = new();
+
+    private bool found;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var project = await DbContext.Projects.FirstOrDefaultAsync(p => p.Id == Id);
+        if (project is null) return;
+        found = true;
+
+        // Only seed from the database on the initial GET. On POST, `model` already
+        // carries the submitted values (via SupplyParameterFromForm) and must not
+        // be clobbered by the stored row.
+        if (!model.Loaded)
+        {
+            model.Name = project.Name;
+            model.Description = project.Description;
+            model.IsPublic = project.IsPublic;
+            model.Loaded = true;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        var project = await DbContext.Projects.FirstOrDefaultAsync(p => p.Id == Id);
+        if (project is null) return;
+
+        project.Name = model.Name;
+        project.Description = model.Description;
+        project.IsPublic = model.IsPublic;
+
+        await DbContext.SaveChangesAsync();
+        Nav.NavigateTo($"projects/{Id}");
+    }
+
+    private sealed class ProjectEditModel
+    {
+        // Marks whether this instance was already seeded from the DB, so a postback
+        // (which arrives pre-populated by the form binder) isn't overwritten.
+        public bool Loaded { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string Name { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string? Description { get; set; }
+
+        public bool IsPublic { get; set; }
+    }
+}
