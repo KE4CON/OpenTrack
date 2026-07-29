@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/OpenTrack.API/OpenTrack.API.csproj" />
     <Project Path="src/OpenTrack.Core/OpenTrack.Core.csproj" />
+    <Project Path="src/OpenTrack.Desktop/OpenTrack.Desktop.csproj" />
     <Project Path="src/OpenTrack.Infrastructure/OpenTrack.Infrastructure.csproj" />
     <Project Path="src/OpenTrack.UI/OpenTrack.UI.csproj" />
     <Project Path="src/OpenTrack.Web/OpenTrack.Web.csproj" />

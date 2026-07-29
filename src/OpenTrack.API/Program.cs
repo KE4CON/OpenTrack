@@ -79,6 +79,17 @@ app.UseAuthorization();
 // Bearer-token auth endpoints: /api/auth/register, /api/auth/login, /api/auth/refresh, etc.
 app.MapGroup("/api/auth").MapIdentityApi<User>();
 
+// "Who am I" — returns the signed-in user's id, name, and OpenTrack role. The desktop client
+// calls this right after login (the Identity /login token is opaque, so the client can't read
+// the role from the token itself). Requires a valid bearer token.
+app.MapGet("/api/auth/me", (System.Security.Claims.ClaimsPrincipal user) =>
+{
+    var id = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var name = user.Identity?.Name ?? user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+    var role = user.FindFirst("OpenTrack.Role")?.Value;
+    return Results.Ok(new { id, name, role });
+}).RequireAuthorization();
+
 app.MapProjectEndpoints();
 app.MapIssueEndpoints();
 

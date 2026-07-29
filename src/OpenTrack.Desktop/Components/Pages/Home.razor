@@ -1,0 +1,10 @@
+﻿@page "/"
+@inject DesktopAuthState Auth
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo(Auth.IsSignedIn ? "/projects" : "/login", replace: true);
+    }
+}

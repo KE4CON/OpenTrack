@@ -1,0 +1,60 @@
+@page "/login"
+@inject DesktopAuthState Auth
+@inject NavigationManager Nav
+
+<PageTitle>Sign in — OpenTrack</PageTitle>
+
+<div class="container" style="max-width: 420px; margin-top: 3rem;">
+    <h1 class="h3 mb-3">Sign in to OpenTrack</h1>
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input class="form-control" @bind="email" @bind:event="oninput" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input class="form-control" type="password" @bind="password" @bind:event="oninput"
+               @onkeydown="@(e => { if (e.Key == "Enter") _ = SignIn(); })" />
+    </div>
+
+    @if (error is not null)
+    {
+        <div class="alert alert-danger py-2">@error</div>
+    }
+
+    <button class="btn btn-primary w-100" @onclick="SignIn" disabled="@busy">
+        @(busy ? "Signing in…" : "Sign in")
+    </button>
+
+    <p class="text-muted small mt-3">
+        New accounts are created in the OpenTrack web app. This desktop client signs in to an existing account.
+    </p>
+</div>
+
+@code {
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string? error;
+    private bool busy;
+
+    private async Task SignIn()
+    {
+        if (busy) return;
+        error = null;
+        busy = true;
+        try
+        {
+            error = await Auth.LoginAsync(email, password);
+            if (error is null)
+                Nav.NavigateTo("/projects");
+        }
+        catch (Exception ex)
+        {
+            error = $"{ex.GetType().Name}: {ex.Message}";
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

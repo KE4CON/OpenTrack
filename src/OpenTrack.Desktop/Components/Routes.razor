@@ -1,0 +1,14 @@
+<CascadingAuthenticationState>
+    <Router AppAssembly="typeof(MauiProgram).Assembly"
+            AdditionalAssemblies="new[] { typeof(OpenTrack.UI.Services.IOpenTrackDataService).Assembly }"
+            NotFoundPage="typeof(Pages.NotFound)">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+                <NotAuthorized>
+                    <RedirectToLogin />
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+    </Router>
+</CascadingAuthenticationState>
