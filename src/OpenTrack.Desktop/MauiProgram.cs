@@ -11,6 +11,7 @@
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenTrack.Core.Enums;
 using OpenTrack.Desktop.Services;
@@ -35,7 +36,22 @@ public static class MauiProgram
         // Where the OpenTrack.API server lives. Defaults to the local dev address; on a
         // real deployment this points at the Beelink's LAN address (e.g. http://192.168.x.x:5xxx).
         // TODO: make this user-configurable in a settings screen rather than hardcoded.
-        var apiBaseUrl = "http://localhost:5003";
+        // Read the API address from the bundled wwwroot/appsettings.json so each machine
+        // can point at its own server (localhost in dev, the Beelink's LAN address in
+        // deployment) by editing that file — no recompile needed. Falls back to localhost
+        // if the file or key is missing.
+        string apiBaseUrl = "http://localhost:5003";
+        using (var stream = System.Reflection.Assembly.GetExecutingAssembly()
+            .GetManifestResourceStream("OpenTrack.Desktop.wwwroot.appsettings.json"))
+        {
+            if (stream is not null)
+            {
+                var cfg = new ConfigurationBuilder().AddJsonStream(stream).Build();
+                var configured = cfg["ApiBaseUrl"];
+                if (!string.IsNullOrWhiteSpace(configured))
+                    apiBaseUrl = configured;
+            }
+        }
 
         builder.Services.AddTransient<AuthTokenHandler>();
 
