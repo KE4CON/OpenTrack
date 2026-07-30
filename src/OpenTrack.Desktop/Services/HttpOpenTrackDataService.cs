@@ -30,26 +30,8 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         Converters = { new JsonStringEnumConverter() }
     };
 
-    private static void Log(string msg) =>
-        System.IO.File.AppendAllText(
-            System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "opentrack-error.txt"),
-            $"{DateTime.Now:HH:mm:ss} {msg}\n");
-
-    public async Task<IReadOnlyList<ProjectRow>> GetProjectsAsync(CancellationToken ct = default)
-    {
-        try
-        {
-            Log($"GetProjectsAsync calling {http.BaseAddress}api/projects");
-            var result = await http.GetFromJsonAsync<List<ProjectRow>>("/api/projects", JsonOptions, ct) ?? [];
-            Log($"GetProjectsAsync got {result.Count} projects");
-            return result;
-        }
-        catch (Exception ex)
-        {
-            Log($"GetProjectsAsync FAILED: {ex.GetType().Name}: {ex.Message}");
-            throw;
-        }
-    }
+    public async Task<IReadOnlyList<ProjectRow>> GetProjectsAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<ProjectRow>>("/api/projects", JsonOptions, ct) ?? [];
 
     public async Task<ProjectDetail?> GetProjectAsync(int id, CancellationToken ct = default)
     {
