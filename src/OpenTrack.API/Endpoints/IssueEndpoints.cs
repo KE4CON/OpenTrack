@@ -32,7 +32,7 @@ public static class IssueEndpoints
             if (projectId is not null) query = query.Where(i => i.ProjectId == projectId);
 
             return await query
-                .OrderByDescending(i => i.UpdatedAt)
+                .OrderByDescending(i => i.IsSticky).ThenByDescending(i => i.UpdatedAt)
                 .Select(i => new IssueDto(
                     i.Id, i.ProjectId, i.Project.Name, i.Title, i.Status, i.Severity, i.Priority,
                     i.Reporter.UserName ?? "unknown", i.Assignee != null ? i.Assignee.UserName : null, i.UpdatedAt))

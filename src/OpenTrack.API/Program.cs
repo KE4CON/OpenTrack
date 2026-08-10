@@ -38,12 +38,13 @@ builder.Services.AddOpenTrackInfrastructure(connectionString);
 // scheme from OpenTrack.Web's cookie-based Identity, but backed by the same AppDbContext
 // and User type, so an account works identically whether signing in via the web app or
 // the desktop app.
+// No .AddRoles(...): OpenTrack uses its own UserRole enum + ProjectMembership, not Identity roles
+// (see AddOpenTrackIdentity in Infrastructure for the rationale).
 builder.Services.AddIdentityApiEndpoints<User>(options =>
     {
         options.SignIn.RequireConfirmedAccount = false;
         options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
     })
-    .AddRoles<IdentityRole<int>>()
     .AddEntityFrameworkStores<AppDbContext>();
 
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, RoleClaimsPrincipalFactory>();

@@ -61,12 +61,17 @@ public static class DependencyInjection
             })
             .AddIdentityCookies();
 
+        // NOTE: We deliberately do NOT call .AddRoles<IdentityRole<int>>(). OpenTrack authorization
+        // is driven by the custom UserRole enum (User.Role, global) and ProjectMembership.Role
+        // (per-project) — never by ASP.NET Identity's role store. Registering AddRoles would expose
+        // a second, parallel role system (UserManager.AddToRoleAsync) that has zero effect on
+        // OpenTrack's checks and could silently diverge. The AspNetRoles/AspNetUserRoles tables that
+        // remain from the initial migration are vestigial and unused.
         services.AddIdentityCore<User>(options =>
             {
                 options.SignIn.RequireConfirmedAccount = false;
                 options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
             })
-            .AddRoles<IdentityRole<int>>()
             .AddEntityFrameworkStores<AppDbContext>()
             .AddSignInManager()
             .AddDefaultTokenProviders();
