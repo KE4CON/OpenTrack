@@ -72,7 +72,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection(); // Disabled: OpenTrack.API is accessed over plain HTTP on the LAN
 app.UseAuthentication();
 app.UseAuthorization();
 

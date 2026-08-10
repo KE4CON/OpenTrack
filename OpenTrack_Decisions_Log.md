@@ -211,9 +211,35 @@ This relinked the existing on-disk files to GitHub's history directly, without t
 
 ---
 
-## Open / Not Yet Discussed
+
 
 - **Item #21:** Add the `OpenTrack.Desktop` MAUI shell — scaffolded (MAUI workload installed, project trimmed to Windows + Mac targets, wired to `OpenTrack.UI`), but MAUI platform heads can only be compiled on their target OS (Windows head on Windows, Mac head on a Mac), so this needs a working session on Jim's Windows laptop rather than the Linux container everything else was verified in.
+
+## Item #21 — OpenTrack.Desktop MAUI Shell 🟣 SETTLED — built, compiled, verified
+
+The MAUI Blazor Hybrid desktop thin client is complete and working end-to-end: it launches, shows a login page, authenticates against OpenTrack.API over HTTP, and hosts the shared OpenTrack.UI CRUD pages in a native window. Projects and issues (create/list/view) were confirmed working live against the running API. Committed and pushed ("Add working MAUI desktop thin client").
+
+**First compile happened on Jim's Windows laptop** (MAUI heads only build on their target OS, so this couldn't be verified in the Linux container like everything else). The build and run surfaced a chain of issues, each fixed in turn — worth recording since several are non-obvious MAUI gotchas:
+
+1. **csproj target framework:** the conditional `<TargetFrameworks>` (empty default + IsOSPlatform conditionals) didn't resolve; replaced with a single `<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>` plus `<TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>`. Kept `Microsoft.NET.Sdk.Razor` as the SDK (a plain SDK broke the static-web-assets pipeline).
+2. **Missing package:** `System.IdentityModel.Tokens.Jwt` needed adding (though ultimately the JWT-decode approach was abandoned — see #4).
+3. **`AddAuthorizationBuilder` unavailable in MAUI:** replaced with `AddAuthorizationCore(options => { options.AddPolicy(...); })` for the four role policies.
+4. **Opaque tokens:** ASP.NET Core Identity's `/login` returns an OPAQUE (encrypted) token, NOT a decodable JWT — trying to read claims from it was the original approach and would have failed. Fix: added a new `GET /api/auth/me` endpoint (returns id/name/role over bearer auth, verified) that the desktop calls right after login to populate the session. `DesktopAuthenticationStateProvider` now builds the identity from those stored values instead of decoding the token.
+5. **Hardcoded API URL:** the desktop's `apiBaseUrl` must match where the API actually listens — locally that's `http://localhost:5003` (http, not the launchSettings' https ports). Repeatedly reverted by zip application; still hardcoded (see remaining cleanup below).
+6. **The blank-page crash (the hard one):** after login, navigating to `/projects` crashed/blanked because the desktop app had NO `<CascadingAuthenticationState>` and NO `<AuthorizeRouteView>` — so the shared pages' `[Authorize]`/`<AuthorizeView>` had no auth context and threw. Fix required three coordinated pieces: (a) `AddCascadingAuthenticationState()` in MauiProgram, (b) wrapping the router in `<CascadingAuthenticationState>` with `<AuthorizeRouteView>` + a `<RedirectToLogin>` NotAuthorized fallback in Routes.razor, and critically (c) adding `@using Microsoft.AspNetCore.Components.Authorization` to the desktop's `_Imports.razor` — without it those components silently render as unknown markup (build only warns, page goes blank).
+
+**Cleanup done this session:** removed all diagnostic file-logging from Login.razor and DesktopAuthState.cs; replaced the template NavMenu (Home/Counter/Weather) with Projects/Issues/Sign-out gated by `<AuthorizeView>`; added a Home redirect (`/` → `/projects` or `/login`).
+
+**Confirmed not-a-bug during testing:** empty projects list on first run (shared DB was empty — expected); category dropdown showing only "none" (no categories created yet — expected); projects not appearing in the left nav (they render in the main content area, not the nav — by design).
+
+**Remaining desktop cleanup (minor, deferred):**
+- The `apiBaseUrl` is still hardcoded to `http://localhost:5003`. Should be moved to a config/settings file, especially before the Beelink deployment where it'll point at the LAN address.
+- Item #23 still stands: first-user-Administrator only happens via the web app's Register page; API/desktop-registered accounts default to Reporter.
+
+
+
+## Open / Not Yet Discussed
+
 - **Item #22:** Data-abstraction layer (e.g. `IOpenTrackDataService`) so `OpenTrack.UI`'s CRUD pages can run over HTTP in the desktop client instead of injecting `AppDbContext` directly — prerequisite for the thin-client desktop app to actually function.
 - **Item #23:** First-user-becomes-Administrator rule only exists on the web app's Register page; API-registered accounts default to Reporter with no promotion path yet. Practical rule for now: create the first/admin account via the web app. A proper role-management endpoint is future work.
 - **Item #11 (tooling sub-decision):** MkDocs Material vs. DocFX for the manual — target ~Phase 3.
