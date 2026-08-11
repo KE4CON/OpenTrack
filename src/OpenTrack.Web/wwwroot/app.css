@@ -72,3 +72,11 @@ h1:focus {
     border-radius: .25rem;
 }
 .ot-markdown pre code { background: none; padding: 0; }
+
+/* Print / Save-as-PDF: drop the app chrome so a printed page (e.g. an issue) is clean. */
+@media print {
+    .sidebar, .top-row, .no-print { display: none !important; }
+    .page, main, .content { display: block !important; }
+    .content { padding: 0 !important; }
+    a { color: inherit; text-decoration: none; }
+}

@@ -22,6 +22,7 @@ else
                     @(isMonitoring ? "Monitoring ✓" : "Monitor")
                 </button>
             </EditForm>
+            <a class="btn btn-outline-secondary" href="issues/@Id/print">Print / PDF</a>
             <AuthorizeView Policy="RequireUpdater">
                 <Authorized>
                     <a class="btn btn-outline-secondary" href="issues/@Id/edit">Edit</a>
