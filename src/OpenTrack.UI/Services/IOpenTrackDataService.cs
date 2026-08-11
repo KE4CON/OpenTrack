@@ -33,6 +33,10 @@ public interface IOpenTrackDataService
     Task<int> CreateProjectAsync(CreateProjectInput input, CancellationToken ct = default);
     Task UpdateProjectAsync(int id, UpdateProjectInput input, CancellationToken ct = default);
 
+    // Dashboard: a cross-project overview (open/overdue tallies, severity breakdown, recent activity),
+    // filtered to what the signed-in user may see.
+    Task<DashboardView> GetDashboardAsync(CancellationToken ct = default);
+
     // Issues
     Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default);
     Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default);

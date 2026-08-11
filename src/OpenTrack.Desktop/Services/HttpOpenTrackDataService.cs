@@ -73,6 +73,10 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         return await http.GetFromJsonAsync<List<IssueRow>>(url, JsonOptions, ct) ?? [];
     }
 
+    public async Task<DashboardView> GetDashboardAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<DashboardView>("/api/dashboard", JsonOptions, ct)
+            ?? new DashboardView(0, 0, [], [], []);
+
     public async Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default)
     {
         var resp = await http.GetAsync($"/api/issues/{id}", ct);

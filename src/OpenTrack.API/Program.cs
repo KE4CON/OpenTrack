@@ -109,5 +109,6 @@ app.MapProjectSettingsEndpoints();
 app.MapIssueEndpoints();
 app.MapAttachmentEndpoints();
 app.MapNotificationEndpoints();
+app.MapDashboardEndpoints();
 
 app.Run();

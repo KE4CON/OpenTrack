@@ -5,6 +5,6 @@
 @code {
     protected override void OnInitialized()
     {
-        Nav.NavigateTo(Auth.IsSignedIn ? "/projects" : "/login", replace: true);
+        Nav.NavigateTo(Auth.IsSignedIn ? "/dashboard" : "/login", replace: true);
     }
 }

@@ -2,16 +2,14 @@
 
 <PageTitle>OpenTrack</PageTitle>
 
-<h1>OpenTrack</h1>
-<p class="lead">An open-source bug and issue tracker.</p>
-
 <AuthorizeView>
     <Authorized>
-        <p>Welcome back, @context.User.Identity?.Name.</p>
-        <a class="btn btn-primary" href="projects">View Projects</a>
-        <a class="btn btn-outline-secondary" href="issues">View Issues</a>
+        <h1 class="h3 mb-3">Dashboard</h1>
+        <IssueDashboard />
     </Authorized>
     <NotAuthorized>
+        <h1>OpenTrack</h1>
+        <p class="lead">An open-source bug and issue tracker.</p>
         <p>
             <a href="Account/Login">Log in</a> or <a href="Account/Register">register</a> to get started.
         </p>
