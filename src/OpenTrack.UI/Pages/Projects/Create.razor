@@ -38,8 +38,12 @@
 
 @code {
     [SupplyParameterFromForm]
-    private ProjectFormModel model { get; set; } = new();
+    private ProjectFormModel model { get; set; } = default!;
     private string? error;
+
+    // Guard rather than a property initializer: on a form POST the binder supplies `model`, and an
+    // initializer could be overwritten with null (warning BL0008). On GET this creates a fresh model.
+    protected override void OnInitialized() => model ??= new();
 
     private async Task HandleSubmit()
     {

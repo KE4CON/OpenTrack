@@ -9,7 +9,6 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using OpenTrack.Core.Entities;
@@ -17,15 +16,15 @@ using OpenTrack.Core.Validation;
 
 namespace OpenTrack.Infrastructure.Data;
 
+// IdentityUserContext (not IdentityDbContext): OpenTrack authorization is driven entirely by the
+// custom UserRole enum (User.Role) and ProjectMembership, never ASP.NET Identity's role store, so we
+// omit the AspNetRoles/AspNetUserRoles/AspNetRoleClaims tables. The .NET 10 passkey table is kept
+// (IdentityUserContext includes it at Identity SchemaVersion v3, which AddOpenTrackIdentity and the
+// design-time factory both configure).
 public class AppDbContext(DbContextOptions<AppDbContext> options)
-    : IdentityDbContext<User, IdentityRole<int>, int>(options)
+    : IdentityUserContext<User, int>(options)
 {
-    // Users (and the Identity user/passkey tables) come from IdentityDbContext. The AspNetRoles/
-    // AspNetUserRoles/AspNetRoleClaims tables also exist here but are VESTIGIAL and unused:
-    // OpenTrack authorization is driven entirely by the custom UserRole enum (User.Role) and
-    // ProjectMembership. We intentionally do not register .AddRoles(...) (see AddOpenTrackIdentity),
-    // so no RoleManager exists to write to them. They are kept only to avoid a schema migration
-    // that would also drop the .NET 10 passkey table; they can be removed in a future cleanup.
+    // Users, the user claim/login/token tables, and the passkey table come from IdentityUserContext.
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectMembership> ProjectMemberships => Set<ProjectMembership>();
     public DbSet<Category> Categories => Set<Category>();
@@ -172,5 +171,32 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 .HasForeignKey(a => a.UploadedById)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        // ---- IssueRelationship ----
+        b.Entity<IssueRelationship>(e =>
+        {
+            // Source cascades, Target restricts: two cascade FKs to the same Issue table would be
+            // "multiple cascade paths" on SQL Server, so only one cascades. Nothing deletes issues or
+            // projects through the UI today. WHEN a delete feature is added, it must first clear
+            // relationships where the doomed issue is the TARGET — this includes deleting a PROJECT,
+            // whose cascade to its issues would otherwise trip this Restrict FK (even for a
+            // same-project A→B link). Prefer an app-level pre-delete sweep of relationships then.
+            e.HasOne(r => r.SourceIssue)
+                .WithMany()
+                .HasForeignKey(r => r.SourceIssueId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(r => r.TargetIssue)
+                .WithMany()
+                .HasForeignKey(r => r.TargetIssueId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.CreatedBy)
+                .WithMany()
+                .HasForeignKey(r => r.CreatedById)
+                .OnDelete(DeleteBehavior.Restrict);
+            // No duplicate identical relationships.
+            e.HasIndex(r => new { r.SourceIssueId, r.TargetIssueId, r.Type }).IsUnique();
+        });
     }
+
+    public DbSet<IssueRelationship> IssueRelationships => Set<IssueRelationship>();
 }

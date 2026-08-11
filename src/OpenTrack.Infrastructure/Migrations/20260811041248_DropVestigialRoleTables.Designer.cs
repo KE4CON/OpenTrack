@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OpenTrack.Infrastructure.Data;
 
@@ -10,9 +11,11 @@ using OpenTrack.Infrastructure.Data;
 namespace OpenTrack.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260811041248_DropVestigialRoleTables")]
+    partial class DropVestigialRoleTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
@@ -322,39 +325,6 @@ namespace OpenTrack.Infrastructure.Migrations
                     b.HasIndex("IssueId");
 
                     b.ToTable("IssueNotes");
-                });
-
-            modelBuilder.Entity("OpenTrack.Core.Entities.IssueRelationship", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("CreatedById")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("SourceIssueId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("TargetIssueId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedById");
-
-                    b.HasIndex("TargetIssueId");
-
-                    b.HasIndex("SourceIssueId", "TargetIssueId", "Type")
-                        .IsUnique();
-
-                    b.ToTable("IssueRelationships");
                 });
 
             modelBuilder.Entity("OpenTrack.Core.Entities.Project", b =>
@@ -711,33 +681,6 @@ namespace OpenTrack.Infrastructure.Migrations
                     b.Navigation("Author");
 
                     b.Navigation("Issue");
-                });
-
-            modelBuilder.Entity("OpenTrack.Core.Entities.IssueRelationship", b =>
-                {
-                    b.HasOne("OpenTrack.Core.Entities.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("OpenTrack.Core.Entities.Issue", "SourceIssue")
-                        .WithMany()
-                        .HasForeignKey("SourceIssueId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("OpenTrack.Core.Entities.Issue", "TargetIssue")
-                        .WithMany()
-                        .HasForeignKey("TargetIssueId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CreatedBy");
-
-                    b.Navigation("SourceIssue");
-
-                    b.Navigation("TargetIssue");
                 });
 
             modelBuilder.Entity("OpenTrack.Core.Entities.Project", b =>

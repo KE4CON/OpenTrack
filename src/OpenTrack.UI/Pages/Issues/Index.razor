@@ -4,30 +4,72 @@
 
 <PageTitle>Issues</PageTitle>
 
-<h1>All Issues</h1>
+<h1>Issues</h1>
 
-@* Form GET (not an interactive @bind) so the filter works in the static-SSR web host as well
-   as the interactive desktop host — a shared page can't declare an interactive @rendermode. *@
-<form method="get" class="mb-3 col-md-6">
-    <label class="form-label">Filter by project</label>
-    <div class="input-group">
-        <select class="form-select" name="projectId">
-            <option value="">All Projects</option>
+@* Form GET (not interactive @bind) so the filter works in the static-SSR web host as well as the
+   interactive desktop host — a shared page can't declare an interactive @rendermode. Every field is
+   a query parameter bound below via [SupplyParameterFromQuery]. *@
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-3">
+        <label class="form-label">Project</label>
+        <select class="form-select" name="ProjectId">
+            <option value="">All projects</option>
             @foreach (var p in projectOptions)
             {
-                if (p.Id == (ProjectId ?? 0))
-                {
-                    <option value="@p.Id" selected>@p.Name</option>
-                }
-                else
-                {
-                    <option value="@p.Id">@p.Name</option>
-                }
+                <option value="@p.Id" selected="@(p.Id == ProjectId)">@p.Name</option>
             }
         </select>
-        <button type="submit" class="btn btn-outline-secondary">Apply</button>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Status</label>
+        <select class="form-select" name="Status">
+            <option value="">Any</option>
+            @foreach (var s in Enum.GetValues<IssueStatus>())
+            {
+                <option value="@s" selected="@(Status == s)">@s</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Severity</label>
+        <select class="form-select" name="Severity">
+            <option value="">Any</option>
+            @foreach (var s in Enum.GetValues<IssueSeverity>())
+            {
+                <option value="@s" selected="@(Severity == s)">@s</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Priority</label>
+        <select class="form-select" name="Priority">
+            <option value="">Any</option>
+            @foreach (var p in Enum.GetValues<IssuePriority>())
+            {
+                <option value="@p" selected="@(Priority == p)">@p</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Text</label>
+        <input class="form-control" name="Text" value="@Text" placeholder="title or description" />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Sort by</label>
+        <select class="form-select" name="Sort">
+            @foreach (var s in Enum.GetValues<IssueSort>())
+            {
+                <option value="@s" selected="@(EffectiveSort == s)">@SortLabel(s)</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <button type="submit" class="btn btn-primary">Search</button>
+        <a href="issues" class="btn btn-outline-secondary">Clear</a>
     </div>
 </form>
+
+<p class="text-muted small">@issues.Count issue(s) match.</p>
 
 @if (issues.Count == 0)
 {
@@ -42,8 +84,10 @@ else
                 <th>Project</th>
                 <th>Title</th>
                 <th>Status</th>
+                <th>Severity</th>
                 <th>Priority</th>
-                <th>Reporter</th>
+                <th>Assignee</th>
+                <th>Updated</th>
             </tr>
         </thead>
         <tbody>
@@ -54,8 +98,10 @@ else
                     <td>@i.ProjectName</td>
                     <td><a href="issues/@i.Id">@i.Title</a></td>
                     <td>@i.Status</td>
+                    <td>@i.Severity</td>
                     <td>@i.Priority</td>
-                    <td>@i.ReporterName</td>
+                    <td>@(i.AssigneeName ?? "Unassigned")</td>
+                    <td>@i.UpdatedAt.ToString("g")</td>
                 </tr>
             }
         </tbody>
@@ -64,6 +110,13 @@ else
 
 @code {
     [SupplyParameterFromQuery] public int? ProjectId { get; set; }
+    [SupplyParameterFromQuery] public IssueStatus? Status { get; set; }
+    [SupplyParameterFromQuery] public IssueSeverity? Severity { get; set; }
+    [SupplyParameterFromQuery] public IssuePriority? Priority { get; set; }
+    [SupplyParameterFromQuery] public string? Text { get; set; }
+    [SupplyParameterFromQuery] public IssueSort? Sort { get; set; }
+
+    private IssueSort EffectiveSort => Sort ?? IssueSort.UpdatedDesc;
 
     private IReadOnlyList<IssueRow> issues = [];
     private List<(int Id, string Name)> projectOptions = [];
@@ -74,7 +127,28 @@ else
             .Select(p => (p.Id, p.Name))
             .ToList();
 
-        var filter = ProjectId is > 0 ? ProjectId : null;
+        var filter = new IssueFilter(
+            ProjectId: ProjectId is > 0 ? ProjectId : null,
+            Status: Status,
+            Severity: Severity,
+            Priority: Priority,
+            Text: string.IsNullOrWhiteSpace(Text) ? null : Text,
+            Sort: EffectiveSort);
+
         issues = await Data.GetIssuesAsync(filter);
     }
+
+    private static string SortLabel(IssueSort s) => s switch
+    {
+        IssueSort.UpdatedDesc => "Updated (newest)",
+        IssueSort.UpdatedAsc => "Updated (oldest)",
+        IssueSort.CreatedDesc => "Created (newest)",
+        IssueSort.CreatedAsc => "Created (oldest)",
+        IssueSort.PriorityDesc => "Priority (high→low)",
+        IssueSort.SeverityDesc => "Severity (high→low)",
+        IssueSort.StatusAsc => "Status",
+        IssueSort.IdDesc => "ID (newest)",
+        IssueSort.IdAsc => "ID (oldest)",
+        _ => s.ToString()
+    };
 }

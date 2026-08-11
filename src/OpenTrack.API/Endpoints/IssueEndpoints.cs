@@ -14,8 +14,11 @@ using Microsoft.EntityFrameworkCore;
 using OpenTrack.API.Contracts;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
+using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Infrastructure.Queries;
+using OpenTrack.Infrastructure.Relationships;
 using OpenTrack.API;
 
 namespace OpenTrack.API.Endpoints;
@@ -27,16 +30,20 @@ public static class IssueEndpoints
         var group = app.MapGroup("/api").RequireAuthorization().WithTags("Issues");
 
         // Global list, optionally filtered by project. Row-level filtered to what the caller may see.
-        group.MapGet("/issues", async (int? projectId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        group.MapGet("/issues", async (
+            int? projectId, IssueStatus? status, IssueSeverity? severity, IssuePriority? priority,
+            int? assigneeId, int? categoryId, string? text, IssueSort? sort,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
 
-            var query = db.Issues.AsNoTracking().WhereVisibleTo(access);
-            if (projectId is not null) query = query.Where(i => i.ProjectId == projectId);
+            var filter = new IssueFilter(projectId, status, severity, priority, assigneeId, categoryId, text,
+                sort ?? IssueSort.UpdatedDesc);
 
-            var rows = await query
-                .OrderByDescending(i => i.IsSticky).ThenByDescending(i => i.UpdatedAt)
+            var rows = await db.Issues.AsNoTracking()
+                .WhereVisibleTo(access)   // ACL first — filtering can only narrow the visible set
+                .ApplyFilter(filter)
                 .Select(i => new IssueDto(
                     i.Id, i.ProjectId, i.Project.Name, i.Title, i.Status, i.Severity, i.Priority,
                     i.Reporter.UserName ?? "unknown", i.Assignee != null ? i.Assignee.UserName : null, i.UpdatedAt))
@@ -195,6 +202,38 @@ public static class IssueEndpoints
             db.IssueNotes.Add(note);
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/issues/{id}", note.Id);
+        });
+
+        group.MapGet("/issues/{id:int}/relationships", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var items = await RelationshipOperations.ListAsync(db, access, id, ct);
+            return Results.Ok(items.Select(i => new IssueRelationshipDto(i.Id, i.OtherIssueId, i.OtherIssueTitle, i.OtherProjectName, i.Label)));
+        });
+
+        group.MapPost("/issues/{id:int}/relationships", async (int id, AddRelationshipRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            try
+            {
+                var error = await RelationshipOperations.AddAsync(db, access, id, req.TargetIssueId, req.Type, ct);
+                return error is null ? Results.NoContent() : Results.BadRequest(error);
+            }
+            catch (UnauthorizedAccessException) { return Results.Forbid(); }
+        });
+
+        group.MapDelete("/relationships/{relationshipId:int}", async (int relationshipId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            try
+            {
+                var removed = await RelationshipOperations.RemoveAsync(db, access, relationshipId, ct);
+                return removed ? Results.NoContent() : Results.NotFound();
+            }
+            catch (UnauthorizedAccessException) { return Results.Forbid(); }
         });
 
         group.MapGet("/issues/{id:int}/history", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>

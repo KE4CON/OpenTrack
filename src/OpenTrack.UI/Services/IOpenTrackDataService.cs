@@ -9,6 +9,9 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
+using OpenTrack.Core.Enums;
+using OpenTrack.Core.Querying;
+
 namespace OpenTrack.UI.Services;
 
 /// <summary>
@@ -30,7 +33,7 @@ public interface IOpenTrackDataService
     Task UpdateProjectAsync(int id, UpdateProjectInput input, CancellationToken ct = default);
 
     // Issues
-    Task<IReadOnlyList<IssueRow>> GetIssuesAsync(int? projectId = null, CancellationToken ct = default);
+    Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default);
     Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default);
     Task<int> CreateIssueAsync(int projectId, CreateIssueInput input, CancellationToken ct = default);
     Task UpdateIssueAsync(int id, UpdateIssueInput input, CancellationToken ct = default);
@@ -62,4 +65,10 @@ public interface IOpenTrackDataService
     Task<IReadOnlyList<ProjectVersionView>> GetProjectVersionsAsync(int projectId, CancellationToken ct = default);
     Task<string?> CreateVersionAsync(int projectId, CreateVersionInput input, CancellationToken ct = default);
     Task DeleteVersionAsync(int projectId, int versionId, CancellationToken ct = default);
+
+    // Relationships. Adding requires edit on the source issue + view on the target; the returned list
+    // is filtered to related issues the viewer may see. Returns null on success or a reason on failure.
+    Task<IReadOnlyList<IssueRelationshipView>> GetIssueRelationshipsAsync(int issueId, CancellationToken ct = default);
+    Task<string?> AddIssueRelationshipAsync(int sourceIssueId, int targetIssueId, IssueRelationshipType type, CancellationToken ct = default);
+    Task RemoveIssueRelationshipAsync(int relationshipId, CancellationToken ct = default);
 }

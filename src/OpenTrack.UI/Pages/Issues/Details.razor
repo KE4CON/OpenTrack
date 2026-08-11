@@ -152,6 +152,67 @@ else
         <button type="submit" class="btn btn-secondary btn-sm">Add Note</button>
     </EditForm>
 
+    <h2 class="h5 mt-4">Relationships</h2>
+    @if (relationships.Count == 0)
+    {
+        <p class="text-muted">No related issues.</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var r in relationships)
+            {
+                <li>
+                    @r.Label <a href="issues/@r.OtherIssueId">#@r.OtherIssueId</a> — @r.OtherIssueTitle
+                    <span class="text-muted small">(@r.OtherProjectName)</span>
+                </li>
+            }
+        </ul>
+    }
+
+    <AuthorizeView Policy="RequireUpdater" Context="auth">
+        <Authorized>
+            @if (relMessage is not null)
+            {
+                <div class="alert @(relIsError ? "alert-danger" : "alert-success") py-1">@relMessage</div>
+            }
+            <div class="row g-2">
+                <div class="col-md-7">
+                    <EditForm Model="relModel" OnValidSubmit="AddRelationship" FormName="addRelationship">
+                        <div class="input-group">
+                            <InputSelect @bind-Value="relModel.Type" class="form-select" style="max-width: 10rem">
+                                <option value="@IssueRelationshipType.RelatedTo">related to</option>
+                                <option value="@IssueRelationshipType.DuplicateOf">duplicate of</option>
+                                <option value="@IssueRelationshipType.ParentOf">parent of</option>
+                                <option value="@IssueRelationshipType.Blocks">blocks</option>
+                            </InputSelect>
+                            <span class="input-group-text">issue #</span>
+                            <InputNumber @bind-Value="relModel.TargetId" class="form-control" />
+                            <button type="submit" class="btn btn-secondary">Add</button>
+                        </div>
+                    </EditForm>
+                </div>
+                @if (relationships.Count > 0)
+                {
+                    <div class="col-md-5">
+                        <EditForm Model="removeRelModel" OnValidSubmit="RemoveRelationship" FormName="removeRelationship">
+                            <div class="input-group">
+                                <InputSelect @bind-Value="removeRelModel.Id" class="form-select">
+                                    <option value="0" disabled>Remove a link…</option>
+                                    @foreach (var r in relationships)
+                                    {
+                                        <option value="@r.Id">@r.Label #@r.OtherIssueId</option>
+                                    }
+                                </InputSelect>
+                                <button type="submit" class="btn btn-outline-danger">Remove</button>
+                            </div>
+                        </EditForm>
+                    </div>
+                }
+            </div>
+        </Authorized>
+    </AuthorizeView>
+
     <h2 class="h5 mt-4">History</h2>
     @if (history.Count == 0)
     {
@@ -181,14 +242,23 @@ else
     [Parameter] public int Id { get; set; }
     private IssueDetail? issue;
     private IReadOnlyList<IssueHistoryEntry> history = [];
+    private IReadOnlyList<IssueRelationshipView> relationships = [];
+    private string? relMessage;
+    private bool relIsError;
     private IReadOnlyList<AttachmentView> attachments = [];
     private string? uploadError;
-    [SupplyParameterFromForm]
+    [SupplyParameterFromForm(FormName = "addNote")]
     private NoteFormModel noteModel { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "addRelationship")]
+    private AddRelationshipModel relModel { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "removeRelationship")]
+    private RemoveRelationshipModel removeRelModel { get; set; } = default!;
 
     protected override async Task OnParametersSetAsync()
     {
         noteModel ??= new();
+        relModel ??= new();
+        removeRelModel ??= new();
         await LoadIssue();
     }
 
@@ -197,6 +267,43 @@ else
         issue = await Data.GetIssueAsync(Id);
         history = issue is null ? [] : await Data.GetIssueHistoryAsync(Id);
         attachments = issue is null ? [] : await Data.GetIssueAttachmentsAsync(Id);
+        relationships = issue is null ? [] : await Data.GetIssueRelationshipsAsync(Id);
+    }
+
+    private async Task AddRelationship()
+    {
+        relMessage = null;
+        if (relModel.TargetId <= 0) { relMessage = "Enter the issue number to link."; relIsError = true; return; }
+        try
+        {
+            var error = await Data.AddIssueRelationshipAsync(Id, relModel.TargetId, relModel.Type);
+            relIsError = error is not null;
+            relMessage = error ?? "Linked.";
+        }
+        catch (UnauthorizedAccessException ex) { relIsError = true; relMessage = ex.Message; }
+        relModel = new();
+        await LoadIssue();
+    }
+
+    private async Task RemoveRelationship()
+    {
+        relMessage = null;
+        if (removeRelModel.Id <= 0) { return; }
+        try { await Data.RemoveIssueRelationshipAsync(removeRelModel.Id); relIsError = false; relMessage = "Removed."; }
+        catch (UnauthorizedAccessException ex) { relIsError = true; relMessage = ex.Message; }
+        removeRelModel = new();
+        await LoadIssue();
+    }
+
+    private sealed class AddRelationshipModel
+    {
+        public IssueRelationshipType Type { get; set; } = IssueRelationshipType.RelatedTo;
+        public int TargetId { get; set; }
+    }
+
+    private sealed class RemoveRelationshipModel
+    {
+        public int Id { get; set; }
     }
 
     // Desktop-host interactive handlers (the web host uses plain forms/links instead).

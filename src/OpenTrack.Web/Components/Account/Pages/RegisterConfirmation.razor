@@ -55,9 +55,9 @@ else
             HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
             statusMessage = "Error finding user for unspecified email";
         }
-        else if (EmailSender is IdentityNoOpEmailSender)
+        else if (EmailSender is OpenTrack.Infrastructure.Email.SmtpEmailSender { IsConfigured: false })
         {
-            // Once you add a real email sender, you should remove this code that lets you confirm the account
+            // No mail server is configured, so show the confirmation link on screen (it is also logged).
             var userId = await UserManager.GetUserIdAsync(user);
             var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
             code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));

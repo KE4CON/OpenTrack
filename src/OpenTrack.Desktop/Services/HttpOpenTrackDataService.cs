@@ -12,6 +12,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using OpenTrack.Core.Querying;
 using OpenTrack.UI.Services;
 
 namespace OpenTrack.Desktop.Services;
@@ -56,9 +57,18 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
-    public async Task<IReadOnlyList<IssueRow>> GetIssuesAsync(int? projectId = null, CancellationToken ct = default)
+    public async Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default)
     {
-        var url = projectId is null ? "/api/issues" : $"/api/issues?projectId={projectId}";
+        var q = new List<string>();
+        if (filter.ProjectId is { } p) q.Add($"projectId={p}");
+        if (filter.Status is { } s) q.Add($"status={s}");
+        if (filter.Severity is { } sv) q.Add($"severity={sv}");
+        if (filter.Priority is { } pr) q.Add($"priority={pr}");
+        if (filter.AssigneeId is { } a) q.Add($"assigneeId={a}");
+        if (filter.CategoryId is { } c) q.Add($"categoryId={c}");
+        if (!string.IsNullOrWhiteSpace(filter.Text)) q.Add($"text={Uri.EscapeDataString(filter.Text)}");
+        q.Add($"sort={filter.Sort}");
+        var url = "/api/issues?" + string.Join("&", q);
         return await http.GetFromJsonAsync<List<IssueRow>>(url, JsonOptions, ct) ?? [];
     }
 
@@ -102,6 +112,34 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
 
     public async Task<IReadOnlyList<IssueHistoryEntry>> GetIssueHistoryAsync(int issueId, CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<IssueHistoryEntry>>($"/api/issues/{issueId}/history", JsonOptions, ct) ?? [];
+
+    public async Task<IReadOnlyList<IssueRelationshipView>> GetIssueRelationshipsAsync(int issueId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<IssueRelationshipView>>($"/api/issues/{issueId}/relationships", JsonOptions, ct) ?? [];
+
+    public async Task<string?> AddIssueRelationshipAsync(int sourceIssueId, int targetIssueId, OpenTrack.Core.Enums.IssueRelationshipType type, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/issues/{sourceIssueId}/relationships", new { targetIssueId, type }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Adding a relationship requires the Updater role on this issue's project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task RemoveIssueRelationshipAsync(int relationshipId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/relationships/{relationshipId}", ct);
+        ThrowIfForbidden(resp, "Removing a relationship requires the Updater role on one of the linked issues.");
+        resp.EnsureSuccessStatusCode();
+    }
+
+    // Translate a 403 into the same exception the web/EF path throws, so the shared razor pages
+    // handle a denied action identically on both hosts.
+    private static void ThrowIfForbidden(HttpResponseMessage resp, string message)
+    {
+        if (resp.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            throw new UnauthorizedAccessException(message);
+    }
 
     public async Task<IReadOnlyList<AttachmentView>> GetIssueAttachmentsAsync(int issueId, CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<AttachmentView>>($"/api/issues/{issueId}/attachments", JsonOptions, ct) ?? [];

@@ -74,7 +74,7 @@ else
     protected override async Task OnParametersSetAsync()
     {
         project = await Data.GetProjectAsync(Id);
-        issues = await Data.GetIssuesAsync(Id);
+        issues = await Data.GetIssuesAsync(new IssueFilter(ProjectId: Id));
     }
 
     private static string StatusBadge(IssueStatus status) => status switch

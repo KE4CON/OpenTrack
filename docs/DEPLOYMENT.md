@@ -45,3 +45,30 @@ ways:
    is the default the app starts with until you change it in Settings.
 
 The in-app Settings value is remembered on that machine and overrides the bundled default.
+
+## Email (account confirmation & password reset)
+
+By default OpenTrack does **not** send email. The confirmation/reset messages are written to the
+application log instead (with the link included), so a self-hosted install works without a mail
+server — an operator can copy the link from the log if needed. Account confirmation is not required
+to sign in, so this is fine for most trusted-LAN setups.
+
+To actually send email, set `OpenTrack:Email:Enabled` to `true` and fill in your SMTP server:
+
+```json
+"OpenTrack": {
+  "Email": {
+    "Enabled": true,
+    "Host": "smtp.yourprovider.com",
+    "Port": 587,
+    "User": "your-smtp-username",
+    "Password": "your-smtp-password",
+    "From": "no-reply@yourdomain.com",
+    "UseSsl": true
+  }
+}
+```
+
+A mail failure never blocks registration or password reset — it is logged and the flow continues.
+(OpenTrack uses the framework's built-in SMTP client rather than MailKit, whose current releases pull
+in a dependency with an unpatched security advisory.)

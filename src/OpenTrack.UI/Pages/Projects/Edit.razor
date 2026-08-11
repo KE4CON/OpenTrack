@@ -52,13 +52,15 @@ else
     // model binder fills this from posted values before OnParametersSetAsync runs,
     // so the "already populated" check below skips the DB overwrite on postback.
     [SupplyParameterFromForm]
-    private ProjectEditModel model { get; set; } = new();
+    private ProjectEditModel model { get; set; } = default!;
 
     private bool found;
     private string? error;
 
     protected override async Task OnParametersSetAsync()
     {
+        // Guard (not an initializer) so a form POST's bound model isn't overwritten with null (BL0008).
+        model ??= new();
         var project = await Data.GetProjectAsync(Id);
         if (project is null) return;
         found = true;
