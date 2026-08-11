@@ -60,9 +60,11 @@ public sealed class SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEm
     {
         if (!IsConfigured)
         {
-            // No mail server configured — log so a self-hosted install still works (links included).
-            logger.LogInformation("Email not configured; would send to {Email}. Subject: {Subject}. Body: {Body}",
-                toEmail, subject, htmlBody);
+            // No mail server configured. Log that we skipped it at Information, but keep the BODY —
+            // which carries the confirmation/reset link (a bearer token) — at Debug only, so sensitive
+            // links don't land in normal logs. (The register page also shows the link on screen.)
+            logger.LogInformation("Email not configured; not sending to {Email} (subject: {Subject}).", toEmail, subject);
+            logger.LogDebug("Unsent email body for {Email}: {Body}", toEmail, htmlBody);
             return;
         }
 

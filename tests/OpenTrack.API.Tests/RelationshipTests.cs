@@ -105,6 +105,23 @@ public sealed class RelationshipTests : IDisposable
     }
 
     [Fact]
+    public async Task Remove_NoViewOfEitherIssue_ReturnsFalseNotThrow()
+    {
+        // A relationship between two PRIVATE issues the outsider can't see at all.
+        await using (var seed = new AppDbContext(_options))
+        {
+            seed.Issues.Add(new Issue { Id = 4, ProjectId = 2, Title = "Secret2", Description = "d", ReporterId = Owner });
+            seed.IssueRelationships.Add(new IssueRelationship { Id = 3, SourceIssueId = I3Private, TargetIssueId = 4, Type = IssueRelationshipType.RelatedTo, CreatedById = Owner });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var db = new AppDbContext(_options);
+        // Updater globally, but NOT a member of the private project — can view neither endpoint.
+        var removed = await RelationshipOperations.RemoveAsync(db, await Access(Outsider, UserRole.Updater), 3);
+        Assert.False(removed); // treated as not-found; must not throw or reveal the link exists
+    }
+
+    [Fact]
     public async Task Add_RequiresEditOnSource()
     {
         await using var db = new AppDbContext(_options);

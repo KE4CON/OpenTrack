@@ -176,8 +176,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         b.Entity<IssueRelationship>(e =>
         {
             // Source cascades, Target restricts: two cascade FKs to the same Issue table would be
-            // "multiple cascade paths" on SQL Server, so only one cascades. (Issues aren't deleted
-            // through the UI today; a future delete-issue must clear inbound relationships first.)
+            // "multiple cascade paths" on SQL Server, so only one cascades. Nothing deletes issues or
+            // projects through the UI today. WHEN a delete feature is added, it must first clear
+            // relationships where the doomed issue is the TARGET — this includes deleting a PROJECT,
+            // whose cascade to its issues would otherwise trip this Restrict FK (even for a
+            // same-project A→B link). Prefer an app-level pre-delete sweep of relationships then.
             e.HasOne(r => r.SourceIssue)
                 .WithMany()
                 .HasForeignKey(r => r.SourceIssueId)

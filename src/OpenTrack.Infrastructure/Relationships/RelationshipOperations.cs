@@ -69,17 +69,22 @@ public static class RelationshipOperations
         // Report "not found" (not "no access") so a private issue's existence is never revealed.
         if (target is null || !CanView(access, target)) return $"Issue #{targetIssueId} not found.";
 
-        var exists = await db.IssueRelationships.AnyAsync(r => r.SourceIssueId == sourceIssueId && r.TargetIssueId == targetIssueId && r.Type == type, ct);
-        if (!exists && type == IssueRelationshipType.RelatedTo)
-            exists = await db.IssueRelationships.AnyAsync(r => r.SourceIssueId == targetIssueId && r.TargetIssueId == sourceIssueId && r.Type == type, ct);
-        if (exists) return "That relationship already exists.";
+        // Store symmetric RelatedTo in a canonical direction (min→max) so the unique index blocks
+        // duplicates atomically — A↔B and B↔A collapse to one row regardless of who added it.
+        var (storeSource, storeTarget) = type == IssueRelationshipType.RelatedTo && sourceIssueId > targetIssueId
+            ? (targetIssueId, sourceIssueId)
+            : (sourceIssueId, targetIssueId);
+
+        if (await db.IssueRelationships.AnyAsync(r => r.SourceIssueId == storeSource && r.TargetIssueId == storeTarget && r.Type == type, ct))
+            return "That relationship already exists.";
 
         db.IssueRelationships.Add(new IssueRelationship
         {
-            SourceIssueId = sourceIssueId, TargetIssueId = targetIssueId, Type = type,
+            SourceIssueId = storeSource, TargetIssueId = storeTarget, Type = type,
             CreatedById = access.UserId, CreatedAt = DateTime.UtcNow
         });
-        await db.SaveChangesAsync(ct);
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateException) { return "That relationship already exists."; } // unique index (concurrent add)
         return null;
     }
 
@@ -93,6 +98,10 @@ public static class RelationshipOperations
             .FirstOrDefaultAsync(x => x.Id == relationshipId, ct);
         if (r is null) return false;
 
+        // If the caller can't view EITHER endpoint, treat as not-found so a denied delete is
+        // indistinguishable from a nonexistent id (no existence signal over relationship ids).
+        if (!CanView(access, r.SourceIssue) && !CanView(access, r.TargetIssue))
+            return false;
         if (!CanEdit(access, r.SourceIssue) && !CanEdit(access, r.TargetIssue))
             throw new UnauthorizedAccessException("Removing a relationship requires the Updater role on one of the linked issues.");
 

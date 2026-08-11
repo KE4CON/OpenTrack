@@ -216,16 +216,24 @@ public static class IssueEndpoints
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
-            var error = await RelationshipOperations.AddAsync(db, access, id, req.TargetIssueId, req.Type, ct);
-            return error is null ? Results.NoContent() : Results.BadRequest(error);
+            try
+            {
+                var error = await RelationshipOperations.AddAsync(db, access, id, req.TargetIssueId, req.Type, ct);
+                return error is null ? Results.NoContent() : Results.BadRequest(error);
+            }
+            catch (UnauthorizedAccessException) { return Results.Forbid(); }
         });
 
         group.MapDelete("/relationships/{relationshipId:int}", async (int relationshipId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
-            var removed = await RelationshipOperations.RemoveAsync(db, access, relationshipId, ct);
-            return removed ? Results.NoContent() : Results.NotFound();
+            try
+            {
+                var removed = await RelationshipOperations.RemoveAsync(db, access, relationshipId, ct);
+                return removed ? Results.NoContent() : Results.NotFound();
+            }
+            catch (UnauthorizedAccessException) { return Results.Forbid(); }
         });
 
         group.MapGet("/issues/{id:int}/history", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>

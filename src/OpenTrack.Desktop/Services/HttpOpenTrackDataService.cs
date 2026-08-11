@@ -121,6 +121,7 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         var resp = await http.PostAsJsonAsync($"/api/issues/{sourceIssueId}/relationships", new { targetIssueId, type }, JsonOptions, ct);
         if (resp.IsSuccessStatusCode) return null;
         if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Adding a relationship requires the Updater role on this issue's project.");
         resp.EnsureSuccessStatusCode();
         return null;
     }
@@ -128,7 +129,16 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
     public async Task RemoveIssueRelationshipAsync(int relationshipId, CancellationToken ct = default)
     {
         var resp = await http.DeleteAsync($"/api/relationships/{relationshipId}", ct);
+        ThrowIfForbidden(resp, "Removing a relationship requires the Updater role on one of the linked issues.");
         resp.EnsureSuccessStatusCode();
+    }
+
+    // Translate a 403 into the same exception the web/EF path throws, so the shared razor pages
+    // handle a denied action identically on both hosts.
+    private static void ThrowIfForbidden(HttpResponseMessage resp, string message)
+    {
+        if (resp.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            throw new UnauthorizedAccessException(message);
     }
 
     public async Task<IReadOnlyList<AttachmentView>> GetIssueAttachmentsAsync(int issueId, CancellationToken ct = default) =>
