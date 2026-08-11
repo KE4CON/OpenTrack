@@ -70,6 +70,15 @@ public record TagView(int Id, string Name);
 /// <summary>A user's saved issue filter — a name plus the issue-list query string to apply.</summary>
 public record SavedFilterView(int Id, string Name, string Query);
 
+public record ReportBarView(string Label, int Count);
+
+/// <summary>Reporting figures over the issues a user may see.</summary>
+public record ReportView(
+    int TotalIssues, int OpenIssues, int ResolvedThisMonth,
+    IReadOnlyList<ReportBarView> CreatedByMonth,
+    IReadOnlyList<ReportBarView> OpenByStatus,
+    IReadOnlyList<ReportBarView> OpenBySeverity);
+
 /// <summary>A user's personal defaults.</summary>
 public record PreferencesView(int? DefaultProjectId, IssueSort? DefaultSort);
 

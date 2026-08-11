@@ -1,0 +1,79 @@
+@page "/reports"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+
+<PageTitle>Reports</PageTitle>
+
+<h1 class="h3 mb-3">Reports</h1>
+
+<form method="get" class="row g-2 align-items-end mb-4" style="max-width: 30rem;">
+    <div class="col">
+        <label class="form-label">Project</label>
+        <select class="form-select" name="ProjectId">
+            <option value="">All projects</option>
+            @foreach (var p in projects)
+            {
+                <option value="@p.Id" selected="@(p.Id == ProjectId)">@p.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto"><button type="submit" class="btn btn-primary">Show</button></div>
+</form>
+
+@if (report is not null)
+{
+    <div class="row g-3 mb-4">
+        <div class="col-sm-4">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small text-uppercase">Total</div><div class="display-6">@report.TotalIssues</div>
+            </div></div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small text-uppercase">Open</div><div class="display-6">@report.OpenIssues</div>
+            </div></div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small text-uppercase">Resolved this month</div><div class="display-6">@report.ResolvedThisMonth</div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <h2 class="h6">Issues created per month</h2>
+                <BarChart Title="Issues created per month" Data="@ToData(report.CreatedByMonth)" />
+            </div></div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <h2 class="h6">Open by status</h2>
+                <BarChart Title="Open by status" Data="@ToData(report.OpenByStatus)" />
+            </div></div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <h2 class="h6">Open by severity</h2>
+                <BarChart Title="Open by severity" Data="@ToData(report.OpenBySeverity)" />
+            </div></div>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery] public int? ProjectId { get; set; }
+
+    private IReadOnlyList<ProjectRow> projects = [];
+    private ReportView? report;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        projects = await Data.GetProjectsAsync();
+        report = await Data.GetReportAsync(ProjectId is > 0 ? ProjectId : null);
+    }
+
+    private static IReadOnlyList<(string, int)> ToData(IReadOnlyList<ReportBarView> bars) =>
+        bars.Select(b => (b.Label, b.Count)).ToList();
+}

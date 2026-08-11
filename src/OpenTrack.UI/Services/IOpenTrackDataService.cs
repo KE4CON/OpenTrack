@@ -57,6 +57,10 @@ public interface IOpenTrackDataService
     // the user may see.
     Task<IReadOnlyList<RoadmapVersionView>> GetRoadmapAsync(int projectId, CancellationToken ct = default);
 
+    // Reporting figures (headline counts, created-per-month, open by status/severity), optionally scoped
+    // to one project; always filtered to what the user may see.
+    Task<ReportView> GetReportAsync(int? projectId, CancellationToken ct = default);
+
     // Possible-duplicate suggestions for a proposed title (ACL-filtered). Optionally scoped to a project
     // and excluding a specific issue (when checking from an existing one).
     Task<IReadOnlyList<SimilarIssueView>> FindSimilarIssuesAsync(int? projectId, string title, int? excludeIssueId = null, CancellationToken ct = default);

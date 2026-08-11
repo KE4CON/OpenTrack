@@ -1,0 +1,46 @@
+@namespace OpenTrack.UI.Shared
+@using System.Net
+@using System.Text
+
+@* A dependency-free, theme-aware horizontal bar chart drawn as inline SVG. Built as a string and
+   rendered via MarkupString (every label is HTML-encoded, so it's injection-safe) because Razor treats
+   a bare <text> element as a control keyword. Bars use the Bootstrap primary color; text uses the
+   current text color, so it reads in light and dark and on both hosts. *@
+
+@if (Data is { Count: > 0 })
+{
+    @((MarkupString)BuildSvg())
+}
+else
+{
+    <p class="text-muted small mb-0">No data.</p>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public IReadOnlyList<(string Label, int Value)> Data { get; set; } = [];
+
+    private string BuildSvg()
+    {
+        const int width = 340, labelW = 120, rowH = 26, barMaxW = width - labelW - 44;
+        var max = Math.Max(1, Data.Max(d => d.Value));
+        var height = Data.Count * rowH + 4;
+
+        var sb = new StringBuilder();
+        sb.Append($"<svg viewBox=\"0 0 {width} {height}\" width=\"100%\" style=\"max-width:{width}px;height:auto;\" role=\"img\" aria-label=\"{Enc(Title)}\">");
+        for (var idx = 0; idx < Data.Count; idx++)
+        {
+            var d = Data[idx];
+            var y = idx * rowH + 2;
+            var w = Math.Max(1, (int)Math.Round((double)d.Value / max * barMaxW));
+            sb.Append($"<text x=\"0\" y=\"{y + 16}\" font-size=\"12\" fill=\"currentColor\">{Enc(Truncate(d.Label))}</text>");
+            sb.Append($"<rect x=\"{labelW}\" y=\"{y + 5}\" width=\"{w}\" height=\"15\" rx=\"3\" fill=\"var(--bs-primary, #0d6efd)\"></rect>");
+            sb.Append($"<text x=\"{labelW + w + 6}\" y=\"{y + 16}\" font-size=\"12\" fill=\"currentColor\">{d.Value}</text>");
+        }
+        sb.Append("</svg>");
+        return sb.ToString();
+    }
+
+    private static string Enc(string s) => WebUtility.HtmlEncode(s);
+    private static string Truncate(string s) => s.Length <= 16 ? s : s[..15] + "…";
+}

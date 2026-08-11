@@ -25,6 +25,7 @@ using OpenTrack.Infrastructure.CustomFields;
 using OpenTrack.Infrastructure.Dashboard;
 using OpenTrack.Infrastructure.Filters;
 using OpenTrack.Infrastructure.Preferences;
+using OpenTrack.Infrastructure.Reporting;
 using OpenTrack.Infrastructure.Webhooks;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Notifications;
@@ -214,6 +215,17 @@ public class DbOpenTrackDataService(
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
         await UserPreferenceOperations.SaveAsync(db, access.UserId, defaultProjectId, defaultSort, ct);
+    }
+
+    public async Task<ReportView> GetReportAsync(int? projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var r = await ReportQuery.BuildAsync(db, access, projectId, DateTime.UtcNow, ct);
+        static IReadOnlyList<ReportBarView> Map(IReadOnlyList<OpenTrack.Infrastructure.Reporting.ReportBar> b) =>
+            b.Select(x => new ReportBarView(x.Label, x.Count)).ToList();
+        return new ReportView(r.TotalIssues, r.OpenIssues, r.ResolvedThisMonth,
+            Map(r.CreatedByMonth), Map(r.OpenByStatus), Map(r.OpenBySeverity));
     }
 
     public async Task<IReadOnlyList<RoadmapVersionView>> GetRoadmapAsync(int projectId, CancellationToken ct = default)
