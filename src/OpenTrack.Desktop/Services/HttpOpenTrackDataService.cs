@@ -57,6 +57,13 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task SetPublicIntakeEnabledAsync(int projectId, bool enabled, CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/public-intake", new { enabled }, JsonOptions, ct);
+        ThrowIfForbidden(resp, "Changing public intake requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+    }
+
     public async Task<IReadOnlyList<SimilarIssueView>> FindSimilarIssuesAsync(int? projectId, string title, int? excludeIssueId = null, CancellationToken ct = default)
     {
         var q = new List<string> { $"title={Uri.EscapeDataString(title ?? "")}" };

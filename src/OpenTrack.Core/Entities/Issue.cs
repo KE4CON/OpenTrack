@@ -59,6 +59,11 @@ public class Issue
     /// export skip issues already brought in, instead of duplicating them.</summary>
     public int? ImportedMantisId { get; set; }
 
+    /// <summary>For an issue submitted via the public trouble-ticket page: the submitter's name and
+    /// email (both optional). The email also lets that person look up their ticket's status later.</summary>
+    public string? IntakeName { get; set; }
+    public string? IntakeEmail { get; set; }
+
     /// <summary>Optimistic-concurrency token. Reassigned on every update; if the value a client
     /// loaded no longer matches on save, EF raises DbUpdateConcurrencyException instead of silently
     /// overwriting a concurrent edit (lost update).</summary>

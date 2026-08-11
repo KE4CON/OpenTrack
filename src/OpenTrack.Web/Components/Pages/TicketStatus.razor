@@ -1,0 +1,40 @@
+@page "/report/status"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+
+<PageTitle>Check ticket status</PageTitle>
+
+<div class="container" style="max-width: 34rem;">
+    <h1 class="h3 mt-4">Check your ticket</h1>
+    <p class="text-muted">Enter the reference number you were given and the email you used.</p>
+
+    @if (!string.IsNullOrEmpty(St))
+    {
+        <div class="alert alert-success">
+            <div><strong>Ticket #@Ref</strong> — @Ti</div>
+            <div>Status: <strong>@St</strong></div>
+        </div>
+    }
+    else if (Nf == 1)
+    {
+        <div class="alert alert-warning">No matching ticket found. Double-check the reference number and the email address you submitted with.</div>
+    }
+
+    <form method="post" action="/report-status/lookup">
+        <div class="mb-2">
+            <label class="form-label">Reference number</label>
+            <input name="reference" type="number" class="form-control" required placeholder="e.g. 42" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Email you used</label>
+            <input name="email" type="email" class="form-control" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Check status</button>
+    </form>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public int? Ref { get; set; }
+    [SupplyParameterFromQuery] public string? St { get; set; }
+    [SupplyParameterFromQuery] public string? Ti { get; set; }
+    [SupplyParameterFromQuery] public int? Nf { get; set; }
+}

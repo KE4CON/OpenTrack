@@ -91,7 +91,19 @@ public class DbOpenTrackDataService(
         var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (p is null || !access.For(p.Id).CanViewProject(p.IsPublic))
             return null;
-        return new ProjectDetail(p.Id, p.Name, p.Description, p.IsPublic, p.OwnerId, p.CreatedAt, p.RowVersion);
+        return new ProjectDetail(p.Id, p.Name, p.Description, p.IsPublic, p.OwnerId, p.CreatedAt, p.RowVersion, p.PublicIntakeEnabled);
+    }
+
+    public async Task SetPublicIntakeEnabledAsync(int projectId, bool enabled, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        if (!access.For(projectId).CanManageProject())
+            throw new UnauthorizedAccessException("Changing public intake requires the Manager role on this project.");
+        var p = await db.Projects.FirstOrDefaultAsync(x => x.Id == projectId, ct);
+        if (p is null) return;
+        p.PublicIntakeEnabled = enabled;
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task<int> CreateProjectAsync(CreateProjectInput input, CancellationToken ct = default)

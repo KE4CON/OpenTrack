@@ -73,6 +73,21 @@ builder.Services.AddScoped<OpenTrack.UI.Services.IAttachmentTransfer, OpenTrack.
 
 builder.Services.AddOpenTrackEmailAndNotifications();
 
+// Rate-limit the public trouble-ticket endpoints, per client IP, to blunt spam/abuse.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("intake", http =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 8,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+            }));
+});
+
 var app = builder.Build();
 
 // Apply any pending EF Core migrations at startup so the SQLite database (and the
@@ -106,6 +121,7 @@ if (app.Configuration.GetValue<bool>("OpenTrack:RequireHttps"))
     app.UseHttpsRedirection();
 }
 
+app.UseRateLimiter();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
@@ -126,5 +142,7 @@ OpenTrack.Web.Endpoints.ImportWebEndpoints.MapImportWebEndpoints(app);
 OpenTrack.Web.Endpoints.ActivityWebEndpoints.MapActivityWebEndpoints(app);
 // Cookie-authenticated checklist status endpoint (offline check-off replay target).
 OpenTrack.Web.Endpoints.ChecklistWebEndpoints.MapChecklistWebEndpoints(app);
+// Public (unauthenticated, rate-limited) trouble-ticket intake endpoints.
+OpenTrack.Web.Endpoints.PublicIntakeWebEndpoints.MapPublicIntakeWebEndpoints(app);
 
 app.Run();
