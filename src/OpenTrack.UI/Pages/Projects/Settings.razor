@@ -6,7 +6,10 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0">Settings@(projectName is null ? "" : $" — {projectName}")</h1>
-    <a class="btn btn-outline-secondary btn-sm" href="projects/@Id">Back to project</a>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary btn-sm" href="projects/@Id/custom-fields">Custom fields</a>
+        <a class="btn btn-outline-secondary btn-sm" href="projects/@Id">Back to project</a>
+    </div>
 </div>
 
 @if (!canManage)

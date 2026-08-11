@@ -94,4 +94,17 @@ public interface IOpenTrackDataService
     // Bulk actions: applied only to the issues the caller may act on; others are skipped (the result
     // reports how many were updated vs skipped).
     Task<BulkResult> BulkUpdateIssuesAsync(IReadOnlyCollection<int> issueIds, BulkAction action, CancellationToken ct = default);
+
+    // Custom field definitions (per project). Reading requires view access to the project; creating,
+    // editing, and deleting a definition require the Manager role on that project. The mutating calls
+    // return null on success or a validation/authorization reason on failure.
+    Task<IReadOnlyList<CustomFieldDefinitionView>> GetCustomFieldsAsync(int projectId, CancellationToken ct = default);
+    Task<string?> CreateCustomFieldAsync(int projectId, string name, CustomFieldType type, string? enumOptions, bool required, CancellationToken ct = default);
+    Task<string?> UpdateCustomFieldAsync(int projectId, int fieldId, string name, string? enumOptions, bool required, int displayOrder, CancellationToken ct = default);
+    Task DeleteCustomFieldAsync(int projectId, int fieldId, CancellationToken ct = default);
+
+    // Custom field values on an issue. Reading follows the issue's view ACL; setting a value (blank
+    // clears it) requires edit access. Returns null on success or a reason on failure.
+    Task<IReadOnlyList<CustomFieldValueView>> GetIssueCustomFieldsAsync(int issueId, CancellationToken ct = default);
+    Task<string?> SetIssueCustomFieldAsync(int issueId, int fieldId, string? value, CancellationToken ct = default);
 }

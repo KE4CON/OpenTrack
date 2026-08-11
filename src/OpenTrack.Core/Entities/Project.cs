@@ -30,4 +30,5 @@ public class Project
     public ICollection<Category> Categories { get; set; } = [];
     public ICollection<ProjectVersion> Versions { get; set; } = [];
     public ICollection<Issue> Issues { get; set; } = [];
+    public ICollection<CustomFieldDefinition> CustomFields { get; set; } = [];
 }

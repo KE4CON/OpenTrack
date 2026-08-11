@@ -25,4 +25,7 @@ public static class FieldLimits
     public const int CategoryName = 100;
     public const int VersionName = 50;
     public const int TagName = 50;
+    public const int CustomFieldName = 100;
+    public const int CustomFieldValue = 2000;
+    public const int CustomFieldEnumOptions = 2000;
 }

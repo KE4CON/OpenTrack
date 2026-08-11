@@ -15,6 +15,7 @@ using OpenTrack.API.Contracts;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
 using OpenTrack.Infrastructure.Authorization;
+using OpenTrack.Infrastructure.CustomFields;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.API;
 
@@ -266,6 +267,52 @@ public static class ProjectEndpoints
             db.Versions.Remove(version);
             await db.SaveChangesAsync(ct);
             return Results.NoContent();
+        });
+
+        // ---- Custom field definitions (Manager+ to change; anyone who can view the project can read) ----
+
+        group.MapGet("/{id:int}/custom-fields", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var rows = await CustomFieldOperations.ListDefinitionsAsync(db, access, id, ct);
+            return Results.Ok(rows.Select(d => new CustomFieldDefinitionDto(d.Id, d.ProjectId, d.Name, d.Type, d.EnumOptions, d.Required, d.DisplayOrder)));
+        });
+
+        group.MapPost("/{id:int}/custom-fields", async (int id, CreateCustomFieldRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            try
+            {
+                var error = await CustomFieldOperations.CreateDefinitionAsync(db, access, id, req.Name, req.Type, req.EnumOptions, req.Required, ct);
+                return error is null ? Results.NoContent() : Results.BadRequest(error);
+            }
+            catch (UnauthorizedAccessException) { return Results.Forbid(); }
+        });
+
+        group.MapPut("/{id:int}/custom-fields/{fieldId:int}", async (int id, int fieldId, UpdateCustomFieldRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            try
+            {
+                var error = await CustomFieldOperations.UpdateDefinitionAsync(db, access, fieldId, req.Name, req.EnumOptions, req.Required, req.DisplayOrder, ct);
+                return error is null ? Results.NoContent() : Results.BadRequest(error);
+            }
+            catch (UnauthorizedAccessException) { return Results.Forbid(); }
+        });
+
+        group.MapDelete("/{id:int}/custom-fields/{fieldId:int}", async (int id, int fieldId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            try
+            {
+                var removed = await CustomFieldOperations.DeleteDefinitionAsync(db, access, fieldId, ct);
+                return removed ? Results.NoContent() : Results.NotFound();
+            }
+            catch (UnauthorizedAccessException) { return Results.Forbid(); }
         });
     }
 

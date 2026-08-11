@@ -44,6 +44,12 @@ public record TagView(int Id, string Name);
 
 public record NotificationView(int Id, int IssueId, string Text, bool IsRead, DateTime CreatedAt);
 
+/// <summary>A custom-field definition on a project (for the manage screen and for rendering inputs).</summary>
+public record CustomFieldDefinitionView(int Id, int ProjectId, string Name, CustomFieldType Type, string? EnumOptions, bool Required, int DisplayOrder);
+
+/// <summary>A custom-field definition paired with an issue's current value for it (null when unset).</summary>
+public record CustomFieldValueView(int DefinitionId, string Name, CustomFieldType Type, string? EnumOptions, bool Required, int DisplayOrder, string? Value);
+
 public record IssueDetail(
     int Id, int ProjectId, string ProjectName, string Title, string Description,
     string? StepsToReproduce, string? ExpectedBehavior, string? ActualBehavior,
