@@ -76,6 +76,13 @@ public record PreferencesView(int? DefaultProjectId, IssueSort? DefaultSort);
 /// <summary>A project's outgoing webhook (Manager-managed).</summary>
 public record WebhookView(int Id, string Url, WebhookFormat Format, bool IsActive);
 
+/// <summary>An issue targeted to a version, for the roadmap/changelog.</summary>
+public record RoadmapIssueView(int Id, string Title, IssueStatus Status, IssueSeverity Severity, bool Done);
+
+/// <summary>A version with its targeted issues and progress (roadmap if unreleased, changelog if released).</summary>
+public record RoadmapVersionView(
+    int VersionId, string Name, bool IsReleased, DateTime? ReleaseDate, int Total, int Done, IReadOnlyList<RoadmapIssueView> Issues);
+
 public record NotificationView(int Id, int IssueId, string Text, bool IsRead, DateTime CreatedAt);
 
 /// <summary>A custom-field definition on a project (for the manage screen and for rendering inputs).</summary>

@@ -216,6 +216,15 @@ public class DbOpenTrackDataService(
         await UserPreferenceOperations.SaveAsync(db, access.UserId, defaultProjectId, defaultSort, ct);
     }
 
+    public async Task<IReadOnlyList<RoadmapVersionView>> GetRoadmapAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var rows = await RoadmapQuery.BuildAsync(db, access, projectId, ct);
+        return rows.Select(v => new RoadmapVersionView(v.VersionId, v.Name, v.IsReleased, v.ReleaseDate, v.Total, v.Done,
+            v.Issues.Select(i => new RoadmapIssueView(i.Id, i.Title, i.Status, i.Severity, i.Done)).ToList())).ToList();
+    }
+
     public async Task<IReadOnlyList<SimilarIssueView>> FindSimilarIssuesAsync(int? projectId, string title, int? excludeIssueId = null, CancellationToken ct = default)
     {
         var (db, access) = await OpenAsync(ct);

@@ -53,6 +53,10 @@ public interface IOpenTrackDataService
     Task<string?> AddWebhookAsync(int projectId, string url, WebhookFormat format, CancellationToken ct = default);
     Task DeleteWebhookAsync(int projectId, int id, CancellationToken ct = default);
 
+    // Roadmap & changelog for a project (versions with their fix-targeted issues), filtered to what
+    // the user may see.
+    Task<IReadOnlyList<RoadmapVersionView>> GetRoadmapAsync(int projectId, CancellationToken ct = default);
+
     // Possible-duplicate suggestions for a proposed title (ACL-filtered). Optionally scoped to a project
     // and excluding a specific issue (when checking from an existing one).
     Task<IReadOnlyList<SimilarIssueView>> FindSimilarIssuesAsync(int? projectId, string title, int? excludeIssueId = null, CancellationToken ct = default);

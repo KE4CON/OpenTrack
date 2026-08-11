@@ -64,6 +64,9 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task<IReadOnlyList<RoadmapVersionView>> GetRoadmapAsync(int projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<RoadmapVersionView>>($"/api/projects/{projectId}/roadmap", JsonOptions, ct) ?? [];
+
     public async Task<IReadOnlyList<SimilarIssueView>> FindSimilarIssuesAsync(int? projectId, string title, int? excludeIssueId = null, CancellationToken ct = default)
     {
         var q = new List<string> { $"title={Uri.EscapeDataString(title ?? "")}" };

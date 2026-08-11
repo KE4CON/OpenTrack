@@ -17,6 +17,7 @@ using OpenTrack.Core.Enums;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.CustomFields;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Infrastructure.Queries;
 using OpenTrack.Infrastructure.Webhooks;
 using OpenTrack.API;
 
@@ -319,6 +320,18 @@ public static class ProjectEndpoints
             if (!access.For(id).CanManageProject()) return Results.Forbid();
             var removed = await CustomFieldOperations.DeleteDefinitionAsync(db, access, id, fieldId, ct);
             return removed ? Results.NoContent() : Results.NotFound();
+        });
+
+        group.MapGet("/{id:int}/roadmap", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var rows = await RoadmapQuery.BuildAsync(db, access, id, ct);
+            return Results.Ok(rows.Select(v => new
+            {
+                v.VersionId, v.Name, v.IsReleased, v.ReleaseDate, v.Total, v.Done,
+                Issues = v.Issues.Select(i => new { i.Id, i.Title, i.Status, i.Severity, i.Done }),
+            }));
         });
 
         // ---- Project webhooks (Manager only) ----
