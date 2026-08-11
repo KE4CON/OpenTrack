@@ -25,7 +25,10 @@ using OpenTrack.Infrastructure.CustomFields;
 using OpenTrack.Infrastructure.Dashboard;
 using OpenTrack.Infrastructure.Filters;
 using OpenTrack.Infrastructure.Preferences;
+using OpenTrack.Infrastructure.Reporting;
+using OpenTrack.Infrastructure.TimeLogs;
 using OpenTrack.Infrastructure.Webhooks;
+using OpenTrack.Infrastructure.Workflow;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
@@ -157,6 +160,28 @@ public class DbOpenTrackDataService(
 
     // ---- Issues ----
 
+    public async Task<IReadOnlyList<WorkflowTransitionView>> GetWorkflowAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var items = await WorkflowOperations.ListForProjectAsync(db, access, projectId, ct);
+        return items.Select(w => new WorkflowTransitionView(w.Id, w.FromStatus, w.ToStatus)).ToList();
+    }
+
+    public async Task<string?> AddWorkflowTransitionAsync(int projectId, IssueStatus from, IssueStatus to, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await WorkflowOperations.AddAsync(db, access, projectId, from, to, ct);
+    }
+
+    public async Task DeleteWorkflowTransitionAsync(int projectId, int id, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        await WorkflowOperations.DeleteAsync(db, access, projectId, id, ct);
+    }
+
     public async Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default)
     {
         var (db, access) = await OpenAsync(ct);
@@ -214,6 +239,26 @@ public class DbOpenTrackDataService(
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
         await UserPreferenceOperations.SaveAsync(db, access.UserId, defaultProjectId, defaultSort, ct);
+    }
+
+    public async Task<ReportView> GetReportAsync(int? projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var r = await ReportQuery.BuildAsync(db, access, projectId, DateTime.UtcNow, ct);
+        static IReadOnlyList<ReportBarView> Map(IReadOnlyList<OpenTrack.Infrastructure.Reporting.ReportBar> b) =>
+            b.Select(x => new ReportBarView(x.Label, x.Count)).ToList();
+        return new ReportView(r.TotalIssues, r.OpenIssues, r.ResolvedThisMonth,
+            Map(r.CreatedByMonth), Map(r.OpenByStatus), Map(r.OpenBySeverity));
+    }
+
+    public async Task<IReadOnlyList<RoadmapVersionView>> GetRoadmapAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var rows = await RoadmapQuery.BuildAsync(db, access, projectId, ct);
+        return rows.Select(v => new RoadmapVersionView(v.VersionId, v.Name, v.IsReleased, v.ReleaseDate, v.Total, v.Done,
+            v.Issues.Select(i => new RoadmapIssueView(i.Id, i.Title, i.Status, i.Severity, i.Done)).ToList())).ToList();
     }
 
     public async Task<IReadOnlyList<SimilarIssueView>> FindSimilarIssuesAsync(int? projectId, string title, int? excludeIssueId = null, CancellationToken ct = default)
@@ -337,6 +382,11 @@ public class DbOpenTrackDataService(
 
         var originalStatus = issue.Status;
         var originalAssigneeId = issue.AssigneeId;
+
+        // Enforce the project's workflow (if it defines one) before accepting a status change.
+        if (input.Status != originalStatus &&
+            !await WorkflowOperations.IsAllowedAsync(db, issue.ProjectId, originalStatus, input.Status, ct))
+            throw new InvalidOperationException($"Changing status from {originalStatus} to {input.Status} isn't allowed by this project's workflow.");
 
         // Fields any Updater may change.
         issue.Title = input.Title;
@@ -765,6 +815,30 @@ public class DbOpenTrackDataService(
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
         return await CustomFieldOperations.SetValueAsync(db, access, issueId, fieldId, value, ct);
+    }
+
+    // ---- Time logging (ACL logic shared with the API via TimeLogOperations) ----
+
+    public async Task<IReadOnlyList<TimeLogView>> GetTimeLogsAsync(int issueId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var items = await TimeLogOperations.ListForIssueAsync(db, access, issueId, ct);
+        return items.Select(t => new TimeLogView(t.Id, t.Minutes, t.Note, t.WorkedOn, t.AuthorName, t.AuthorId)).ToList();
+    }
+
+    public async Task<string?> AddTimeLogAsync(int issueId, int minutes, string? note, DateTime? workedOn, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await TimeLogOperations.AddAsync(db, access, issueId, minutes, note, workedOn, ct);
+    }
+
+    public async Task DeleteTimeLogAsync(int logId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        await TimeLogOperations.DeleteAsync(db, access, logId, ct);
     }
 
     // ---- Bug-hunt checklist (ACL logic shared with the API via ChecklistOperations) ----

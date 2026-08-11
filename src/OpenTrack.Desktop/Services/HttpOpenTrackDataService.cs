@@ -57,12 +57,39 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task<IReadOnlyList<WorkflowTransitionView>> GetWorkflowAsync(int projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<WorkflowTransitionView>>($"/api/projects/{projectId}/workflow", JsonOptions, ct) ?? [];
+
+    public async Task<string?> AddWorkflowTransitionAsync(int projectId, OpenTrack.Core.Enums.IssueStatus from, OpenTrack.Core.Enums.IssueStatus to, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/projects/{projectId}/workflow", new { from, to }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Managing the workflow requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task DeleteWorkflowTransitionAsync(int projectId, int id, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/projects/{projectId}/workflow/{id}", ct);
+        ThrowIfForbidden(resp, "Managing the workflow requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+    }
+
     public async Task SetPublicIntakeEnabledAsync(int projectId, bool enabled, CancellationToken ct = default)
     {
         var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/public-intake", new { enabled }, JsonOptions, ct);
         ThrowIfForbidden(resp, "Changing public intake requires the Manager role on this project.");
         resp.EnsureSuccessStatusCode();
     }
+
+    public async Task<IReadOnlyList<RoadmapVersionView>> GetRoadmapAsync(int projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<RoadmapVersionView>>($"/api/projects/{projectId}/roadmap", JsonOptions, ct) ?? [];
+
+    public async Task<ReportView> GetReportAsync(int? projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<ReportView>("/api/reports" + (projectId is { } p ? $"?projectId={p}" : ""), JsonOptions, ct)
+            ?? new ReportView(0, 0, 0, [], [], []);
 
     public async Task<IReadOnlyList<SimilarIssueView>> FindSimilarIssuesAsync(int? projectId, string title, int? excludeIssueId = null, CancellationToken ct = default)
     {
@@ -160,6 +187,9 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
     {
         var resp = await http.PutAsJsonAsync($"/api/issues/{id}", input, JsonOptions, ct);
         await ThrowIfConflictAsync(resp, ct);
+        // A workflow-disallowed status change comes back as 400 — surface it like the web host does.
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            throw new InvalidOperationException(await resp.Content.ReadAsStringAsync(ct));
         resp.EnsureSuccessStatusCode();
     }
 
@@ -268,6 +298,28 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         ThrowIfForbidden(resp, "Editing custom fields requires the Updater role on this project.");
         resp.EnsureSuccessStatusCode();
         return null;
+    }
+
+    // ---- Time logging (server enforces the same ACL as the shared operations) ----
+
+    public async Task<IReadOnlyList<TimeLogView>> GetTimeLogsAsync(int issueId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<TimeLogView>>($"/api/issues/{issueId}/time", JsonOptions, ct) ?? [];
+
+    public async Task<string?> AddTimeLogAsync(int issueId, int minutes, string? note, DateTime? workedOn, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/issues/{issueId}/time", new { minutes, note, workedOn }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Logging time requires the Updater role on this project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task DeleteTimeLogAsync(int logId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/time/{logId}", ct);
+        ThrowIfForbidden(resp, "You can only remove your own time entries.");
+        resp.EnsureSuccessStatusCode();
     }
 
     // ---- Bug-hunt checklist (server enforces the same ACL as the shared operations) ----

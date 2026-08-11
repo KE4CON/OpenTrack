@@ -68,3 +68,5 @@ public record AddIssueNoteRequest(string Text, bool IsPrivate = false);
 public record CustomFieldValueDto(int DefinitionId, string Name, CustomFieldType Type, string? EnumOptions, bool Required, int DisplayOrder, string? Value);
 
 public record SetCustomFieldValueRequest(string? Value);
+
+public record AddTimeLogRequest(int Minutes, string? Note, DateTime? WorkedOn);

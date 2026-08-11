@@ -17,6 +17,7 @@ using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Tags;
+using OpenTrack.Infrastructure.Workflow;
 
 namespace OpenTrack.Infrastructure.Bulk;
 
@@ -61,10 +62,12 @@ public static class BulkOperations
             {
                 case BulkActionType.SetStatus when action.Status is { } s:
                     if (!ctx.CanEditIssue()) { skipped++; continue; }
+                    if (!await WorkflowOperations.IsAllowedAsync(db, issue.ProjectId, issue.Status, s, ct)) { skipped++; continue; }
                     issue.Status = s; summary = $"status set to {s}";
                     break;
                 case BulkActionType.Close:
                     if (!ctx.CanEditIssue()) { skipped++; continue; }
+                    if (!await WorkflowOperations.IsAllowedAsync(db, issue.ProjectId, issue.Status, IssueStatus.Closed, ct)) { skipped++; continue; }
                     issue.Status = IssueStatus.Closed; summary = "closed";
                     break;
                 case BulkActionType.Assign when action.AssigneeId is { } aid:

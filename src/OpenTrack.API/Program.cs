@@ -113,5 +113,6 @@ app.MapDashboardEndpoints();
 app.MapChecklistEndpoints();
 app.MapSavedFilterEndpoints();
 app.MapPreferenceEndpoints();
+app.MapReportEndpoints();
 
 app.Run();

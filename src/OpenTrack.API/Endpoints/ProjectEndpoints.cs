@@ -17,7 +17,9 @@ using OpenTrack.Core.Enums;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.CustomFields;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Infrastructure.Queries;
 using OpenTrack.Infrastructure.Webhooks;
+using OpenTrack.Infrastructure.Workflow;
 using OpenTrack.API;
 
 namespace OpenTrack.API.Endpoints;
@@ -318,6 +320,47 @@ public static class ProjectEndpoints
             if (access is null) return Results.Unauthorized();
             if (!access.For(id).CanManageProject()) return Results.Forbid();
             var removed = await CustomFieldOperations.DeleteDefinitionAsync(db, access, id, fieldId, ct);
+            return removed ? Results.NoContent() : Results.NotFound();
+        });
+
+        group.MapGet("/{id:int}/roadmap", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var rows = await RoadmapQuery.BuildAsync(db, access, id, ct);
+            return Results.Ok(rows.Select(v => new
+            {
+                v.VersionId, v.Name, v.IsReleased, v.ReleaseDate, v.Total, v.Done,
+                Issues = v.Issues.Select(i => new { i.Id, i.Title, i.Status, i.Severity, i.Done }),
+            }));
+        });
+
+        // ---- Project workflow (Manager only) ----
+
+        group.MapGet("/{id:int}/workflow", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var rows = await WorkflowOperations.ListForProjectAsync(db, access, id, ct);
+            return Results.Ok(rows.Select(w => new { w.Id, w.FromStatus, w.ToStatus }));
+        });
+
+        group.MapPost("/{id:int}/workflow", async (int id, CreateWorkflowTransitionRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var error = await WorkflowOperations.AddAsync(db, access, id, req.From, req.To, ct);
+            return error is null ? Results.NoContent() : Results.BadRequest(error);
+        });
+
+        group.MapDelete("/{id:int}/workflow/{transitionId:int}", async (int id, int transitionId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var removed = await WorkflowOperations.DeleteAsync(db, access, id, transitionId, ct);
             return removed ? Results.NoContent() : Results.NotFound();
         });
 

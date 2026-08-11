@@ -256,6 +256,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             // gone we just ignore it, so no FK is declared to avoid a delete-time constraint.
         });
 
+        // ---- WorkflowTransition ----
+        b.Entity<WorkflowTransition>(e =>
+        {
+            e.HasOne(w => w.Project).WithMany().HasForeignKey(w => w.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(w => new { w.ProjectId, w.FromStatus, w.ToStatus }).IsUnique();
+        });
+
+        // ---- TimeLog ----
+        b.Entity<TimeLog>(e =>
+        {
+            e.Property(t => t.Note).HasMaxLength(FieldLimits.TimeLogNote);
+            e.HasOne(t => t.Issue).WithMany().HasForeignKey(t => t.IssueId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(t => t.IssueId);
+        });
+
         // ---- SavedFilter (per-user) ----
         b.Entity<SavedFilter>(e =>
         {
@@ -311,4 +327,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>();
     public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
     public DbSet<ProjectWebhook> ProjectWebhooks => Set<ProjectWebhook>();
+    public DbSet<TimeLog> TimeLogs => Set<TimeLog>();
+    public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
 }

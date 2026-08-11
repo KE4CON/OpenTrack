@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OpenTrack.Infrastructure.Data;
 
@@ -10,9 +11,11 @@ using OpenTrack.Infrastructure.Data;
 namespace OpenTrack.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260811213510_AddTimeLogs")]
+    partial class AddTimeLogs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
@@ -839,29 +842,6 @@ namespace OpenTrack.Infrastructure.Migrations
                     b.ToTable("UserPreferences");
                 });
 
-            modelBuilder.Entity("OpenTrack.Core.Entities.WorkflowTransition", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("FromStatus")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("ProjectId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("ToStatus")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProjectId", "FromStatus", "ToStatus")
-                        .IsUnique();
-
-                    b.ToTable("WorkflowTransitions");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
                 {
                     b.HasOne("OpenTrack.Core.Entities.User", null)
@@ -1278,17 +1258,6 @@ namespace OpenTrack.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("OpenTrack.Core.Entities.WorkflowTransition", b =>
-                {
-                    b.HasOne("OpenTrack.Core.Entities.Project", "Project")
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("OpenTrack.Core.Entities.Category", b =>

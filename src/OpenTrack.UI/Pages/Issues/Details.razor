@@ -22,6 +22,7 @@ else
                     @(isMonitoring ? "Monitoring ✓" : "Monitor")
                 </button>
             </EditForm>
+            <a class="btn btn-outline-secondary" href="issues/@Id/print">Print / PDF</a>
             <AuthorizeView Policy="RequireUpdater">
                 <Authorized>
                     <a class="btn btn-outline-secondary" href="issues/@Id/edit">Edit</a>
@@ -346,6 +347,70 @@ else
         </Authorized>
     </AuthorizeView>
 
+    <h2 class="h5 mt-4">Time log</h2>
+    @if (timeLogs.Count == 0)
+    {
+        <p class="text-muted">No time logged yet.</p>
+    }
+    else
+    {
+        <p class="mb-1"><strong>Total:</strong> @FormatMinutes(timeLogs.Sum(t => t.Minutes))</p>
+        <table class="table table-sm align-middle" style="max-width: 44rem;">
+            <thead><tr><th>When</th><th>Who</th><th>Time</th><th>Note</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var t in timeLogs)
+                {
+                    <tr>
+                        <td class="small">@t.WorkedOn.ToLocalTime().ToString("d")</td>
+                        <td class="small">@t.AuthorName</td>
+                        <td>@FormatMinutes(t.Minutes)</td>
+                        <td class="small">@t.Note</td>
+                        <td class="text-end">
+                            <AuthorizeView Policy="RequireUpdater" Context="tlauth">
+                                <Authorized>
+                                    <EditForm Model="delTime" OnValidSubmit="DeleteTime" FormName="delTime" class="d-inline">
+                                        <button type="submit" name="LogId" value="@t.Id" class="btn btn-sm btn-link text-danger p-0">Remove</button>
+                                    </EditForm>
+                                </Authorized>
+                            </AuthorizeView>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    <AuthorizeView Policy="RequireUpdater" Context="tladd">
+        <Authorized>
+            @if (timeMessage is not null)
+            {
+                <span class="text-danger small">@timeMessage</span>
+            }
+            <EditForm Model="addTime" OnValidSubmit="AddTime" FormName="addTime">
+                <div class="row g-2 align-items-end" style="max-width: 44rem;">
+                    <div class="col-auto">
+                        <label class="form-label small mb-0">Hours</label>
+                        <InputNumber @bind-Value="addTime.Hours" class="form-control form-control-sm" style="width:5rem;" />
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label small mb-0">Minutes</label>
+                        <InputNumber @bind-Value="addTime.Minutes" class="form-control form-control-sm" style="width:5rem;" />
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label small mb-0">Date</label>
+                        <InputDate @bind-Value="addTime.WorkedOn" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col">
+                        <label class="form-label small mb-0">Note (optional)</label>
+                        <InputText @bind-Value="addTime.Note" class="form-control form-control-sm" placeholder="what you worked on" />
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-sm btn-primary">Log time</button>
+                    </div>
+                </div>
+            </EditForm>
+        </Authorized>
+    </AuthorizeView>
+
     <h2 class="h5 mt-4">History</h2>
     @if (history.Count == 0)
     {
@@ -403,6 +468,10 @@ else
     private string? cfMessage;
     private bool cfIsError;
     private IReadOnlyList<SimilarIssueView> similarIssues = [];
+    private IReadOnlyList<TimeLogView> timeLogs = [];
+    private string? timeMessage;
+    [SupplyParameterFromForm(FormName = "addTime")] private AddTimeModel addTime { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "delTime")] private DelTimeModel delTime { get; set; } = default!;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -413,6 +482,8 @@ else
         removeTag ??= new();
         monitorModel ??= new();
         cf ??= new();
+        addTime ??= new();
+        delTime ??= new();
         await LoadIssue();
         // On first render (GET) cf.Entries is empty → seed it from the stored values so the inputs have
         // something to bind to. On an SSR post-back cf.Entries is already populated from the form, so we
@@ -446,6 +517,44 @@ else
 
     private sealed class CustomFieldsForm { public List<CustomFieldEntry> Entries { get; set; } = []; }
     private sealed class CustomFieldEntry { public int DefinitionId { get; set; } public string? Value { get; set; } }
+
+    private async Task AddTime()
+    {
+        timeMessage = null;
+        var minutes = Math.Max(0, addTime.Hours) * 60 + Math.Max(0, addTime.Minutes);
+        try { timeMessage = await Data.AddTimeLogAsync(Id, minutes, addTime.Note, addTime.WorkedOn); }
+        catch (UnauthorizedAccessException ex) { timeMessage = ex.Message; }
+        addTime = new();
+        await LoadIssue();
+    }
+
+    private async Task DeleteTime()
+    {
+        timeMessage = null;
+        if (delTime.LogId > 0)
+        {
+            try { await Data.DeleteTimeLogAsync(delTime.LogId); }
+            catch (UnauthorizedAccessException ex) { timeMessage = ex.Message; }
+        }
+        delTime = new();
+        await LoadIssue();
+    }
+
+    private static string FormatMinutes(int minutes)
+    {
+        var h = minutes / 60;
+        var m = minutes % 60;
+        return h > 0 ? (m > 0 ? $"{h}h {m}m" : $"{h}h") : $"{m}m";
+    }
+
+    private sealed class AddTimeModel
+    {
+        public int Hours { get; set; }
+        public int Minutes { get; set; }
+        public string? Note { get; set; }
+        public DateTime? WorkedOn { get; set; } = DateTime.Today;
+    }
+    private sealed class DelTimeModel { public int LogId { get; set; } }
 
     private async Task ToggleMonitor()
     {
@@ -488,6 +597,7 @@ else
         allTags = issue is null ? [] : await Data.GetAllTagsAsync();
         customFields = issue is null ? [] : await Data.GetIssueCustomFieldsAsync(Id);
         similarIssues = issue is null ? [] : await Data.FindSimilarIssuesAsync(issue.ProjectId, issue.Title, excludeIssueId: issue.Id);
+        timeLogs = issue is null ? [] : await Data.GetTimeLogsAsync(Id);
         isMonitoring = issue is not null && await Data.IsMonitoringIssueAsync(Id);
     }
 

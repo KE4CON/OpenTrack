@@ -232,6 +232,10 @@ else
         {
             error = ex.Message;
         }
+        catch (InvalidOperationException ex) // e.g. a workflow-disallowed status change
+        {
+            error = ex.Message;
+        }
     }
 
     private sealed class IssueEditModel

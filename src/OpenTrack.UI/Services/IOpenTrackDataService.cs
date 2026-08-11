@@ -48,10 +48,24 @@ public interface IOpenTrackDataService
     Task<PreferencesView> GetPreferencesAsync(CancellationToken ct = default);
     Task SavePreferencesAsync(int? defaultProjectId, IssueSort? defaultSort, CancellationToken ct = default);
 
+    // Per-project workflow: the allowed status transitions (Manager only). Empty = all transitions
+    // allowed (the default). Add returns null on success or a reason.
+    Task<IReadOnlyList<WorkflowTransitionView>> GetWorkflowAsync(int projectId, CancellationToken ct = default);
+    Task<string?> AddWorkflowTransitionAsync(int projectId, IssueStatus from, IssueStatus to, CancellationToken ct = default);
+    Task DeleteWorkflowTransitionAsync(int projectId, int id, CancellationToken ct = default);
+
     // Project webhooks (Manager only — a URL can carry a secret token). Returns null/reason on add.
     Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default);
     Task<string?> AddWebhookAsync(int projectId, string url, WebhookFormat format, CancellationToken ct = default);
     Task DeleteWebhookAsync(int projectId, int id, CancellationToken ct = default);
+
+    // Roadmap & changelog for a project (versions with their fix-targeted issues), filtered to what
+    // the user may see.
+    Task<IReadOnlyList<RoadmapVersionView>> GetRoadmapAsync(int projectId, CancellationToken ct = default);
+
+    // Reporting figures (headline counts, created-per-month, open by status/severity), optionally scoped
+    // to one project; always filtered to what the user may see.
+    Task<ReportView> GetReportAsync(int? projectId, CancellationToken ct = default);
 
     // Possible-duplicate suggestions for a proposed title (ACL-filtered). Optionally scoped to a project
     // and excluding a specific issue (when checking from an existing one).
@@ -126,6 +140,12 @@ public interface IOpenTrackDataService
     Task<string?> CreateCustomFieldAsync(int projectId, string name, CustomFieldType type, string? enumOptions, bool required, CancellationToken ct = default);
     Task<string?> UpdateCustomFieldAsync(int projectId, int fieldId, string name, string? enumOptions, bool required, int displayOrder, CancellationToken ct = default);
     Task DeleteCustomFieldAsync(int projectId, int fieldId, CancellationToken ct = default);
+
+    // Time logging on an issue. Viewing follows the issue's view ACL; logging needs edit access;
+    // deleting an entry is allowed to its author or an Updater+. Add returns null or a reason.
+    Task<IReadOnlyList<TimeLogView>> GetTimeLogsAsync(int issueId, CancellationToken ct = default);
+    Task<string?> AddTimeLogAsync(int issueId, int minutes, string? note, DateTime? workedOn, CancellationToken ct = default);
+    Task DeleteTimeLogAsync(int logId, CancellationToken ct = default);
 
     // Custom field values on an issue. Reading follows the issue's view ACL; setting a value (blank
     // clears it) requires edit access. Returns null on success or a reason on failure.

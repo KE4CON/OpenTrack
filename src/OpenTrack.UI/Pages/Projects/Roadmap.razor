@@ -1,0 +1,88 @@
+@page "/projects/{Id:int}/roadmap"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+
+<PageTitle>Roadmap &amp; changelog</PageTitle>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Roadmap &amp; changelog</h1>
+    <a class="btn btn-outline-secondary" href="projects/@Id">Back to project</a>
+</div>
+
+<p class="text-muted">Issues are grouped by the version they're <em>fixed in</em>. Set an issue's “Fix version” to place it here.</p>
+
+<h2 class="h5 mt-3">Roadmap</h2>
+@{
+    var upcoming = versions.Where(v => !v.IsReleased).ToList();
+    var released = versions.Where(v => v.IsReleased).ToList();
+}
+@if (upcoming.Count == 0)
+{
+    <p class="text-muted">No unreleased versions with planned issues.</p>
+}
+else
+{
+    @foreach (var v in upcoming)
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="h6 mb-0">@v.Name</h3>
+                    <span class="small text-muted">@v.Done / @v.Total done</span>
+                </div>
+                <div class="progress my-2" style="height:.5rem;" role="progressbar" aria-label="Version progress">
+                    <div class="progress-bar bg-success" style="width:@(v.Total == 0 ? 0 : v.Done * 100 / v.Total)%"></div>
+                </div>
+                @if (v.Issues.Count > 0)
+                {
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var i in v.Issues)
+                        {
+                            <li>
+                                <span class="@(i.Done ? "text-success" : "text-muted")" aria-hidden="true">@(i.Done ? "✔" : "○")</span>
+                                <a href="issues/@i.Id" class="@(i.Done ? "text-decoration-line-through" : "")">#@i.Id @i.Title</a>
+                                <span class="small text-muted">(@i.Status · @i.Severity)</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    }
+}
+
+<h2 class="h5 mt-4">Changelog</h2>
+@if (released.Count == 0)
+{
+    <p class="text-muted">No released versions yet. Mark a version “released” in project settings to build the changelog.</p>
+}
+else
+{
+    @foreach (var v in released)
+    {
+        <div class="mb-3">
+            <h3 class="h6 mb-1">@v.Name @if (v.ReleaseDate is { } d) { <span class="small text-muted">— released @d.ToString("d")</span> }</h3>
+            @{ var shipped = v.Issues.Where(i => i.Done).ToList(); }
+            @if (shipped.Count == 0)
+            {
+                <p class="text-muted small mb-0">No resolved issues recorded for this version.</p>
+            }
+            else
+            {
+                <ul class="mb-0">
+                    @foreach (var i in shipped)
+                    {
+                        <li><a href="issues/@i.Id">#@i.Id @i.Title</a> <span class="small text-muted">(@i.Status)</span></li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private IReadOnlyList<RoadmapVersionView> versions = [];
+
+    protected override async Task OnParametersSetAsync() => versions = await Data.GetRoadmapAsync(Id);
+}

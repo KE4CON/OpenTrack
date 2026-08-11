@@ -55,6 +55,9 @@ public record ChecklistItemView(
 /// <summary>A possible-duplicate match for a proposed issue title.</summary>
 public record SimilarIssueView(int Id, int ProjectId, string ProjectName, string Title, IssueStatus Status);
 
+/// <summary>One time/work-log entry on an issue.</summary>
+public record TimeLogView(int Id, int Minutes, string? Note, DateTime WorkedOn, string AuthorName, int AuthorId);
+
 public record IssueNoteView(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
 
 public record IssueHistoryEntry(int Id, string UserName, string FieldChanged, string? OldValue, string? NewValue, DateTime ChangedAt);
@@ -70,11 +73,30 @@ public record TagView(int Id, string Name);
 /// <summary>A user's saved issue filter — a name plus the issue-list query string to apply.</summary>
 public record SavedFilterView(int Id, string Name, string Query);
 
+public record ReportBarView(string Label, int Count);
+
+/// <summary>Reporting figures over the issues a user may see.</summary>
+public record ReportView(
+    int TotalIssues, int OpenIssues, int ResolvedThisMonth,
+    IReadOnlyList<ReportBarView> CreatedByMonth,
+    IReadOnlyList<ReportBarView> OpenByStatus,
+    IReadOnlyList<ReportBarView> OpenBySeverity);
+
 /// <summary>A user's personal defaults.</summary>
 public record PreferencesView(int? DefaultProjectId, IssueSort? DefaultSort);
 
 /// <summary>A project's outgoing webhook (Manager-managed).</summary>
 public record WebhookView(int Id, string Url, WebhookFormat Format, bool IsActive);
+
+/// <summary>An allowed status transition in a project's workflow.</summary>
+public record WorkflowTransitionView(int Id, IssueStatus FromStatus, IssueStatus ToStatus);
+
+/// <summary>An issue targeted to a version, for the roadmap/changelog.</summary>
+public record RoadmapIssueView(int Id, string Title, IssueStatus Status, IssueSeverity Severity, bool Done);
+
+/// <summary>A version with its targeted issues and progress (roadmap if unreleased, changelog if released).</summary>
+public record RoadmapVersionView(
+    int VersionId, string Name, bool IsReleased, DateTime? ReleaseDate, int Total, int Done, IReadOnlyList<RoadmapIssueView> Issues);
 
 public record NotificationView(int Id, int IssueId, string Text, bool IsRead, DateTime CreatedAt);
 

@@ -46,3 +46,5 @@ public record CreateCustomFieldRequest(string Name, CustomFieldType Type, string
 public record UpdateCustomFieldRequest(string Name, string? EnumOptions, bool Required, int DisplayOrder);
 
 public record CreateWebhookRequest(string Url, WebhookFormat Format);
+
+public record CreateWorkflowTransitionRequest(IssueStatus From, IssueStatus To);

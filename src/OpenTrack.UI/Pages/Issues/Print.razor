@@ -1,0 +1,98 @@
+@page "/issues/{Id:int}/print"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+
+<PageTitle>Issue #@Id</PageTitle>
+
+@if (issue is null)
+{
+    <p class="text-muted">Issue not found.</p>
+}
+else
+{
+    <div class="mb-3 no-print">
+        <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn btn-outline-secondary" href="issues/@Id">Back to issue</a>
+    </div>
+
+    <h1 class="h4">#@issue.Id — @issue.Title</h1>
+    <p class="text-muted">@issue.ProjectName</p>
+
+    <table class="table table-sm w-auto">
+        <tbody>
+            <tr><th class="pe-3">Status</th><td>@issue.Status</td><th class="px-3">Severity</th><td>@issue.Severity</td></tr>
+            <tr><th class="pe-3">Priority</th><td>@issue.Priority</td><th class="px-3">Resolution</th><td>@issue.Resolution</td></tr>
+            <tr><th class="pe-3">Reporter</th><td>@issue.ReporterName</td><th class="px-3">Assignee</th><td>@(issue.AssigneeName ?? "—")</td></tr>
+            <tr><th class="pe-3">Category</th><td>@(issue.CategoryName ?? "—")</td><th class="px-3">Reproducibility</th><td>@issue.Reproducibility</td></tr>
+            <tr><th class="pe-3">Created</th><td>@issue.CreatedAt.ToString("g")</td><th class="px-3">Updated</th><td>@issue.UpdatedAt.ToString("g")</td></tr>
+            @if (issue.DueDate is { } due)
+            {
+                <tr><th class="pe-3">Due</th><td>@due.ToString("d")</td><th></th><td></td></tr>
+            }
+        </tbody>
+    </table>
+
+    <h2 class="h6 mt-3">Description</h2>
+    <div class="ot-markdown">@((MarkupString)SafeMarkdown.ToHtml(issue.Description))</div>
+
+    @if (!string.IsNullOrWhiteSpace(issue.StepsToReproduce))
+    {
+        <h2 class="h6 mt-3">Steps to reproduce</h2>
+        <div class="ot-markdown">@((MarkupString)SafeMarkdown.ToHtml(issue.StepsToReproduce))</div>
+    }
+
+    @if (issue.Notes.Count > 0)
+    {
+        <h2 class="h6 mt-3">Notes</h2>
+        @foreach (var n in issue.Notes)
+        {
+            <div class="border rounded p-2 mb-2">
+                <div class="small text-muted">@n.AuthorName — @n.CreatedAt.ToString("g")@(n.IsPrivate ? " (private)" : "")</div>
+                <div class="ot-markdown">@((MarkupString)SafeMarkdown.ToHtml(n.Text))</div>
+            </div>
+        }
+    }
+
+    @if (timeLogs.Count > 0)
+    {
+        <h2 class="h6 mt-3">Time log — total @FormatMinutes(timeLogs.Sum(t => t.Minutes))</h2>
+        <ul>
+            @foreach (var t in timeLogs)
+            {
+                <li>@t.WorkedOn.ToString("d") — @t.AuthorName — @FormatMinutes(t.Minutes)@(string.IsNullOrWhiteSpace(t.Note) ? "" : $" — {t.Note}")</li>
+            }
+        </ul>
+    }
+
+    @if (history.Count > 0)
+    {
+        <h2 class="h6 mt-3">History</h2>
+        <ul>
+            @foreach (var h in history)
+            {
+                <li class="small">@h.ChangedAt.ToString("g") — @h.UserName changed @h.FieldChanged from “@(h.OldValue ?? "—")” to “@(h.NewValue ?? "—")”</li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private IssueDetail? issue;
+    private IReadOnlyList<IssueHistoryEntry> history = [];
+    private IReadOnlyList<TimeLogView> timeLogs = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        issue = await Data.GetIssueAsync(Id);
+        history = issue is null ? [] : await Data.GetIssueHistoryAsync(Id);
+        timeLogs = issue is null ? [] : await Data.GetTimeLogsAsync(Id);
+    }
+
+    private static string FormatMinutes(int minutes)
+    {
+        var h = minutes / 60;
+        var m = minutes % 60;
+        return h > 0 ? (m > 0 ? $"{h}h {m}m" : $"{h}h") : $"{m}m";
+    }
+}
