@@ -142,9 +142,10 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
 
         return new IssueDetail(
             i.Id, i.ProjectId, i.Project.Name, i.Title, i.Description, i.StepsToReproduce,
+            i.ExpectedBehavior, i.ActualBehavior,
             i.Status, i.Severity, i.Priority, i.Reproducibility, i.Resolution,
             i.ReporterId, i.Reporter.UserName ?? "unknown", i.AssigneeId, i.Assignee?.UserName,
-            i.CategoryId, i.Category?.Name, i.IsSticky, i.IsPrivate, i.CreatedAt, i.UpdatedAt,
+            i.CategoryId, i.Category?.Name, i.IsSticky, i.IsPrivate, i.CreatedAt, i.UpdatedAt, i.DueDate,
             i.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
                 .OrderBy(n => n.CreatedAt)
                 .Select(n => new IssueNoteView(n.Id, n.Author.UserName ?? "unknown", n.Text, n.CreatedAt))
@@ -167,9 +168,10 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
         var issue = new Issue
         {
             ProjectId = projectId, Title = input.Title, Description = input.Description,
-            StepsToReproduce = input.StepsToReproduce, CategoryId = input.CategoryId,
+            StepsToReproduce = input.StepsToReproduce, ExpectedBehavior = input.ExpectedBehavior,
+            ActualBehavior = input.ActualBehavior, CategoryId = input.CategoryId,
             Severity = input.Severity, Priority = input.Priority, Reproducibility = input.Reproducibility,
-            ReporterId = access.UserId, Status = IssueStatus.New,
+            DueDate = input.DueDate, ReporterId = access.UserId, Status = IssueStatus.New,
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
         // Add the creation-history row via the navigation collection so the issue and its history
@@ -203,11 +205,16 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
         // Fields any Updater may change.
         issue.Title = input.Title;
         issue.Description = input.Description;
+        issue.StepsToReproduce = input.StepsToReproduce;
+        issue.ExpectedBehavior = input.ExpectedBehavior;
+        issue.ActualBehavior = input.ActualBehavior;
         issue.Status = input.Status;
         issue.Severity = input.Severity;
         issue.Priority = input.Priority;
+        issue.Reproducibility = input.Reproducibility;
         issue.Resolution = input.Resolution;
         issue.CategoryId = input.CategoryId;
+        issue.DueDate = input.DueDate;
 
         // Privileged fields: silently keep the existing value if the caller lacks the right, so a
         // crafted request can never escalate (the UI already hides these controls by role).

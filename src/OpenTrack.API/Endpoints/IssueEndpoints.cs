@@ -62,12 +62,13 @@ public static class IssueEndpoints
 
             return Results.Ok(new IssueDetailDto(
                 issue.Id, issue.ProjectId, issue.Project.Name, issue.Title, issue.Description,
-                issue.StepsToReproduce, issue.Status, issue.Severity, issue.Priority,
+                issue.StepsToReproduce, issue.ExpectedBehavior, issue.ActualBehavior,
+                issue.Status, issue.Severity, issue.Priority,
                 issue.Reproducibility, issue.Resolution,
                 issue.ReporterId, issue.Reporter.UserName ?? "unknown",
                 issue.AssigneeId, issue.Assignee?.UserName,
                 issue.CategoryId, issue.Category?.Name, issue.IsSticky, issue.IsPrivate,
-                issue.CreatedAt, issue.UpdatedAt,
+                issue.CreatedAt, issue.UpdatedAt, issue.DueDate,
                 issue.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
                     .OrderBy(n => n.CreatedAt)
                     .Select(n => new IssueNoteDto(n.Id, n.Author.UserName ?? "unknown", n.Text, n.CreatedAt))
@@ -89,9 +90,10 @@ public static class IssueEndpoints
             var issue = new Issue
             {
                 ProjectId = projectId, Title = req.Title, Description = req.Description,
-                StepsToReproduce = req.StepsToReproduce, CategoryId = req.CategoryId,
+                StepsToReproduce = req.StepsToReproduce, ExpectedBehavior = req.ExpectedBehavior,
+                ActualBehavior = req.ActualBehavior, CategoryId = req.CategoryId,
                 Severity = req.Severity, Priority = req.Priority, Reproducibility = req.Reproducibility,
-                ReporterId = access.UserId, Status = IssueStatus.New,
+                DueDate = req.DueDate, ReporterId = access.UserId, Status = IssueStatus.New,
                 CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
             };
             // History via navigation => single atomic SaveChanges.
@@ -124,11 +126,16 @@ public static class IssueEndpoints
 
             issue.Title = req.Title;
             issue.Description = req.Description;
+            issue.StepsToReproduce = req.StepsToReproduce;
+            issue.ExpectedBehavior = req.ExpectedBehavior;
+            issue.ActualBehavior = req.ActualBehavior;
             issue.Status = req.Status;
             issue.Severity = req.Severity;
             issue.Priority = req.Priority;
+            issue.Reproducibility = req.Reproducibility;
             issue.Resolution = req.Resolution;
             issue.CategoryId = req.CategoryId;
+            issue.DueDate = req.DueDate;
 
             // Privileged fields: ignore (keep existing) unless the caller is authorized, so a crafted
             // request body cannot escalate past what the UI exposes for the caller's role.

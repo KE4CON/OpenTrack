@@ -47,6 +47,17 @@ else
         </div>
 
         <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Expected Behavior</label>
+                <InputTextArea @bind-Value="model.ExpectedBehavior" class="form-control" rows="2" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Actual Behavior</label>
+                <InputTextArea @bind-Value="model.ActualBehavior" class="form-control" rows="2" />
+            </div>
+        </div>
+
+        <div class="row">
             <div class="col-md-4 mb-3">
                 <label class="form-label">Severity</label>
                 <InputSelect @bind-Value="model.Severity" class="form-select">
@@ -76,6 +87,13 @@ else
             </div>
         </div>
 
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Due Date <span class="text-muted">(optional)</span></label>
+                <InputDate @bind-Value="model.DueDate" class="form-control" />
+            </div>
+        </div>
+
         @if (error is not null)
         {
             <p class="text-danger">@error</p>
@@ -92,11 +110,12 @@ else
     private ProjectDetail? project;
     private IReadOnlyList<CategoryView> categories = [];
     [SupplyParameterFromForm]
-    private IssueFormModel model { get; set; } = new();
+    private IssueFormModel model { get; set; } = default!;
     private string? error;
 
     protected override async Task OnParametersSetAsync()
     {
+        model ??= new();
         project = await Data.GetProjectAsync(ProjectId);
         categories = await Data.GetProjectCategoriesAsync(ProjectId);
     }
@@ -106,11 +125,16 @@ else
         try
         {
             var id = await Data.CreateIssueAsync(ProjectId, new CreateIssueInput(
-                model.Title, model.Description, model.StepsToReproduce, model.CategoryId,
-                model.Severity, model.Priority, model.Reproducibility));
+                model.Title, model.Description, model.StepsToReproduce,
+                model.ExpectedBehavior, model.ActualBehavior, model.CategoryId,
+                model.Severity, model.Priority, model.Reproducibility, model.DueDate));
             Nav.NavigateTo($"issues/{id}");
         }
         catch (InvalidOperationException ex)
+        {
+            error = ex.Message;
+        }
+        catch (UnauthorizedAccessException ex)
         {
             error = ex.Message;
         }
@@ -125,9 +149,12 @@ else
         public string Description { get; set; } = string.Empty;
 
         public string? StepsToReproduce { get; set; }
+        public string? ExpectedBehavior { get; set; }
+        public string? ActualBehavior { get; set; }
         public int? CategoryId { get; set; }
         public IssueSeverity Severity { get; set; } = IssueSeverity.Minor;
         public IssuePriority Priority { get; set; } = IssuePriority.Normal;
         public IssueReproducibility Reproducibility { get; set; } = IssueReproducibility.HaveNotTried;
+        public DateTime? DueDate { get; set; }
     }
 }

@@ -34,6 +34,14 @@ else
         <div class="col-md-3"><strong>Category:</strong> @(issue.CategoryName ?? "—")</div>
         <div class="col-md-3"><strong>Updated:</strong> @issue.UpdatedAt.ToString("g")</div>
     </div>
+    <div class="row mb-3">
+        <div class="col-md-3"><strong>Resolution:</strong> @issue.Resolution</div>
+        <div class="col-md-3"><strong>Due:</strong> @(issue.DueDate is { } d ? d.ToString("d") : "—")</div>
+        @if (issue.IsPrivate)
+        {
+            <div class="col-md-3"><span class="badge text-bg-warning">Private</span></div>
+        }
+    </div>
 
     <h2 class="h5">Description</h2>
     <p style="white-space: pre-wrap">@issue.Description</p>
@@ -42,6 +50,18 @@ else
     {
         <h2 class="h5">Steps to Reproduce</h2>
         <p style="white-space: pre-wrap">@issue.StepsToReproduce</p>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(issue.ExpectedBehavior))
+    {
+        <h2 class="h5">Expected Behavior</h2>
+        <p style="white-space: pre-wrap">@issue.ExpectedBehavior</p>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(issue.ActualBehavior))
+    {
+        <h2 class="h5">Actual Behavior</h2>
+        <p style="white-space: pre-wrap">@issue.ActualBehavior</p>
     }
 
     <h2 class="h5 mt-4">Notes</h2>
