@@ -93,6 +93,10 @@ public static class MauiProgram
         builder.Services.AddScoped<IOpenTrackDataService>(sp =>
             new HttpOpenTrackDataService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("OpenTrackApi")));
 
+        // Host-specific attachment transfer (desktop streams over the authenticated API client).
+        builder.Services.AddScoped<IAttachmentTransfer>(sp =>
+            new DesktopAttachmentTransfer(sp.GetRequiredService<IHttpClientFactory>().CreateClient("OpenTrackApi")));
+
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
         builder.Logging.AddDebug();

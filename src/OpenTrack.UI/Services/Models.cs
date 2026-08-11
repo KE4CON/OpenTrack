@@ -34,6 +34,8 @@ public record IssueNoteView(int Id, string AuthorName, string Text, bool IsPriva
 
 public record IssueHistoryEntry(int Id, string UserName, string FieldChanged, string? OldValue, string? NewValue, DateTime ChangedAt);
 
+public record AttachmentView(int Id, string FileName, long FileSize, string ContentType, string UploadedByName, DateTime UploadedAt);
+
 public record IssueDetail(
     int Id, int ProjectId, string ProjectName, string Title, string Description,
     string? StepsToReproduce, string? ExpectedBehavior, string? ActualBehavior,

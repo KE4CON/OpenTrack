@@ -15,6 +15,7 @@ using OpenTrack.Core;
 using OpenTrack.Core.Authorization;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
+using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.UI.Services;
@@ -33,7 +34,10 @@ namespace OpenTrack.Web.Services;
 /// rather than leaking existence); write methods throw <see cref="UnauthorizedAccessException"/> for
 /// forbidden actions (the UI hides those controls by role, so this is defense in depth).
 /// </summary>
-public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, AuthenticationStateProvider authState)
+public class DbOpenTrackDataService(
+    IDbContextFactory<AppDbContext> dbFactory,
+    AuthenticationStateProvider authState,
+    IAttachmentStorage attachmentStorage)
     : IOpenTrackDataService
 {
     private async Task<AccessIdentity> RequireIdentityAsync()
@@ -496,5 +500,45 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
         if (version is null) return;
         db.Versions.Remove(version); // issues referencing it have the version set null (SetNull FK)
         await db.SaveChangesAsync(ct);
+    }
+
+    // ---- Attachments (metadata + delete; upload/download are host-specific stream endpoints) ----
+
+    public async Task<IReadOnlyList<AttachmentView>> GetIssueAttachmentsAsync(int issueId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var issue = await db.Issues.AsNoTracking().Include(i => i.Project)
+            .FirstOrDefaultAsync(i => i.Id == issueId, ct);
+        if (issue is null) return [];
+        if (!access.For(issue.ProjectId).CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+            return [];
+
+        return await db.IssueAttachments.AsNoTracking()
+            .Where(a => a.IssueId == issueId).OrderBy(a => a.UploadedAt)
+            .Select(a => new AttachmentView(a.Id, a.FileName, a.FileSize, a.ContentType, a.UploadedBy.UserName ?? "unknown", a.UploadedAt))
+            .ToListAsync(ct);
+    }
+
+    public async Task DeleteAttachmentAsync(int attachmentId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var attachment = await db.IssueAttachments.Include(a => a.Issue).ThenInclude(i => i.Project)
+            .FirstOrDefaultAsync(a => a.Id == attachmentId, ct);
+        if (attachment is null) return;
+
+        var issue = attachment.Issue;
+        var ctx = access.For(issue.ProjectId);
+        if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+            return;
+        // The uploader may remove their own attachment; otherwise Updater+ on the project is required.
+        if (attachment.UploadedById != access.UserId && !ctx.CanEditIssue())
+            throw new UnauthorizedAccessException("You can only delete attachments you uploaded, unless you can edit the issue.");
+
+        var storageKey = attachment.FilePath;
+        db.IssueAttachments.Remove(attachment);
+        await db.SaveChangesAsync(ct);
+        await attachmentStorage.DeleteAsync(storageKey, ct);
     }
 }

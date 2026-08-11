@@ -53,6 +53,8 @@ static bool WebRoleCheck(Microsoft.AspNetCore.Authorization.AuthorizationHandler
 // OpenTrack data layer (EF Core + SQLite) and Identity (auth).
 var connectionString = builder.Configuration.ResolveOpenTrackConnectionString();
 builder.Services.AddOpenTrackInfrastructure(connectionString);
+builder.Services.AddSingleton<OpenTrack.Infrastructure.Attachments.IAttachmentStorage,
+    OpenTrack.Infrastructure.Attachments.FileSystemAttachmentStorage>();
 builder.Services.AddOpenTrackIdentity();
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -65,6 +67,9 @@ builder.Services.AddScoped<OpenTrack.UI.Services.IOpenTrackDataService, OpenTrac
 
 // Web-only administrative surface (global user/role management).
 builder.Services.AddScoped<OpenTrack.Web.Services.AdminService>();
+
+// Host-specific attachment transfer (web uses forms/links to the endpoints below).
+builder.Services.AddScoped<OpenTrack.UI.Services.IAttachmentTransfer, OpenTrack.Web.Services.WebAttachmentTransfer>();
 
 builder.Services.AddSingleton<IEmailSender<OpenTrack.Core.Entities.User>, IdentityNoOpEmailSender>();
 
@@ -102,5 +107,8 @@ app.MapRazorComponents<App>()
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
+
+// Cookie-authenticated attachment upload/download/delete for the web host.
+OpenTrack.Web.Endpoints.AttachmentWebEndpoints.MapAttachmentWebEndpoints(app);
 
 app.Run();
