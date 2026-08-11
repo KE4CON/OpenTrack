@@ -33,6 +33,19 @@ public static class DependencyInjection
         return services;
     }
 
+    /// <summary>Registers the optional AI assistant (Anthropic Claude). Reads "OpenTrack:Ai" from
+    /// configuration; if disabled or unconfigured the assistant simply reports IsEnabled=false. The API
+    /// key is only ever read server-side. Used by both hosts.</summary>
+    public static IServiceCollection AddOpenTrackAi(this IServiceCollection services, IConfiguration config)
+    {
+        var options = new Ai.AiOptions();
+        config.GetSection(Ai.AiOptions.Section).Bind(options);
+        services.AddSingleton(options);
+        services.AddHttpClient<Ai.AnthropicAiAssistant>(c => c.Timeout = TimeSpan.FromSeconds(30));
+        services.AddScoped<Ai.IAiAssistant>(sp => sp.GetRequiredService<Ai.AnthropicAiAssistant>());
+        return services;
+    }
+
     /// <summary>
     /// Registers OpenTrack's data layer (EF Core + SQLite).
     /// Registers an <see cref="IDbContextFactory{TContext}"/> so the Blazor Server data service can

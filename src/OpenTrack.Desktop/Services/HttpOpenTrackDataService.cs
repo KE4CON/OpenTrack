@@ -116,6 +116,18 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         return await http.GetFromJsonAsync<List<IssueRow>>(url, JsonOptions, ct) ?? [];
     }
 
+    public async Task<bool> IsAiEnabledAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<bool>("/api/ai/enabled", JsonOptions, ct);
+
+    private sealed record AiTriageDto(OpenTrack.Core.Enums.IssueSeverity? Severity, OpenTrack.Core.Enums.IssuePriority? Priority, string? Category, List<string>? Tags);
+    public async Task<AiTriageView?> SuggestTriageAsync(int projectId, string title, string? description, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/ai/triage", new { projectId, title, description }, JsonOptions, ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        var d = await resp.Content.ReadFromJsonAsync<AiTriageDto>(JsonOptions, ct);
+        return d is null ? null : new AiTriageView(d.Severity, d.Priority, d.Category, d.Tags ?? []);
+    }
+
     public async Task<DashboardView> GetDashboardAsync(CancellationToken ct = default) =>
         await http.GetFromJsonAsync<DashboardView>("/api/dashboard", JsonOptions, ct)
             ?? new DashboardView(0, 0, 0, [], [], []);

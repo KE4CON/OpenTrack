@@ -73,6 +73,9 @@ public record TagView(int Id, string Name);
 /// <summary>A user's saved issue filter — a name plus the issue-list query string to apply.</summary>
 public record SavedFilterView(int Id, string Name, string Query);
 
+/// <summary>An AI-suggested triage for a proposed issue (each field a suggestion to accept or edit).</summary>
+public record AiTriageView(IssueSeverity? Severity, IssuePriority? Priority, string? Category, IReadOnlyList<string> Tags);
+
 public record ReportBarView(string Label, int Count);
 
 /// <summary>Reporting figures over the issues a user may see.</summary>

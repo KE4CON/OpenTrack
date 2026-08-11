@@ -52,6 +52,7 @@ builder.Services.AddIdentityApiEndpoints<User>(options =>
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, RoleClaimsPrincipalFactory>();
 // Transactional email (Identity confirmation/reset + notifications) and the notification dispatcher.
 builder.Services.AddOpenTrackEmailAndNotifications();
+builder.Services.AddOpenTrackAi(builder.Configuration);
 // Enforce User.IsActive at the sign-in/refresh gate (replaces the default SignInManager<User>
 // that AddIdentityApiEndpoints registered). Closes audit finding M7 on the bearer/API path too.
 builder.Services.AddScoped<SignInManager<User>, ActiveUserSignInManager>();
@@ -114,5 +115,6 @@ app.MapChecklistEndpoints();
 app.MapSavedFilterEndpoints();
 app.MapPreferenceEndpoints();
 app.MapReportEndpoints();
+app.MapAiEndpoints();
 
 app.Run();

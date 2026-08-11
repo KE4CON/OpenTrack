@@ -114,7 +114,16 @@ else
             <p class="text-danger">@error</p>
         }
 
-        <button type="submit" class="btn btn-primary">Submit Issue</button>
+        @if (aiSuggestedTags is { Count: > 0 })
+        {
+            <div class="alert alert-info py-1">✨ Suggested tags: @string.Join(", ", aiSuggestedTags) — add them on the issue after you create it.</div>
+        }
+
+        <button type="submit" name="Action" value="save" class="btn btn-primary">Submit Issue</button>
+        @if (aiEnabled)
+        {
+            <button type="submit" name="Action" value="ai" class="btn btn-outline-secondary" title="Uses your Anthropic API account">✨ Suggest with AI</button>
+        }
         <a href="projects/@ProjectId" class="btn btn-link">Cancel</a>
     </EditForm>
 }
@@ -128,6 +137,8 @@ else
     [SupplyParameterFromForm]
     private IssueFormModel model { get; set; } = default!;
     private string? error;
+    private bool aiEnabled;
+    private IReadOnlyList<string> aiSuggestedTags = [];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -135,10 +146,31 @@ else
         project = await Data.GetProjectAsync(ProjectId);
         categories = await Data.GetProjectCategoriesAsync(ProjectId);
         versions = await Data.GetProjectVersionsAsync(ProjectId);
+        aiEnabled = await Data.IsAiEnabledAsync();
     }
 
     private async Task HandleSubmit()
     {
+        // The "Suggest with AI" button pre-fills the form instead of creating the issue.
+        if (model.Action == "ai")
+        {
+            error = null;
+            if (!string.IsNullOrWhiteSpace(model.Title))
+            {
+                var s = await Data.SuggestTriageAsync(ProjectId, model.Title, model.Description);
+                if (s is null) { error = "AI couldn't suggest a triage right now."; }
+                else
+                {
+                    if (s.Severity is { } sv) model.Severity = sv;
+                    if (s.Priority is { } pr) model.Priority = pr;
+                    if (s.Category is { } cat)
+                        model.CategoryId = categories.FirstOrDefault(c => string.Equals(c.Name, cat, StringComparison.OrdinalIgnoreCase))?.Id;
+                    aiSuggestedTags = s.Tags;
+                }
+            }
+            return;
+        }
+
         try
         {
             var id = await Data.CreateIssueAsync(ProjectId, new CreateIssueInput(
@@ -160,6 +192,8 @@ else
 
     private sealed class IssueFormModel
     {
+        public string? Action { get; set; }
+
         [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.StringLength(OpenTrack.Core.Validation.FieldLimits.IssueTitle)]
         public string Title { get; set; } = string.Empty;
 

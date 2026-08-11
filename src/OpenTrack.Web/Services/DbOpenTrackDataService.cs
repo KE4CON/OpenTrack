@@ -54,7 +54,8 @@ public class DbOpenTrackDataService(
     IDbContextFactory<AppDbContext> dbFactory,
     AuthenticationStateProvider authState,
     IAttachmentStorage attachmentStorage,
-    NotificationDispatch notifications)
+    NotificationDispatch notifications,
+    OpenTrack.Infrastructure.Ai.IAiAssistant ai)
     : IOpenTrackDataService
 {
     private async Task<AccessIdentity> RequireIdentityAsync()
@@ -239,6 +240,22 @@ public class DbOpenTrackDataService(
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
         await UserPreferenceOperations.SaveAsync(db, access.UserId, defaultProjectId, defaultSort, ct);
+    }
+
+    public Task<bool> IsAiEnabledAsync(CancellationToken ct = default) => Task.FromResult(ai.IsEnabled);
+
+    public async Task<AiTriageView?> SuggestTriageAsync(int projectId, string title, string? description, CancellationToken ct = default)
+    {
+        if (!ai.IsEnabled || string.IsNullOrWhiteSpace(title)) return null;
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        if (project is null || !access.For(projectId).CanViewProject(project.IsPublic)) return null;
+
+        var categories = await db.Categories.AsNoTracking().Where(c => c.ProjectId == projectId)
+            .Select(c => c.Name).ToListAsync(ct);
+        var s = await ai.SuggestTriageAsync(title, description, categories, ct);
+        return s is { } sg ? new AiTriageView(sg.Severity, sg.Priority, sg.Category, sg.Tags) : null;
     }
 
     public async Task<ReportView> GetReportAsync(int? projectId, CancellationToken ct = default)
