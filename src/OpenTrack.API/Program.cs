@@ -111,5 +111,6 @@ app.MapAttachmentEndpoints();
 app.MapNotificationEndpoints();
 app.MapDashboardEndpoints();
 app.MapChecklistEndpoints();
+app.MapSavedFilterEndpoints();
 
 app.Run();

@@ -78,6 +78,24 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         await http.GetFromJsonAsync<DashboardView>("/api/dashboard", JsonOptions, ct)
             ?? new DashboardView(0, 0, 0, [], [], []);
 
+    public async Task<IReadOnlyList<SavedFilterView>> GetSavedFiltersAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<SavedFilterView>>("/api/saved-filters", JsonOptions, ct) ?? [];
+
+    public async Task<string?> SaveFilterAsync(string name, string query, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/saved-filters", new { name, query }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task DeleteSavedFilterAsync(int id, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/saved-filters/{id}", ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
     public async Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default)
     {
         var resp = await http.GetAsync($"/api/issues/{id}", ct);

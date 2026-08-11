@@ -63,6 +63,9 @@ public record IssueRelationshipView(int Id, int OtherIssueId, string OtherIssueT
 
 public record TagView(int Id, string Name);
 
+/// <summary>A user's saved issue filter — a name plus the issue-list query string to apply.</summary>
+public record SavedFilterView(int Id, string Name, string Query);
+
 public record NotificationView(int Id, int IssueId, string Text, bool IsRead, DateTime CreatedAt);
 
 /// <summary>A custom-field definition on a project (for the manage screen and for rendering inputs).</summary>
