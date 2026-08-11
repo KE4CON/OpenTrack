@@ -72,4 +72,66 @@ public class AiTriageTests
         Assert.Null(AnthropicAiAssistant.ParseTriage("""{ "content": [ { "type": "text", "text": "hi" } ] }""", []));
         Assert.Null(AnthropicAiAssistant.ParseTriage("not json", []));
     }
+
+    // --- OpenAI-compatible provider (OpenAI / Azure / Groq / OpenRouter / Ollama / LM Studio) ---
+
+    [Fact]
+    public void OpenAi_ParseTriage_MapsFunctionCall_ArgumentsAsJsonString()
+    {
+        // OpenAI's standard shape: function.arguments is a JSON *string*.
+        var json = """
+        {
+          "choices": [
+            { "message": { "tool_calls": [
+                { "type": "function", "function": {
+                    "name": "suggest_triage",
+                    "arguments": "{\"severity\":\"Major\",\"priority\":\"High\",\"category\":\"UI\",\"tags\":[\"layout\"]}"
+                } } ] } }
+          ]
+        }
+        """;
+        var s = OpenAiAssistant.ParseTriage(json, new[] { "Engine", "UI" });
+        Assert.NotNull(s);
+        Assert.Equal(IssueSeverity.Major, s!.Value.Severity);
+        Assert.Equal(IssuePriority.High, s.Value.Priority);
+        Assert.Equal("UI", s.Value.Category);
+        Assert.Equal(new[] { "layout" }, s.Value.Tags);
+    }
+
+    [Fact]
+    public void OpenAi_ParseTriage_MapsFunctionCall_ArgumentsAsObject_AndValidatesCategory()
+    {
+        // Lenient: some local engines return arguments as an already-parsed object; unknown category dropped.
+        var json = """
+        { "choices": [ { "message": { "tool_calls": [
+            { "function": { "name": "suggest_triage", "arguments":
+                { "severity": "Crash", "priority": "Urgent", "category": "Nope", "tags": [] } } } ] } } ] }
+        """;
+        var s = OpenAiAssistant.ParseTriage(json, new[] { "Engine" });
+        Assert.NotNull(s);
+        Assert.Equal(IssueSeverity.Crash, s!.Value.Severity);
+        Assert.Equal(IssuePriority.Urgent, s.Value.Priority);
+        Assert.Null(s.Value.Category);            // "Nope" isn't one of the project's categories
+    }
+
+    [Fact]
+    public void OpenAi_ParseTriage_ReturnsNull_WhenNoToolCall()
+    {
+        Assert.Null(OpenAiAssistant.ParseTriage("""{ "choices": [ { "message": { "content": "hi" } } ] }""", []));
+        Assert.Null(OpenAiAssistant.ParseTriage("""{ "choices": [] }""", []));
+        Assert.Null(OpenAiAssistant.ParseTriage("not json", []));
+    }
+
+    [Fact]
+    public void HasCredentials_LocalOpenAiEngineNeedsNoKey_ButCloudDoes()
+    {
+        // A local OpenAI-compatible engine (identified by a custom BaseUrl) is usable with no key.
+        Assert.True(new AiOptions { Provider = "openai", BaseUrl = "http://localhost:11434/v1" }.HasCredentials);
+        // Cloud OpenAI (no BaseUrl) still needs a key.
+        Assert.False(new AiOptions { Provider = "openai" }.HasCredentials);
+        Assert.True(new AiOptions { Provider = "openai", ApiKey = "sk-x" }.HasCredentials);
+        // Anthropic always needs a key.
+        Assert.False(new AiOptions { Provider = "anthropic", BaseUrl = "http://localhost" }.HasCredentials);
+        Assert.True(new AiOptions { Provider = "anthropic", ApiKey = "sk-x" }.HasCredentials);
+    }
 }

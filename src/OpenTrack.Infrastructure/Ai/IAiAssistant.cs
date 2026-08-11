@@ -19,7 +19,8 @@ public readonly record struct TriageSuggestion(
     IssueSeverity? Severity, IssuePriority? Priority, string? Category, IReadOnlyList<string> Tags);
 
 /// <summary>
-/// Optional, opt-in AI assistance backed by the Anthropic Claude API. When disabled (the default) or
+/// Optional, opt-in AI assistance backed by a configurable provider — Anthropic Claude, or any
+/// OpenAI-compatible endpoint (including local Ollama / LM Studio). When disabled (the default) or
 /// unconfigured, <see cref="IsEnabled"/> is false and the methods return null, so callers degrade
 /// gracefully. Every call sends the given text to the AI provider, so it is only ever invoked behind an
 /// explicit opt-in.

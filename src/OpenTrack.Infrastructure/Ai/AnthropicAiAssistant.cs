@@ -12,7 +12,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using OpenTrack.Core.Enums;
 
 namespace OpenTrack.Infrastructure.Ai;
 
@@ -31,16 +30,6 @@ public sealed class AnthropicAiAssistant(HttpClient http, AiOptions options, ILo
     {
         if (!IsEnabled) return null;
 
-        var severities = Enum.GetNames<IssueSeverity>();
-        var priorities = Enum.GetNames<IssuePriority>();
-        var prompt =
-            "You are triaging a new software issue for a bug tracker. Given the summary and details, " +
-            "suggest a severity, a priority, the single best-fitting category from the provided list " +
-            "(or omit it if none fit), and up to 5 short lower-case tags. Respond ONLY via the tool.\n\n" +
-            $"Summary: {title}\n" +
-            $"Details: {(string.IsNullOrWhiteSpace(description) ? "(none)" : description)}\n" +
-            $"Available categories: {(categories.Count == 0 ? "(none)" : string.Join(", ", categories))}";
-
         var body = new
         {
             model = options.Model,
@@ -49,23 +38,16 @@ public sealed class AnthropicAiAssistant(HttpClient http, AiOptions options, ILo
             {
                 new
                 {
-                    name = "suggest_triage",
-                    description = "Return the suggested triage for the issue.",
-                    input_schema = new
-                    {
-                        type = "object",
-                        properties = new Dictionary<string, object>
-                        {
-                            ["severity"] = new { type = "string", @enum = severities },
-                            ["priority"] = new { type = "string", @enum = priorities },
-                            ["category"] = new { type = "string" },
-                            ["tags"] = new { type = "array", items = new { type = "string" } },
-                        },
-                    },
+                    name = AiTriage.ToolName,
+                    description = AiTriage.ToolDescription,
+                    input_schema = AiTriage.BuildInputSchema(),
                 },
             },
-            tool_choice = new { type = "tool", name = "suggest_triage" },
-            messages = new object[] { new { role = "user", content = prompt } },
+            tool_choice = new { type = "tool", name = AiTriage.ToolName },
+            messages = new object[]
+            {
+                new { role = "user", content = AiTriage.BuildPrompt(title, description, categories) },
+            },
         };
 
         try
@@ -91,7 +73,7 @@ public sealed class AnthropicAiAssistant(HttpClient http, AiOptions options, ILo
         }
     }
 
-    /// <summary>Parse the Anthropic response: find the tool_use content block and read its input.</summary>
+    /// <summary>Parse an Anthropic response: find the tool_use content block and map its input.</summary>
     public static TriageSuggestion? ParseTriage(string responseJson, IReadOnlyList<string> categories)
     {
         try
@@ -105,22 +87,7 @@ public sealed class AnthropicAiAssistant(HttpClient http, AiOptions options, ILo
                 if (block.TryGetProperty("type", out var t) && t.GetString() == "tool_use" &&
                     block.TryGetProperty("input", out var input))
                 {
-                    IssueSeverity? sev = input.TryGetProperty("severity", out var s) && Enum.TryParse<IssueSeverity>(s.GetString(), out var sv) ? sv : null;
-                    IssuePriority? pri = input.TryGetProperty("priority", out var p) && Enum.TryParse<IssuePriority>(p.GetString(), out var pv) ? pv : null;
-                    string? cat = null;
-                    if (input.TryGetProperty("category", out var c) && c.ValueKind == JsonValueKind.String)
-                    {
-                        var raw = c.GetString();
-                        // Only accept a category that actually exists on the project.
-                        cat = categories.FirstOrDefault(x => string.Equals(x, raw, StringComparison.OrdinalIgnoreCase));
-                    }
-                    var tags = new List<string>();
-                    if (input.TryGetProperty("tags", out var tg) && tg.ValueKind == JsonValueKind.Array)
-                        foreach (var tag in tg.EnumerateArray())
-                            if (tag.ValueKind == JsonValueKind.String && tag.GetString() is { Length: > 0 } str)
-                                tags.Add(str.Trim());
-
-                    return new TriageSuggestion(sev, pri, cat, tags);
+                    return AiTriage.FromInput(input, categories);
                 }
             }
             return null;

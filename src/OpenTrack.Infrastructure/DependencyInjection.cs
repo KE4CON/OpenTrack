@@ -33,16 +33,24 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Registers the optional AI assistant (Anthropic Claude). Reads "OpenTrack:Ai" from
-    /// configuration; if disabled or unconfigured the assistant simply reports IsEnabled=false. The API
-    /// key is only ever read server-side. Used by both hosts.</summary>
+    /// <summary>Registers the optional AI assistant. Reads "OpenTrack:Ai" from configuration; if disabled
+    /// or unconfigured the assistant simply reports IsEnabled=false. The provider is selected by
+    /// OpenTrack:Ai:Provider — "anthropic" (Claude, default) or "openai" (any OpenAI-compatible Chat
+    /// Completions endpoint, including local Ollama/LM Studio). The API key is only ever read server-side.
+    /// Used by both hosts.</summary>
     public static IServiceCollection AddOpenTrackAi(this IServiceCollection services, IConfiguration config)
     {
         var options = new Ai.AiOptions();
         config.GetSection(Ai.AiOptions.Section).Bind(options);
         services.AddSingleton(options);
+
+        // Register both typed clients; resolve IAiAssistant based on the configured provider. A local
+        // OpenAI-compatible engine can be slow to first-token, so give that provider a longer timeout.
         services.AddHttpClient<Ai.AnthropicAiAssistant>(c => c.Timeout = TimeSpan.FromSeconds(30));
-        services.AddScoped<Ai.IAiAssistant>(sp => sp.GetRequiredService<Ai.AnthropicAiAssistant>());
+        services.AddHttpClient<Ai.OpenAiAssistant>(c => c.Timeout = TimeSpan.FromSeconds(60));
+        services.AddScoped<Ai.IAiAssistant>(sp => options.IsOpenAi
+            ? sp.GetRequiredService<Ai.OpenAiAssistant>()
+            : sp.GetRequiredService<Ai.AnthropicAiAssistant>());
         return services;
     }
 
