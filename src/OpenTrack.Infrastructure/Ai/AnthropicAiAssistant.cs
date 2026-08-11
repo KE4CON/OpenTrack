@@ -18,8 +18,8 @@ namespace OpenTrack.Infrastructure.Ai;
 /// <summary>
 /// <see cref="IAiAssistant"/> backed by the Anthropic Messages API (<c>/v1/messages</c>), using
 /// tool-use so the model returns a strict JSON object we can map. All calls are best-effort: any error
-/// (network, auth, malformed response) is logged and returns null so issue creation is never blocked.
-/// The API key comes from <see cref="AiOptions"/> and is sent only server-side.
+/// (network, auth, malformed response) is logged and returns null so the caller is never blocked. The
+/// API key comes from <see cref="AiOptions"/> and is sent only server-side.
 /// </summary>
 public sealed class AnthropicAiAssistant(HttpClient http, AiOptions options, ILogger<AnthropicAiAssistant> logger) : IAiAssistant
 {
@@ -29,27 +29,33 @@ public sealed class AnthropicAiAssistant(HttpClient http, AiOptions options, ILo
         string title, string? description, IReadOnlyList<string> categories, CancellationToken ct = default)
     {
         if (!IsEnabled) return null;
+        var body = BuildBody(AiTriage.BuildPrompt(title, description, categories),
+            AiTriage.ToolName, AiTriage.ToolDescription, AiTriage.BuildInputSchema());
+        var raw = await PostAsync(body, ct);
+        return raw is null ? null : ParseTriage(raw, categories);
+    }
 
-        var body = new
-        {
-            model = options.Model,
-            max_tokens = 512,
-            tools = new object[]
-            {
-                new
-                {
-                    name = AiTriage.ToolName,
-                    description = AiTriage.ToolDescription,
-                    input_schema = AiTriage.BuildInputSchema(),
-                },
-            },
-            tool_choice = new { type = "tool", name = AiTriage.ToolName },
-            messages = new object[]
-            {
-                new { role = "user", content = AiTriage.BuildPrompt(title, description, categories) },
-            },
-        };
+    public async Task<SearchCriteria?> InterpretSearchAsync(
+        string query, IReadOnlyList<string> projectNames, CancellationToken ct = default)
+    {
+        if (!IsEnabled) return null;
+        var body = BuildBody(AiSearch.BuildPrompt(query, projectNames),
+            AiSearch.ToolName, AiSearch.ToolDescription, AiSearch.BuildInputSchema(projectNames));
+        var raw = await PostAsync(body, ct);
+        return raw is null ? null : ParseSearch(raw, projectNames);
+    }
 
+    private object BuildBody(string prompt, string toolName, string toolDesc, object schema) => new
+    {
+        model = options.Model,
+        max_tokens = 512,
+        tools = new object[] { new { name = toolName, description = toolDesc, input_schema = schema } },
+        tool_choice = new { type = "tool", name = toolName },
+        messages = new object[] { new { role = "user", content = prompt } },
+    };
+
+    private async Task<string?> PostAsync(object body, CancellationToken ct)
+    {
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages");
@@ -60,36 +66,31 @@ public sealed class AnthropicAiAssistant(HttpClient http, AiOptions options, ILo
             using var resp = await http.SendAsync(req, ct);
             if (!resp.IsSuccessStatusCode)
             {
-                logger.LogWarning("AI triage call returned {Status}.", (int)resp.StatusCode);
+                logger.LogWarning("AI call returned {Status}.", (int)resp.StatusCode);
                 return null;
             }
-            var json = await resp.Content.ReadAsStringAsync(ct);
-            return ParseTriage(json, categories);
+            return await resp.Content.ReadAsStringAsync(ct);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "AI triage call failed.");
+            logger.LogWarning(ex, "AI call failed.");
             return null;
         }
     }
 
-    /// <summary>Parse an Anthropic response: find the tool_use content block and map its input.</summary>
-    public static TriageSuggestion? ParseTriage(string responseJson, IReadOnlyList<string> categories)
+    /// <summary>Extract the tool_use content block's input object (detached from its document so it stays
+    /// valid after we dispose the parse). Null if there is no tool_use block.</summary>
+    public static JsonElement? ExtractToolInput(string responseJson)
     {
         try
         {
             using var doc = JsonDocument.Parse(responseJson);
             if (!doc.RootElement.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array)
                 return null;
-
             foreach (var block in content.EnumerateArray())
-            {
                 if (block.TryGetProperty("type", out var t) && t.GetString() == "tool_use" &&
                     block.TryGetProperty("input", out var input))
-                {
-                    return AiTriage.FromInput(input, categories);
-                }
-            }
+                    return input.Clone();
             return null;
         }
         catch
@@ -97,4 +98,10 @@ public sealed class AnthropicAiAssistant(HttpClient http, AiOptions options, ILo
             return null;
         }
     }
+
+    public static TriageSuggestion? ParseTriage(string responseJson, IReadOnlyList<string> categories) =>
+        ExtractToolInput(responseJson) is { } input ? AiTriage.FromInput(input, categories) : null;
+
+    public static SearchCriteria? ParseSearch(string responseJson, IReadOnlyList<string> projectNames) =>
+        ExtractToolInput(responseJson) is { } input ? AiSearch.FromInput(input, projectNames) : null;
 }

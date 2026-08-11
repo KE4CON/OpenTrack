@@ -258,6 +258,20 @@ public class DbOpenTrackDataService(
         return s is { } sg ? new AiTriageView(sg.Severity, sg.Priority, sg.Category, sg.Tags) : null;
     }
 
+    public async Task<AiSearchView?> InterpretIssueSearchAsync(string query, CancellationToken ct = default)
+    {
+        if (!ai.IsEnabled || string.IsNullOrWhiteSpace(query)) return null;
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        // Only offer the model project names the caller can actually see, so it can't match a hidden one.
+        var projectNames = await db.Projects.AsNoTracking()
+            .WhereVisibleTo(access).OrderBy(p => p.Name).Select(p => p.Name).ToListAsync(ct);
+        var c = await ai.InterpretSearchAsync(query, projectNames, ct);
+        return c is { } sc
+            ? new AiSearchView(sc.Status, sc.Severity, sc.Priority, sc.Text, sc.Stale, sc.Sort, sc.ProjectName)
+            : null;
+    }
+
     public async Task<ReportView> GetReportAsync(int? projectId, CancellationToken ct = default)
     {
         var (db, access) = await OpenAsync(ct);

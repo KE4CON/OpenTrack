@@ -21,7 +21,7 @@ namespace OpenTrack.Infrastructure.Ai;
 /// (<c>{baseUrl}/chat/completions</c>) using function-calling for strict JSON output. One implementation
 /// covers OpenAI, Azure OpenAI, Groq, OpenRouter, and local engines like Ollama / LM Studio — the only
 /// difference is <see cref="AiOptions.BaseUrl"/> (and whether a key is needed). Best-effort: any error is
-/// logged and returns null, so issue creation is never blocked. A local engine keeps all data on-machine.
+/// logged and returns null. A local engine keeps all data on-machine.
 /// </summary>
 public sealed class OpenAiAssistant(HttpClient http, AiOptions options, ILogger<OpenAiAssistant> logger) : IAiAssistant
 {
@@ -31,31 +31,36 @@ public sealed class OpenAiAssistant(HttpClient http, AiOptions options, ILogger<
         string title, string? description, IReadOnlyList<string> categories, CancellationToken ct = default)
     {
         if (!IsEnabled) return null;
+        var body = BuildBody(AiTriage.BuildPrompt(title, description, categories),
+            AiTriage.ToolName, AiTriage.ToolDescription, AiTriage.BuildInputSchema());
+        var raw = await PostAsync(body, ct);
+        return raw is null ? null : ParseTriage(raw, categories);
+    }
 
-        var body = new
+    public async Task<SearchCriteria?> InterpretSearchAsync(
+        string query, IReadOnlyList<string> projectNames, CancellationToken ct = default)
+    {
+        if (!IsEnabled) return null;
+        var body = BuildBody(AiSearch.BuildPrompt(query, projectNames),
+            AiSearch.ToolName, AiSearch.ToolDescription, AiSearch.BuildInputSchema(projectNames));
+        var raw = await PostAsync(body, ct);
+        return raw is null ? null : ParseSearch(raw, projectNames);
+    }
+
+    private object BuildBody(string prompt, string toolName, string toolDesc, object schema) => new
+    {
+        model = options.Model,
+        max_tokens = 512,
+        messages = new object[] { new { role = "user", content = prompt } },
+        tools = new object[]
         {
-            model = options.Model,
-            max_tokens = 512,
-            messages = new object[]
-            {
-                new { role = "user", content = AiTriage.BuildPrompt(title, description, categories) },
-            },
-            tools = new object[]
-            {
-                new
-                {
-                    type = "function",
-                    function = new
-                    {
-                        name = AiTriage.ToolName,
-                        description = AiTriage.ToolDescription,
-                        parameters = AiTriage.BuildInputSchema(),
-                    },
-                },
-            },
-            tool_choice = new { type = "function", function = new { name = AiTriage.ToolName } },
-        };
+            new { type = "function", function = new { name = toolName, description = toolDesc, parameters = schema } },
+        },
+        tool_choice = new { type = "function", function = new { name = toolName } },
+    };
 
+    private async Task<string?> PostAsync(object body, CancellationToken ct)
+    {
         try
         {
             var url = $"{options.ResolvedOpenAiBaseUrl}/chat/completions";
@@ -68,22 +73,21 @@ public sealed class OpenAiAssistant(HttpClient http, AiOptions options, ILogger<
             using var resp = await http.SendAsync(req, ct);
             if (!resp.IsSuccessStatusCode)
             {
-                logger.LogWarning("AI triage call returned {Status}.", (int)resp.StatusCode);
+                logger.LogWarning("AI call returned {Status}.", (int)resp.StatusCode);
                 return null;
             }
-            var json = await resp.Content.ReadAsStringAsync(ct);
-            return ParseTriage(json, categories);
+            return await resp.Content.ReadAsStringAsync(ct);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "AI triage call failed.");
+            logger.LogWarning(ex, "AI call failed.");
             return null;
         }
     }
 
-    /// <summary>Parse an OpenAI-compatible response: the first choice's first tool_call, whose
-    /// <c>function.arguments</c> is the tool input (usually a JSON string; some engines send an object).</summary>
-    public static TriageSuggestion? ParseTriage(string responseJson, IReadOnlyList<string> categories)
+    /// <summary>Extract the first tool call's arguments object (detached so it stays valid after dispose).
+    /// The <c>function.arguments</c> is usually a JSON string; some local engines send an object.</summary>
+    public static JsonElement? ExtractToolInput(string responseJson)
     {
         try
         {
@@ -98,17 +102,13 @@ public sealed class OpenAiAssistant(HttpClient http, AiOptions options, ILogger<
                 return null;
 
             var args = calls[0].GetProperty("function").GetProperty("arguments");
-
-            // Standard: arguments is a JSON string that must be parsed into an object.
             if (args.ValueKind == JsonValueKind.String)
             {
                 using var inner = JsonDocument.Parse(args.GetString()!);
-                return AiTriage.FromInput(inner.RootElement, categories);
+                return inner.RootElement.Clone();
             }
-            // Lenient: some local engines return arguments as an already-parsed object.
             if (args.ValueKind == JsonValueKind.Object)
-                return AiTriage.FromInput(args, categories);
-
+                return args.Clone();
             return null;
         }
         catch
@@ -116,4 +116,10 @@ public sealed class OpenAiAssistant(HttpClient http, AiOptions options, ILogger<
             return null;
         }
     }
+
+    public static TriageSuggestion? ParseTriage(string responseJson, IReadOnlyList<string> categories) =>
+        ExtractToolInput(responseJson) is { } input ? AiTriage.FromInput(input, categories) : null;
+
+    public static SearchCriteria? ParseSearch(string responseJson, IReadOnlyList<string> projectNames) =>
+        ExtractToolInput(responseJson) is { } input ? AiSearch.FromInput(input, projectNames) : null;
 }

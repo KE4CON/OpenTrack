@@ -11,6 +11,7 @@
 
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenTrack.Core.Enums;
+using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Ai;
 
 namespace OpenTrack.API.Tests;
@@ -120,6 +121,49 @@ public class AiTriageTests
         Assert.Null(OpenAiAssistant.ParseTriage("""{ "choices": [ { "message": { "content": "hi" } } ] }""", []));
         Assert.Null(OpenAiAssistant.ParseTriage("""{ "choices": [] }""", []));
         Assert.Null(OpenAiAssistant.ParseTriage("not json", []));
+    }
+
+    // --- Natural-language search interpretation (shared AiSearch mapping, per-provider extraction) ---
+
+    [Fact]
+    public void Anthropic_ParseSearch_MapsFilterFields_AndValidatesProject()
+    {
+        var json = """
+        { "content": [ { "type": "tool_use", "name": "build_issue_filter", "input": {
+            "severity": "Crash", "priority": "High", "stale": true, "text": "login",
+            "sort": "CreatedDesc", "project": "opentrack" } } ] }
+        """;
+        var c = AnthropicAiAssistant.ParseSearch(json, new[] { "OpenTrack", "APRS" });
+        Assert.NotNull(c);
+        Assert.Equal(IssueSeverity.Crash, c!.Value.Severity);
+        Assert.Equal(IssuePriority.High, c.Value.Priority);
+        Assert.True(c.Value.Stale);
+        Assert.Equal("login", c.Value.Text);
+        Assert.Equal(IssueSort.CreatedDesc, c.Value.Sort);
+        Assert.Equal("OpenTrack", c.Value.ProjectName);   // matched (case-insensitively) a visible project
+    }
+
+    [Fact]
+    public void OpenAi_ParseSearch_MapsFilterFields_DropsUnknownProject()
+    {
+        var json = """
+        { "choices": [ { "message": { "tool_calls": [
+            { "function": { "name": "build_issue_filter",
+                "arguments": "{\"status\":\"New\",\"stale\":false,\"project\":\"Secret\"}" } } ] } } ] }
+        """;
+        var c = OpenAiAssistant.ParseSearch(json, new[] { "OpenTrack" });
+        Assert.NotNull(c);
+        Assert.Equal(IssueStatus.New, c!.Value.Status);
+        Assert.False(c.Value.Stale);
+        Assert.Null(c.Value.ProjectName);                 // "Secret" isn't a project the caller can see
+        Assert.Null(c.Value.Text);
+    }
+
+    [Fact]
+    public void ParseSearch_ReturnsNull_WhenNoToolCall()
+    {
+        Assert.Null(AnthropicAiAssistant.ParseSearch("""{ "content": [ { "type": "text", "text": "hi" } ] }""", []));
+        Assert.Null(OpenAiAssistant.ParseSearch("""{ "choices": [] }""", []));
     }
 
     [Fact]

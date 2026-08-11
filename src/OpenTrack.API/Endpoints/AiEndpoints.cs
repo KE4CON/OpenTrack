@@ -22,6 +22,7 @@ namespace OpenTrack.API.Endpoints;
 public static class AiEndpoints
 {
     public record TriageRequest(int ProjectId, string Title, string? Description);
+    public record SearchRequest(string Query);
 
     public static void MapAiEndpoints(this IEndpointRouteBuilder app)
     {
@@ -40,6 +41,21 @@ public static class AiEndpoints
             var categories = await db.Categories.AsNoTracking().Where(c => c.ProjectId == req.ProjectId).Select(c => c.Name).ToListAsync(ct);
             var s = await ai.SuggestTriageAsync(req.Title, req.Description, categories, ct);
             return s is { } sg ? Results.Ok(new { sg.Severity, sg.Priority, sg.Category, sg.Tags }) : Results.Ok((object?)null);
+        });
+
+        group.MapPost("/search", async (SearchRequest req, ClaimsPrincipal user, AppDbContext db, IAiAssistant ai, CancellationToken ct) =>
+        {
+            if (!ai.IsEnabled || string.IsNullOrWhiteSpace(req.Query)) return Results.Ok((object?)null);
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+
+            // Constrain any project match to the caller's visible projects.
+            var projectNames = await db.Projects.AsNoTracking()
+                .WhereVisibleTo(access).OrderBy(p => p.Name).Select(p => p.Name).ToListAsync(ct);
+            var c = await ai.InterpretSearchAsync(req.Query, projectNames, ct);
+            return c is { } sc
+                ? Results.Ok(new { sc.Status, sc.Severity, sc.Priority, sc.Text, sc.Stale, sc.Sort, ProjectName = sc.ProjectName })
+                : Results.Ok((object?)null);
         });
     }
 }

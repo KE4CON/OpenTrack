@@ -33,4 +33,10 @@ public interface IAiAssistant
     /// off or the call fails (best-effort — a failure never blocks issue creation).</summary>
     Task<TriageSuggestion?> SuggestTriageAsync(
         string title, string? description, IReadOnlyList<string> categories, CancellationToken ct = default);
+
+    /// <summary>Turn a plain-English request ("crashes nobody has touched in a month") into structured
+    /// filter fields. <paramref name="projectNames"/> constrains any project match to ones the caller can
+    /// see. Returns null if AI is off or the call fails (the caller then leaves the search unchanged).</summary>
+    Task<SearchCriteria?> InterpretSearchAsync(
+        string query, IReadOnlyList<string> projectNames, CancellationToken ct = default);
 }

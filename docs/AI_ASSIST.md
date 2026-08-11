@@ -1,10 +1,19 @@
 # AI assist (optional)
 
-OpenTrack can use an AI model to help with issues — starting with **smart
-triage** (suggesting a severity, priority, category, and tags for a new issue
-from what you typed). It's **off by default** and only ever runs when you turn it
-on and point it at a provider. Whatever it suggests is just a suggestion — a
-person always accepts or changes it.
+OpenTrack can use an AI model to help with issues. It's **off by default** and
+only ever runs when you turn it on and point it at a provider. Whatever it does is
+only ever a suggestion or a shortcut — a person always stays in control.
+
+## What the AI can do
+
+- **Smart triage** — on the **New issue** page, a **✨ Suggest with AI** button
+  reads your summary/details and fills in a severity, priority, category, and
+  proposed tags. You accept or change them before saving.
+- **Plain-English search** — on the **Issues** list, an **✨ Ask in plain
+  English** box turns a request like *"high-priority crashes nobody has touched in
+  a month"* into the normal filters (status, severity, priority, keywords, stale,
+  project). It only ever produces a filter you could have set by hand, and it can
+  only match projects you're allowed to see — so it never widens your access.
 
 You are **not** locked into one AI company. OpenTrack talks to two kinds of
 provider, so you can pick what fits your budget and privacy needs.

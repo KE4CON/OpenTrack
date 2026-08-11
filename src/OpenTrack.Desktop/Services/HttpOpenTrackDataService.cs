@@ -128,6 +128,18 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         return d is null ? null : new AiTriageView(d.Severity, d.Priority, d.Category, d.Tags ?? []);
     }
 
+    private sealed record AiSearchDto(
+        OpenTrack.Core.Enums.IssueStatus? Status, OpenTrack.Core.Enums.IssueSeverity? Severity,
+        OpenTrack.Core.Enums.IssuePriority? Priority, string? Text, bool Stale,
+        OpenTrack.Core.Querying.IssueSort? Sort, string? ProjectName);
+    public async Task<AiSearchView?> InterpretIssueSearchAsync(string query, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/ai/search", new { query }, JsonOptions, ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        var d = await resp.Content.ReadFromJsonAsync<AiSearchDto>(JsonOptions, ct);
+        return d is null ? null : new AiSearchView(d.Status, d.Severity, d.Priority, d.Text, d.Stale, d.Sort, d.ProjectName);
+    }
+
     public async Task<DashboardView> GetDashboardAsync(CancellationToken ct = default) =>
         await http.GetFromJsonAsync<DashboardView>("/api/dashboard", JsonOptions, ct)
             ?? new DashboardView(0, 0, 0, [], [], []);
