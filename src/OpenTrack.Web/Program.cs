@@ -120,5 +120,7 @@ app.MapAdditionalIdentityEndpoints();
 OpenTrack.Web.Endpoints.AttachmentWebEndpoints.MapAttachmentWebEndpoints(app);
 // Cookie-authenticated CSV/JSON export downloads for the web host.
 OpenTrack.Web.Endpoints.ExportWebEndpoints.MapExportWebEndpoints(app);
+// Cookie-authenticated MantisBT XML import upload for the web host.
+OpenTrack.Web.Endpoints.ImportWebEndpoints.MapImportWebEndpoints(app);
 
 app.Run();
