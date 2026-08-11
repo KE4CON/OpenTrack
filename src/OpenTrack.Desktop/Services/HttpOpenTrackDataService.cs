@@ -77,6 +77,30 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
+    private const string AutomationManagerMsg = "Managing automation rules requires the Manager role on this project.";
+    private sealed record SaveErrorDto(string? Error);
+
+    public async Task<IReadOnlyList<AutomationRuleView>> GetAutomationRulesAsync(int projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<AutomationRuleView>>($"/api/projects/{projectId}/automation-rules", JsonOptions, ct) ?? [];
+
+    public async Task<string?> SaveAutomationRuleAsync(int projectId, AutomationRuleView rule, CancellationToken ct = default)
+    {
+        var resp = rule.Id == 0
+            ? await http.PostAsJsonAsync($"/api/projects/{projectId}/automation-rules", rule, JsonOptions, ct)
+            : await http.PutAsJsonAsync($"/api/automation-rules/{rule.Id}", rule, JsonOptions, ct);
+        ThrowIfForbidden(resp, AutomationManagerMsg);
+        resp.EnsureSuccessStatusCode();
+        var d = await resp.Content.ReadFromJsonAsync<SaveErrorDto>(JsonOptions, ct);
+        return d?.Error;
+    }
+
+    public async Task DeleteAutomationRuleAsync(int ruleId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/automation-rules/{ruleId}", ct);
+        ThrowIfForbidden(resp, AutomationManagerMsg);
+        resp.EnsureSuccessStatusCode();
+    }
+
     public async Task SetPublicIntakeEnabledAsync(int projectId, bool enabled, CancellationToken ct = default)
     {
         var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/public-intake", new { enabled }, JsonOptions, ct);

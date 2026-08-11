@@ -116,5 +116,6 @@ app.MapSavedFilterEndpoints();
 app.MapPreferenceEndpoints();
 app.MapReportEndpoints();
 app.MapAiEndpoints();
+app.MapAutomationEndpoints();
 
 app.Run();

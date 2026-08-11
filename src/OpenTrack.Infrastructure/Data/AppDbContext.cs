@@ -263,6 +263,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasIndex(w => new { w.ProjectId, w.FromStatus, w.ToStatus }).IsUnique();
         });
 
+        // ---- AutomationRule ----
+        b.Entity<AutomationRule>(e =>
+        {
+            e.HasOne(r => r.Project).WithMany().HasForeignKey(r => r.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(r => new { r.ProjectId, r.SortOrder });
+            e.Property(r => r.Name).HasMaxLength(FieldLimits.ProjectName);
+            e.Property(r => r.WhenTextContains).HasMaxLength(FieldLimits.IssueTitle);
+            e.Property(r => r.AddTag).HasMaxLength(FieldLimits.TagName);
+        });
+
         // ---- TimeLog ----
         b.Entity<TimeLog>(e =>
         {
@@ -329,4 +339,5 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ProjectWebhook> ProjectWebhooks => Set<ProjectWebhook>();
     public DbSet<TimeLog> TimeLogs => Set<TimeLog>();
     public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
+    public DbSet<AutomationRule> AutomationRules => Set<AutomationRule>();
 }

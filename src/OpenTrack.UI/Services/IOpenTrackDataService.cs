@@ -64,6 +64,12 @@ public interface IOpenTrackDataService
     Task<string?> AddWorkflowTransitionAsync(int projectId, IssueStatus from, IssueStatus to, CancellationToken ct = default);
     Task DeleteWorkflowTransitionAsync(int projectId, int id, CancellationToken ct = default);
 
+    // Per-project automation rules (Manager only): "when a new issue matches → do". Save creates when the
+    // rule's Id is 0, else updates; returns null on success or a validation reason.
+    Task<IReadOnlyList<AutomationRuleView>> GetAutomationRulesAsync(int projectId, CancellationToken ct = default);
+    Task<string?> SaveAutomationRuleAsync(int projectId, AutomationRuleView rule, CancellationToken ct = default);
+    Task DeleteAutomationRuleAsync(int ruleId, CancellationToken ct = default);
+
     // Project webhooks (Manager only — a URL can carry a secret token). Returns null/reason on add.
     Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default);
     Task<string?> AddWebhookAsync(int projectId, string url, WebhookFormat format, CancellationToken ct = default);
