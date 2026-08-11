@@ -86,6 +86,26 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         await http.GetFromJsonAsync<DashboardView>("/api/dashboard", JsonOptions, ct)
             ?? new DashboardView(0, 0, 0, [], [], []);
 
+    public async Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<WebhookView>>($"/api/projects/{projectId}/webhooks", JsonOptions, ct) ?? [];
+
+    public async Task<string?> AddWebhookAsync(int projectId, string url, OpenTrack.Core.Enums.WebhookFormat format, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/projects/{projectId}/webhooks", new { url, format }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Managing webhooks requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task DeleteWebhookAsync(int projectId, int id, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/projects/{projectId}/webhooks/{id}", ct);
+        ThrowIfForbidden(resp, "Managing webhooks requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+    }
+
     public async Task<IReadOnlyList<SavedFilterView>> GetSavedFiltersAsync(CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<SavedFilterView>>("/api/saved-filters", JsonOptions, ct) ?? [];
 

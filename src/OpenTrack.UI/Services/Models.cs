@@ -73,6 +73,9 @@ public record SavedFilterView(int Id, string Name, string Query);
 /// <summary>A user's personal defaults.</summary>
 public record PreferencesView(int? DefaultProjectId, IssueSort? DefaultSort);
 
+/// <summary>A project's outgoing webhook (Manager-managed).</summary>
+public record WebhookView(int Id, string Url, WebhookFormat Format, bool IsActive);
+
 public record NotificationView(int Id, int IssueId, string Text, bool IsRead, DateTime CreatedAt);
 
 /// <summary>A custom-field definition on a project (for the manage screen and for rendering inputs).</summary>

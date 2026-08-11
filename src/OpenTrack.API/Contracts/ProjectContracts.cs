@@ -42,3 +42,5 @@ public record CustomFieldDefinitionDto(int Id, int ProjectId, string Name, Custo
 public record CreateCustomFieldRequest(string Name, CustomFieldType Type, string? EnumOptions, bool Required);
 
 public record UpdateCustomFieldRequest(string Name, string? EnumOptions, bool Required, int DisplayOrder);
+
+public record CreateWebhookRequest(string Url, WebhookFormat Format);

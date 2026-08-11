@@ -99,7 +99,7 @@ public static class IssueEndpoints
                     .ToList()));
         });
 
-        group.MapPost("/projects/{projectId:int}/issues", async (int projectId, CreateIssueRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        group.MapPost("/projects/{projectId:int}/issues", async (int projectId, CreateIssueRequest req, ClaimsPrincipal user, AppDbContext db, NotificationDispatch notifications, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
@@ -129,6 +129,7 @@ public static class IssueEndpoints
             });
             db.Issues.Add(issue);
             await db.SaveChangesAsync(ct);
+            await notifications.NotifyIssueChangedAsync(db, access.UserId, issue.Id, "a new issue was created", ct);
 
             return Results.Created($"/api/issues/{issue.Id}", issue.Id);
         });

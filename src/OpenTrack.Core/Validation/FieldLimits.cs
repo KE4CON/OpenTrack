@@ -33,4 +33,5 @@ public static class FieldLimits
     public const int ChecklistText = 2000;
     public const int SavedFilterName = 100;
     public const int SavedFilterQuery = 1000;
+    public const int WebhookUrl = 500;
 }

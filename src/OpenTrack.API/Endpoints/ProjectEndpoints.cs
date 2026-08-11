@@ -17,6 +17,7 @@ using OpenTrack.Core.Enums;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.CustomFields;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Infrastructure.Webhooks;
 using OpenTrack.API;
 
 namespace OpenTrack.API.Endpoints;
@@ -305,6 +306,35 @@ public static class ProjectEndpoints
             if (access is null) return Results.Unauthorized();
             if (!access.For(id).CanManageProject()) return Results.Forbid();
             var removed = await CustomFieldOperations.DeleteDefinitionAsync(db, access, id, fieldId, ct);
+            return removed ? Results.NoContent() : Results.NotFound();
+        });
+
+        // ---- Project webhooks (Manager only) ----
+
+        group.MapGet("/{id:int}/webhooks", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var rows = await WebhookOperations.ListForProjectAsync(db, access, id, ct);
+            return Results.Ok(rows.Select(w => new { w.Id, w.Url, w.Format, w.IsActive }));
+        });
+
+        group.MapPost("/{id:int}/webhooks", async (int id, CreateWebhookRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var error = await WebhookOperations.AddAsync(db, access, id, req.Url, req.Format, ct);
+            return error is null ? Results.NoContent() : Results.BadRequest(error);
+        });
+
+        group.MapDelete("/{id:int}/webhooks/{hookId:int}", async (int id, int hookId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var removed = await WebhookOperations.DeleteAsync(db, access, id, hookId, ct);
             return removed ? Results.NoContent() : Results.NotFound();
         });
     }

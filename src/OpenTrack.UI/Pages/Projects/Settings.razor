@@ -84,6 +84,60 @@ else
             }
         </div>
     </div>
+
+    <hr class="my-4" />
+    <div class="row">
+        <div class="col-lg-8">
+            <h2 class="h5">Integrations — outgoing webhooks</h2>
+            <p class="form-text">
+                Get pinged in Slack, Discord, or your own service whenever an issue in this project is
+                created, changed, or commented on. Paste an incoming-webhook URL and pick its format.
+                Only add URLs you trust — a webhook URL usually contains a secret token.
+            </p>
+            @if (webhooks.Count == 0)
+            {
+                <p class="text-muted">No webhooks yet.</p>
+            }
+            else
+            {
+                <EditForm Model="hookDel" OnValidSubmit="DeleteWebhook" FormName="delHook">
+                    <table class="table table-sm align-middle">
+                        <thead><tr><th>Destination</th><th>Format</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var w in webhooks)
+                            {
+                                <tr>
+                                    <td class="small text-break">@w.Url</td>
+                                    <td>@w.Format</td>
+                                    <td class="text-end">
+                                        <button type="submit" name="DelId" value="@w.Id" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </EditForm>
+            }
+            <EditForm Model="hookAdd" OnValidSubmit="AddWebhook" FormName="addHook">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-7">
+                        <label class="form-label">Webhook URL</label>
+                        <InputText @bind-Value="hookAdd.Url" class="form-control" placeholder="https://hooks.slack.com/services/…" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Format</label>
+                        <InputSelect @bind-Value="hookAdd.Format" class="form-select">
+                            @foreach (var f in Enum.GetValues<WebhookFormat>()) { <option value="@f">@f</option> }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">Add</button>
+                    </div>
+                </div>
+                <div class="form-text">Slack &amp; Discord send a short text message; “Generic” posts full JSON (event, project, issue, status, time).</div>
+            </EditForm>
+        </div>
+    </div>
 }
 
 @code {
@@ -93,6 +147,7 @@ else
     private bool canManage;
     private IReadOnlyList<CategoryView> categories = [];
     private IReadOnlyList<ProjectVersionView> versions = [];
+    private IReadOnlyList<WebhookView> webhooks = [];
     private string? message;
     private bool messageIsError;
 
@@ -100,6 +155,8 @@ else
     [SupplyParameterFromForm(FormName = "delCategory")] private IdForm catDel { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "addVersion")] private VersionForm verAdd { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "delVersion")] private IdForm verDel { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "addHook")] private HookForm hookAdd { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "delHook")] private DelHookForm hookDel { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -107,6 +164,8 @@ else
         catDel ??= new();
         verAdd ??= new();
         verDel ??= new();
+        hookAdd ??= new();
+        hookDel ??= new();
         await Load();
     }
 
@@ -118,6 +177,19 @@ else
         canManage = (await Data.GetProjectMemberDetailsAsync(Id)).Count > 0;
         categories = await Data.GetProjectCategoriesAsync(Id);
         versions = await Data.GetProjectVersionsAsync(Id);
+        webhooks = canManage ? await Data.GetWebhooksAsync(Id) : [];
+    }
+
+    private async Task AddWebhook()
+    {
+        try { Report(await Data.AddWebhookAsync(Id, hookAdd.Url ?? "", hookAdd.Format)); }
+        catch (Exception ex) { Report(ex.Message); }
+        hookAdd = new(); await Load();
+    }
+    private async Task DeleteWebhook()
+    {
+        if (hookDel.DelId > 0) { try { await Data.DeleteWebhookAsync(Id, hookDel.DelId); Report(null); } catch (Exception ex) { Report(ex.Message); } }
+        hookDel = new(); await Load();
     }
 
     private async Task AddCategory() { Report(await Data.CreateCategoryAsync(Id, catAdd.Name)); catAdd = new(); await Load(); }
@@ -148,4 +220,6 @@ else
         public DateTime? ReleaseDate { get; set; }
         public bool IsReleased { get; set; }
     }
+    private sealed class HookForm { public string? Url { get; set; } public WebhookFormat Format { get; set; } = WebhookFormat.Slack; }
+    private sealed class DelHookForm { public int DelId { get; set; } }
 }

@@ -237,6 +237,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(d => new { d.ProjectId, d.Name }).IsUnique();
         });
+        // ---- ProjectWebhook ----
+        b.Entity<ProjectWebhook>(e =>
+        {
+            e.Property(w => w.Url).HasMaxLength(FieldLimits.WebhookUrl).IsRequired();
+            e.HasOne(w => w.Project).WithMany().HasForeignKey(w => w.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(w => w.ProjectId);
+        });
+
         // ---- UserPreference (one row per user) ----
         b.Entity<UserPreference>(e =>
         {
@@ -300,4 +308,5 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ChecklistItem> ChecklistItems => Set<ChecklistItem>();
     public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>();
     public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
+    public DbSet<ProjectWebhook> ProjectWebhooks => Set<ProjectWebhook>();
 }
