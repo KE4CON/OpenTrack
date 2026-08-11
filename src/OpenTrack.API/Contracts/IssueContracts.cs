@@ -41,6 +41,10 @@ public record IssueRelationshipDto(int Id, int OtherIssueId, string OtherIssueTi
 
 public record AddRelationshipRequest(int TargetIssueId, IssueRelationshipType Type);
 
+public record TagDto(int Id, string Name);
+
+public record AddTagRequest(string Name);
+
 public record CreateIssueRequest(
     string Title, string Description, string? StepsToReproduce,
     string? ExpectedBehavior, string? ActualBehavior, int? CategoryId,

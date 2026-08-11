@@ -30,4 +30,5 @@ public record IssueFilter(
     int? AssigneeId = null,
     int? CategoryId = null,
     string? Text = null,
+    int? TagId = null,
     IssueSort Sort = IssueSort.UpdatedDesc);

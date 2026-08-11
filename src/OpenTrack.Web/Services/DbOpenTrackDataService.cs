@@ -21,6 +21,7 @@ using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Queries;
 using OpenTrack.Infrastructure.Relationships;
+using OpenTrack.Infrastructure.Tags;
 using OpenTrack.UI.Services;
 
 namespace OpenTrack.Web.Services;
@@ -566,5 +567,36 @@ public class DbOpenTrackDataService(
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
         await RelationshipOperations.RemoveAsync(db, access, relationshipId, ct);
+    }
+
+    // ---- Tags (ACL logic shared with the API via TagOperations) ----
+
+    public async Task<IReadOnlyList<TagView>> GetAllTagsAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var items = await TagOperations.ListAllAsync(db, ct);
+        return items.Select(t => new TagView(t.Id, t.Name)).ToList();
+    }
+
+    public async Task<IReadOnlyList<TagView>> GetIssueTagsAsync(int issueId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var items = await TagOperations.ListForIssueAsync(db, access, issueId, ct);
+        return items.Select(t => new TagView(t.Id, t.Name)).ToList();
+    }
+
+    public async Task<string?> AddIssueTagAsync(int issueId, string tagName, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await TagOperations.AddAsync(db, access, issueId, tagName, ct);
+    }
+
+    public async Task RemoveIssueTagAsync(int issueId, int tagId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        await TagOperations.RemoveAsync(db, access, issueId, tagId, ct);
     }
 }

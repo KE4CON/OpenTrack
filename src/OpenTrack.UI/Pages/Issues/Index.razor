@@ -50,6 +50,16 @@
             }
         </select>
     </div>
+    <div class="col-md-2">
+        <label class="form-label">Tag</label>
+        <select class="form-select" name="TagId">
+            <option value="">Any</option>
+            @foreach (var t in tagOptions)
+            {
+                <option value="@t.Id" selected="@(t.Id == TagId)">@t.Name</option>
+            }
+        </select>
+    </div>
     <div class="col-md-3">
         <label class="form-label">Text</label>
         <input class="form-control" name="Text" value="@Text" placeholder="title or description" />
@@ -114,18 +124,21 @@ else
     [SupplyParameterFromQuery] public IssueSeverity? Severity { get; set; }
     [SupplyParameterFromQuery] public IssuePriority? Priority { get; set; }
     [SupplyParameterFromQuery] public string? Text { get; set; }
+    [SupplyParameterFromQuery] public int? TagId { get; set; }
     [SupplyParameterFromQuery] public IssueSort? Sort { get; set; }
 
     private IssueSort EffectiveSort => Sort ?? IssueSort.UpdatedDesc;
 
     private IReadOnlyList<IssueRow> issues = [];
     private List<(int Id, string Name)> projectOptions = [];
+    private IReadOnlyList<TagView> tagOptions = [];
 
     protected override async Task OnParametersSetAsync()
     {
         projectOptions = (await Data.GetProjectsAsync())
             .Select(p => (p.Id, p.Name))
             .ToList();
+        tagOptions = await Data.GetAllTagsAsync();
 
         var filter = new IssueFilter(
             ProjectId: ProjectId is > 0 ? ProjectId : null,
@@ -133,6 +146,7 @@ else
             Severity: Severity,
             Priority: Priority,
             Text: string.IsNullOrWhiteSpace(Text) ? null : Text,
+            TagId: TagId is > 0 ? TagId : null,
             Sort: EffectiveSort);
 
         issues = await Data.GetIssuesAsync(filter);

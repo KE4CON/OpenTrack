@@ -196,7 +196,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             // No duplicate identical relationships.
             e.HasIndex(r => new { r.SourceIssueId, r.TargetIssueId, r.Type }).IsUnique();
         });
+
+        // ---- Tag / IssueTag ----
+        b.Entity<Tag>(e =>
+        {
+            e.Property(t => t.Name).HasMaxLength(FieldLimits.TagName).IsRequired();
+            e.HasIndex(t => t.Name).IsUnique();
+        });
+        b.Entity<IssueTag>(e =>
+        {
+            e.HasKey(it => new { it.IssueId, it.TagId });
+            e.HasOne(it => it.Issue).WithMany(i => i.IssueTags).HasForeignKey(it => it.IssueId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(it => it.Tag).WithMany(t => t.IssueTags).HasForeignKey(it => it.TagId).OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     public DbSet<IssueRelationship> IssueRelationships => Set<IssueRelationship>();
+    public DbSet<Tag> Tags => Set<Tag>();
+    public DbSet<IssueTag> IssueTags => Set<IssueTag>();
 }

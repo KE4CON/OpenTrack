@@ -46,6 +46,56 @@ else
         <p><span class="badge text-bg-warning">Private issue</span></p>
     }
 
+    <div class="mb-3">
+        <strong>Tags:</strong>
+        @if (tags.Count == 0)
+        {
+            <span class="text-muted">none</span>
+        }
+        else
+        {
+            @foreach (var t in tags)
+            {
+                <span class="badge text-bg-secondary me-1">@t.Name</span>
+            }
+        }
+        <AuthorizeView Policy="RequireUpdater" Context="auth">
+            <Authorized>
+                @if (tagMessage is not null)
+                {
+                    <span class="text-danger small ms-2">@tagMessage</span>
+                }
+                <div class="row g-2 mt-1">
+                    <div class="col-md-4">
+                        <EditForm Model="addTag" OnValidSubmit="AddTag" FormName="addTag">
+                            <div class="input-group input-group-sm">
+                                <InputText @bind-Value="addTag.Name" class="form-control" placeholder="add a tag" list="tagOptions" />
+                                <button type="submit" class="btn btn-outline-secondary">Add</button>
+                            </div>
+                        </EditForm>
+                        <datalist id="tagOptions">
+                            @foreach (var t in allTags) { <option value="@t.Name" /> }
+                        </datalist>
+                    </div>
+                    @if (tags.Count > 0)
+                    {
+                        <div class="col-md-4">
+                            <EditForm Model="removeTag" OnValidSubmit="RemoveTag" FormName="removeTag">
+                                <div class="input-group input-group-sm">
+                                    <InputSelect @bind-Value="removeTag.Id" class="form-select">
+                                        <option value="0" disabled>Remove a tag…</option>
+                                        @foreach (var t in tags) { <option value="@t.Id">@t.Name</option> }
+                                    </InputSelect>
+                                    <button type="submit" class="btn btn-outline-danger">Remove</button>
+                                </div>
+                            </EditForm>
+                        </div>
+                    }
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+
     <h2 class="h5">Description</h2>
     <p style="white-space: pre-wrap">@issue.Description</p>
 
@@ -253,14 +303,47 @@ else
     private AddRelationshipModel relModel { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "removeRelationship")]
     private RemoveRelationshipModel removeRelModel { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "addTag")]
+    private AddTagModel addTag { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "removeTag")]
+    private RemoveTagModel removeTag { get; set; } = default!;
+
+    private IReadOnlyList<TagView> tags = [];
+    private IReadOnlyList<TagView> allTags = [];
+    private string? tagMessage;
 
     protected override async Task OnParametersSetAsync()
     {
         noteModel ??= new();
         relModel ??= new();
         removeRelModel ??= new();
+        addTag ??= new();
+        removeTag ??= new();
         await LoadIssue();
     }
+
+    private async Task AddTag()
+    {
+        tagMessage = null;
+        if (string.IsNullOrWhiteSpace(addTag.Name)) return;
+        try { tagMessage = await Data.AddIssueTagAsync(Id, addTag.Name); }
+        catch (UnauthorizedAccessException ex) { tagMessage = ex.Message; }
+        addTag = new();
+        await LoadIssue();
+    }
+
+    private async Task RemoveTag()
+    {
+        tagMessage = null;
+        if (removeTag.Id <= 0) return;
+        try { await Data.RemoveIssueTagAsync(Id, removeTag.Id); }
+        catch (UnauthorizedAccessException ex) { tagMessage = ex.Message; }
+        removeTag = new();
+        await LoadIssue();
+    }
+
+    private sealed class AddTagModel { public string Name { get; set; } = string.Empty; }
+    private sealed class RemoveTagModel { public int Id { get; set; } }
 
     private async Task LoadIssue()
     {
@@ -268,6 +351,8 @@ else
         history = issue is null ? [] : await Data.GetIssueHistoryAsync(Id);
         attachments = issue is null ? [] : await Data.GetIssueAttachmentsAsync(Id);
         relationships = issue is null ? [] : await Data.GetIssueRelationshipsAsync(Id);
+        tags = issue is null ? [] : await Data.GetIssueTagsAsync(Id);
+        allTags = issue is null ? [] : await Data.GetAllTagsAsync();
     }
 
     private async Task AddRelationship()

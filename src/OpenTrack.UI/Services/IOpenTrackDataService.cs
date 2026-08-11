@@ -71,4 +71,11 @@ public interface IOpenTrackDataService
     Task<IReadOnlyList<IssueRelationshipView>> GetIssueRelationshipsAsync(int issueId, CancellationToken ct = default);
     Task<string?> AddIssueRelationshipAsync(int sourceIssueId, int targetIssueId, IssueRelationshipType type, CancellationToken ct = default);
     Task RemoveIssueRelationshipAsync(int relationshipId, CancellationToken ct = default);
+
+    // Tags. All tag names (for the filter/autocomplete) are visible to any signed-in user; an issue's
+    // tags require view access to that issue, and adding/removing a tag requires edit access.
+    Task<IReadOnlyList<TagView>> GetAllTagsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<TagView>> GetIssueTagsAsync(int issueId, CancellationToken ct = default);
+    Task<string?> AddIssueTagAsync(int issueId, string tagName, CancellationToken ct = default);
+    Task RemoveIssueTagAsync(int issueId, int tagId, CancellationToken ct = default);
 }

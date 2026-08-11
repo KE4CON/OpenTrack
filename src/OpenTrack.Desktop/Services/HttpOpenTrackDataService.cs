@@ -67,6 +67,7 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         if (filter.AssigneeId is { } a) q.Add($"assigneeId={a}");
         if (filter.CategoryId is { } c) q.Add($"categoryId={c}");
         if (!string.IsNullOrWhiteSpace(filter.Text)) q.Add($"text={Uri.EscapeDataString(filter.Text)}");
+        if (filter.TagId is { } tg) q.Add($"tagId={tg}");
         q.Add($"sort={filter.Sort}");
         var url = "/api/issues?" + string.Join("&", q);
         return await http.GetFromJsonAsync<List<IssueRow>>(url, JsonOptions, ct) ?? [];
@@ -130,6 +131,29 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
     {
         var resp = await http.DeleteAsync($"/api/relationships/{relationshipId}", ct);
         ThrowIfForbidden(resp, "Removing a relationship requires the Updater role on one of the linked issues.");
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task<IReadOnlyList<TagView>> GetAllTagsAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<TagView>>("/api/tags", JsonOptions, ct) ?? [];
+
+    public async Task<IReadOnlyList<TagView>> GetIssueTagsAsync(int issueId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<TagView>>($"/api/issues/{issueId}/tags", JsonOptions, ct) ?? [];
+
+    public async Task<string?> AddIssueTagAsync(int issueId, string tagName, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/issues/{issueId}/tags", new { name = tagName }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Tagging an issue requires the Updater role on its project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task RemoveIssueTagAsync(int issueId, int tagId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/issues/{issueId}/tags/{tagId}", ct);
+        ThrowIfForbidden(resp, "Untagging an issue requires the Updater role on its project.");
         resp.EnsureSuccessStatusCode();
     }
 
