@@ -640,14 +640,14 @@ public class DbOpenTrackDataService(
     {
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
-        return await CustomFieldOperations.UpdateDefinitionAsync(db, access, fieldId, name, enumOptions, required, displayOrder, ct);
+        return await CustomFieldOperations.UpdateDefinitionAsync(db, access, projectId, fieldId, name, enumOptions, required, displayOrder, ct);
     }
 
     public async Task DeleteCustomFieldAsync(int projectId, int fieldId, CancellationToken ct = default)
     {
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
-        await CustomFieldOperations.DeleteDefinitionAsync(db, access, fieldId, ct);
+        await CustomFieldOperations.DeleteDefinitionAsync(db, access, projectId, fieldId, ct);
     }
 
     public async Task<IReadOnlyList<CustomFieldValueView>> GetIssueCustomFieldsAsync(int issueId, CancellationToken ct = default)

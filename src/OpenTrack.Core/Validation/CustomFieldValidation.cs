@@ -28,13 +28,15 @@ public static class CustomFieldValidation
         public bool Ok => Error is null;
     }
 
-    /// <summary>Split an Enum field's stored option list (one per line) into trimmed, non-empty choices.</summary>
+    /// <summary>Split an Enum field's stored option list (one per line) into trimmed, non-empty,
+    /// case-insensitively de-duplicated choices (first casing wins).</summary>
     public static IReadOnlyList<string> ParseEnumOptions(string? enumOptions) =>
         string.IsNullOrWhiteSpace(enumOptions)
             ? []
             : enumOptions.Split('\n')
                 .Select(o => o.Trim())
                 .Where(o => o.Length > 0)
+                .DistinctBy(o => o.ToLowerInvariant())
                 .ToList();
 
     /// <summary>
@@ -51,11 +53,15 @@ public static class CustomFieldValidation
         switch (type)
         {
             case CustomFieldType.Text:
-                return new ValueResult(null, value);
+                return value.Length > FieldLimits.CustomFieldValue
+                    ? new ValueResult($"Value must be {FieldLimits.CustomFieldValue} characters or fewer.", null)
+                    : new ValueResult(null, value);
 
             case CustomFieldType.Number:
-                return decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out _)
-                    ? new ValueResult(null, value)
+                // Normalize to an invariant, group-separator-free form so it round-trips through storage
+                // and an <input type="number"> (which rejects a grouping comma and would blank the field).
+                return decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var num)
+                    ? new ValueResult(null, num.ToString(CultureInfo.InvariantCulture))
                     : new ValueResult("Value must be a number.", null);
 
             case CustomFieldType.Date:

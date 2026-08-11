@@ -114,33 +114,37 @@ else
                     {
                         <span class="@(cfIsError ? "text-danger" : "text-success") small ms-2">@cfMessage</span>
                     }
+                    @* Values bind via @bind-Value into the pre-populated cf.Entries list so the form works
+                       on BOTH the static-SSR web host (form POST) and the interactive desktop host (live
+                       binding). The hidden DefinitionId round-trips the key on the SSR post. *@
                     <EditForm Model="cf" OnValidSubmit="SaveCustomFields" FormName="customFields" class="mt-1">
                         <div class="row g-2">
-                            @for (var i = 0; i < customFields.Count; i++)
+                            @for (var i = 0; i < customFields.Count && i < cf.Entries.Count; i++)
                             {
-                                var f = customFields[i];
+                                var idx = i;
+                                var f = customFields[idx];
                                 <div class="col-md-4">
                                     <label class="form-label small mb-0">@f.Name @(f.Required ? "*" : "")</label>
-                                    <input type="hidden" name="Entries[@i].DefinitionId" value="@f.DefinitionId" />
+                                    <input type="hidden" name="Entries[@idx].DefinitionId" value="@cf.Entries[idx].DefinitionId" />
                                     @switch (f.Type)
                                     {
                                         case CustomFieldType.Enum:
-                                            <select name="Entries[@i].Value" class="form-select form-select-sm">
-                                                <option value="" selected="@string.IsNullOrEmpty(f.Value)">— none —</option>
+                                            <InputSelect @bind-Value="cf.Entries[idx].Value" class="form-select form-select-sm">
+                                                <option value="">— none —</option>
                                                 @foreach (var opt in CustomFieldValidation.ParseEnumOptions(f.EnumOptions))
                                                 {
-                                                    <option value="@opt" selected="@(opt == f.Value)">@opt</option>
+                                                    <option value="@opt">@opt</option>
                                                 }
-                                            </select>
+                                            </InputSelect>
                                             break;
                                         case CustomFieldType.Date:
-                                            <input type="date" name="Entries[@i].Value" value="@f.Value" class="form-control form-control-sm" />
+                                            <InputText type="date" @bind-Value="cf.Entries[idx].Value" class="form-control form-control-sm" />
                                             break;
                                         case CustomFieldType.Number:
-                                            <input type="number" step="any" name="Entries[@i].Value" value="@f.Value" class="form-control form-control-sm" />
+                                            <InputText type="number" step="any" @bind-Value="cf.Entries[idx].Value" class="form-control form-control-sm" />
                                             break;
                                         default:
-                                            <input type="text" name="Entries[@i].Value" value="@f.Value" class="form-control form-control-sm" />
+                                            <InputText @bind-Value="cf.Entries[idx].Value" class="form-control form-control-sm" />
                                             break;
                                     }
                                 </div>
@@ -396,7 +400,15 @@ else
         monitorModel ??= new();
         cf ??= new();
         await LoadIssue();
+        // On first render (GET) cf.Entries is empty → seed it from the stored values so the inputs have
+        // something to bind to. On an SSR post-back cf.Entries is already populated from the form, so we
+        // leave it alone (guard on Count) and never clobber the user's input.
+        if (cf.Entries.Count == 0)
+            SeedCustomFieldEntries();
     }
+
+    private void SeedCustomFieldEntries() =>
+        cf.Entries = customFields.Select(f => new CustomFieldEntry { DefinitionId = f.DefinitionId, Value = f.Value }).ToList();
 
     private async Task SaveCustomFields()
     {
@@ -413,8 +425,9 @@ else
         }
         cfIsError = errors.Count > 0;
         cfMessage = errors.Count == 0 ? "Saved." : string.Join(" ", errors);
-        cf = new();
         await LoadIssue();
+        cf = new();
+        SeedCustomFieldEntries(); // reflect the stored (normalized) values back into the form
     }
 
     private sealed class CustomFieldsForm { public List<CustomFieldEntry> Entries { get; set; } = []; }

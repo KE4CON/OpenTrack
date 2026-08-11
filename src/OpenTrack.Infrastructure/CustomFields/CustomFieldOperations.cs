@@ -53,10 +53,10 @@ public static class CustomFieldOperations
         AppDbContext db, AccessSnapshot access, int projectId, string name, CustomFieldType type,
         string? enumOptions, bool required, CancellationToken ct = default)
     {
-        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);
-        if (project is null) return "Project not found.";
+        // Authorize before revealing whether the project exists (no existence oracle).
         if (!access.For(projectId).CanManageProject())
             throw new UnauthorizedAccessException("Managing custom fields requires the Manager role on this project.");
+        if (!await db.Projects.AnyAsync(p => p.Id == projectId, ct)) return "Project not found.";
 
         var error = ValidateDefinition(ref name, type, ref enumOptions);
         if (error is not null) return error;
@@ -81,15 +81,18 @@ public static class CustomFieldOperations
     }
 
     /// <summary>Edit a definition's name/options/required/order. The field <em>type</em> is immutable
-    /// after creation — changing it would silently invalidate existing stored values.</summary>
+    /// after creation — changing it would silently invalidate existing stored values. Scoped to
+    /// <paramref name="projectId"/>: a field belonging to another project is treated as not found, and
+    /// the manage check is on that project — so this never reveals whether a field in some other
+    /// project exists.</summary>
     public static async Task<string?> UpdateDefinitionAsync(
-        AppDbContext db, AccessSnapshot access, int definitionId, string name, string? enumOptions,
+        AppDbContext db, AccessSnapshot access, int projectId, int definitionId, string name, string? enumOptions,
         bool required, int displayOrder, CancellationToken ct = default)
     {
-        var def = await db.CustomFieldDefinitions.FirstOrDefaultAsync(d => d.Id == definitionId, ct);
-        if (def is null) return "Custom field not found.";
-        if (!access.For(def.ProjectId).CanManageProject())
+        if (!access.For(projectId).CanManageProject())
             throw new UnauthorizedAccessException("Managing custom fields requires the Manager role on this project.");
+        var def = await db.CustomFieldDefinitions.FirstOrDefaultAsync(d => d.Id == definitionId && d.ProjectId == projectId, ct);
+        if (def is null) return "Custom field not found.";
 
         var error = ValidateDefinition(ref name, def.Type, ref enumOptions);
         if (error is not null) return error;
@@ -106,13 +109,15 @@ public static class CustomFieldOperations
         return null;
     }
 
+    /// <summary>Delete a definition (and, by cascade, its values). Scoped to <paramref name="projectId"/>
+    /// so it can neither touch nor reveal a field belonging to another project.</summary>
     public static async Task<bool> DeleteDefinitionAsync(
-        AppDbContext db, AccessSnapshot access, int definitionId, CancellationToken ct = default)
+        AppDbContext db, AccessSnapshot access, int projectId, int definitionId, CancellationToken ct = default)
     {
-        var def = await db.CustomFieldDefinitions.FirstOrDefaultAsync(d => d.Id == definitionId, ct);
-        if (def is null) return false;
-        if (!access.For(def.ProjectId).CanManageProject())
+        if (!access.For(projectId).CanManageProject())
             throw new UnauthorizedAccessException("Managing custom fields requires the Manager role on this project.");
+        var def = await db.CustomFieldDefinitions.FirstOrDefaultAsync(d => d.Id == definitionId && d.ProjectId == projectId, ct);
+        if (def is null) return false;
         db.CustomFieldDefinitions.Remove(def); // cascades to its values
         await db.SaveChangesAsync(ct);
         return true;

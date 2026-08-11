@@ -11,7 +11,7 @@ using OpenTrack.Infrastructure.Data;
 namespace OpenTrack.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260811173830_AddCustomFields")]
+    [Migration("20260811175909_AddCustomFields")]
     partial class AddCustomFields
     {
         /// <inheritdoc />
@@ -777,7 +777,7 @@ namespace OpenTrack.Infrastructure.Migrations
                     b.HasOne("OpenTrack.Core.Entities.Issue", "Issue")
                         .WithMany("CustomFieldValues")
                         .HasForeignKey("IssueId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Definition");

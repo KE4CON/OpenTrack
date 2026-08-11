@@ -283,36 +283,29 @@ public static class ProjectEndpoints
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
-            try
-            {
-                var error = await CustomFieldOperations.CreateDefinitionAsync(db, access, id, req.Name, req.Type, req.EnumOptions, req.Required, ct);
-                return error is null ? Results.NoContent() : Results.BadRequest(error);
-            }
-            catch (UnauthorizedAccessException) { return Results.Forbid(); }
+            // Manage-check on the route project first — same shape as categories/versions, so an
+            // unauthorized caller can't tell an existing project from a missing one.
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var error = await CustomFieldOperations.CreateDefinitionAsync(db, access, id, req.Name, req.Type, req.EnumOptions, req.Required, ct);
+            return error is null ? Results.NoContent() : Results.BadRequest(error);
         });
 
         group.MapPut("/{id:int}/custom-fields/{fieldId:int}", async (int id, int fieldId, UpdateCustomFieldRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
-            try
-            {
-                var error = await CustomFieldOperations.UpdateDefinitionAsync(db, access, fieldId, req.Name, req.EnumOptions, req.Required, req.DisplayOrder, ct);
-                return error is null ? Results.NoContent() : Results.BadRequest(error);
-            }
-            catch (UnauthorizedAccessException) { return Results.Forbid(); }
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var error = await CustomFieldOperations.UpdateDefinitionAsync(db, access, id, fieldId, req.Name, req.EnumOptions, req.Required, req.DisplayOrder, ct);
+            return error is null ? Results.NoContent() : Results.BadRequest(error);
         });
 
         group.MapDelete("/{id:int}/custom-fields/{fieldId:int}", async (int id, int fieldId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
-            try
-            {
-                var removed = await CustomFieldOperations.DeleteDefinitionAsync(db, access, fieldId, ct);
-                return removed ? Results.NoContent() : Results.NotFound();
-            }
-            catch (UnauthorizedAccessException) { return Results.Forbid(); }
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var removed = await CustomFieldOperations.DeleteDefinitionAsync(db, access, id, fieldId, ct);
+            return removed ? Results.NoContent() : Results.NotFound();
         });
     }
 

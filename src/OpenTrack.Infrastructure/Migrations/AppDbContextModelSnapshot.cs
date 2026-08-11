@@ -774,7 +774,7 @@ namespace OpenTrack.Infrastructure.Migrations
                     b.HasOne("OpenTrack.Core.Entities.Issue", "Issue")
                         .WithMany("CustomFieldValues")
                         .HasForeignKey("IssueId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Definition");

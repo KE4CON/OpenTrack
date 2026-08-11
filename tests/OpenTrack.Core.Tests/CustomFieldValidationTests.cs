@@ -43,6 +43,26 @@ public class CustomFieldValidationTests
         Assert.Equal(ok, r.Ok);
     }
 
+    [Theory]
+    [InlineData("1,000", "1000")]    // grouping stripped so it round-trips through <input type=number>
+    [InlineData("  42 ", "42")]
+    [InlineData("3.50", "3.50")]     // scale preserved
+    public void Number_NormalizesToInvariantForm(string raw, string expected)
+    {
+        var r = CustomFieldValidation.ValidateValue(CustomFieldType.Number, null, raw);
+        Assert.True(r.Ok);
+        Assert.Equal(expected, r.Normalized);
+    }
+
+    [Fact]
+    public void Text_RejectsOverLimit()
+    {
+        var ok = CustomFieldValidation.ValidateValue(CustomFieldType.Text, null, new string('x', FieldLimits.CustomFieldValue));
+        Assert.True(ok.Ok);
+        var tooLong = CustomFieldValidation.ValidateValue(CustomFieldType.Text, null, new string('x', FieldLimits.CustomFieldValue + 1));
+        Assert.False(tooLong.Ok);
+    }
+
     [Fact]
     public void Date_NormalizesToIso()
     {
@@ -69,5 +89,12 @@ public class CustomFieldValidationTests
     {
         var options = CustomFieldValidation.ParseEnumOptions("  A \n\n  B\n \nC ");
         Assert.Equal(new[] { "A", "B", "C" }, options);
+    }
+
+    [Fact]
+    public void ParseEnumOptions_DeDuplicatesCaseInsensitively_FirstCasingWins()
+    {
+        var options = CustomFieldValidation.ParseEnumOptions("High\nhigh\nLOW\nLow");
+        Assert.Equal(new[] { "High", "LOW" }, options);
     }
 }

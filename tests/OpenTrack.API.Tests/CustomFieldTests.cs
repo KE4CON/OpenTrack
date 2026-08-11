@@ -132,6 +132,29 @@ public sealed class CustomFieldTests : IDisposable
     }
 
     [Fact]
+    public async Task UpdateAndDelete_AreScopedToTheRouteProject()
+    {
+        var fieldId = await CreateNumberFieldAsManager(); // belongs to PubProject
+        // An admin manages OtherProject too, but addressing PubProject's field THROUGH OtherProject
+        // must behave as "not found" — never edit or reveal a field from a different project.
+        var admin = await Access(Manager, UserRole.Administrator);
+
+        await using (var db = new AppDbContext(_options))
+        {
+            var updErr = await CustomFieldOperations.UpdateDefinitionAsync(db, admin, OtherProject, fieldId, "Renamed", null, false, 0);
+            Assert.Equal("Custom field not found.", updErr);
+            var delOk = await CustomFieldOperations.DeleteDefinitionAsync(db, admin, OtherProject, fieldId);
+            Assert.False(delOk);
+        }
+        // The field is untouched, and still editable through its OWN project.
+        await using (var db = new AppDbContext(_options))
+        {
+            Assert.Equal("Estimate", (await db.CustomFieldDefinitions.FindAsync(fieldId))!.Name);
+            Assert.Null(await CustomFieldOperations.UpdateDefinitionAsync(db, admin, PubProject, fieldId, "Estimate2", null, false, 0));
+        }
+    }
+
+    [Fact]
     public async Task Values_OfUnviewableIssue_DoNotLeak()
     {
         await CreateNumberFieldAsManager();
