@@ -42,6 +42,10 @@ public interface IOpenTrackDataService
     Task<string?> SaveFilterAsync(string name, string query, CancellationToken ct = default);
     Task DeleteSavedFilterAsync(int id, CancellationToken ct = default);
 
+    // Per-user preferences (the signed-in user's own).
+    Task<PreferencesView> GetPreferencesAsync(CancellationToken ct = default);
+    Task SavePreferencesAsync(int? defaultProjectId, IssueSort? defaultSort, CancellationToken ct = default);
+
     // Issues
     Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default);
     Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default);

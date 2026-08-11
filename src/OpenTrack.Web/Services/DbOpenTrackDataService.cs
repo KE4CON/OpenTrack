@@ -24,6 +24,7 @@ using OpenTrack.Infrastructure.Checklist;
 using OpenTrack.Infrastructure.CustomFields;
 using OpenTrack.Infrastructure.Dashboard;
 using OpenTrack.Infrastructure.Filters;
+using OpenTrack.Infrastructure.Preferences;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
@@ -163,6 +164,21 @@ public class DbOpenTrackDataService(
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
         await SavedFilterOperations.DeleteAsync(db, access.UserId, id, ct);
+    }
+
+    public async Task<PreferencesView> GetPreferencesAsync(CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var p = await UserPreferenceOperations.GetAsync(db, access.UserId, ct);
+        return new PreferencesView(p.DefaultProjectId, p.DefaultSort);
+    }
+
+    public async Task SavePreferencesAsync(int? defaultProjectId, IssueSort? defaultSort, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        await UserPreferenceOperations.SaveAsync(db, access.UserId, defaultProjectId, defaultSort, ct);
     }
 
     public async Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default)

@@ -180,7 +180,8 @@ else
     [SupplyParameterFromQuery] public IssueSort? Sort { get; set; }
     [SupplyParameterFromQuery] public bool? Stale { get; set; }
 
-    private IssueSort EffectiveSort => Sort ?? IssueSort.UpdatedDesc;
+    private IssueSort? prefDefaultSort;
+    private IssueSort EffectiveSort => Sort ?? prefDefaultSort ?? IssueSort.UpdatedDesc;
 
     private IReadOnlyList<IssueRow> issues = [];
     private List<(int Id, string Name)> projectOptions = [];
@@ -204,6 +205,7 @@ else
             .ToList();
         tagOptions = await Data.GetAllTagsAsync();
         savedFilters = await Data.GetSavedFiltersAsync();
+        prefDefaultSort = (await Data.GetPreferencesAsync()).DefaultSort;
         await LoadIssues();
     }
 

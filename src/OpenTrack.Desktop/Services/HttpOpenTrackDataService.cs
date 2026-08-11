@@ -96,6 +96,16 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task<PreferencesView> GetPreferencesAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<PreferencesView>("/api/preferences", JsonOptions, ct)
+            ?? new PreferencesView(null, null);
+
+    public async Task SavePreferencesAsync(int? defaultProjectId, OpenTrack.Core.Querying.IssueSort? defaultSort, CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync("/api/preferences", new { defaultProjectId, defaultSort }, JsonOptions, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
     public async Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default)
     {
         var resp = await http.GetAsync($"/api/issues/{id}", ct);

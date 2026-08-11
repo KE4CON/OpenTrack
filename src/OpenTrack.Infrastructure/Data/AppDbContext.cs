@@ -236,6 +236,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(d => new { d.ProjectId, d.Name }).IsUnique();
         });
+        // ---- UserPreference (one row per user) ----
+        b.Entity<UserPreference>(e =>
+        {
+            e.HasKey(p => p.UserId);
+            e.HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
+            // DefaultProjectId is a soft reference (set-null semantics handled in app): if the project is
+            // gone we just ignore it, so no FK is declared to avoid a delete-time constraint.
+        });
+
         // ---- SavedFilter (per-user) ----
         b.Entity<SavedFilter>(e =>
         {
@@ -289,4 +298,5 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<CustomFieldValue> CustomFieldValues => Set<CustomFieldValue>();
     public DbSet<ChecklistItem> ChecklistItems => Set<ChecklistItem>();
     public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>();
+    public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
 }
