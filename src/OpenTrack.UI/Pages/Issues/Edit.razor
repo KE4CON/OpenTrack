@@ -123,6 +123,23 @@ else
             </div>
         </div>
 
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Affects Version</label>
+                <InputSelect @bind-Value="model.AffectsVersionId" class="form-select">
+                    <option value="">(none)</option>
+                    @foreach (var v in versions) { <option value="@v.Id">@v.Name</option> }
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Fix Version</label>
+                <InputSelect @bind-Value="model.FixVersionId" class="form-select">
+                    <option value="">(none)</option>
+                    @foreach (var v in versions) { <option value="@v.Id">@v.Name</option> }
+                </InputSelect>
+            </div>
+        </div>
+
         <div class="form-check mb-3">
             <InputCheckbox @bind-Value="model.IsSticky" class="form-check-input" id="sticky" />
             <label class="form-check-label" for="sticky">Sticky (pinned to top of project issue list)</label>
@@ -142,15 +159,17 @@ else
     [Parameter] public int Id { get; set; }
 
     [SupplyParameterFromForm]
-    private IssueEditModel model { get; set; } = new();
+    private IssueEditModel model { get; set; } = default!;
 
     private bool found;
     private string projectName = string.Empty;
     private IReadOnlyList<CategoryView> categories = [];
     private IReadOnlyList<ProjectMemberView> projectMembers = [];
+    private IReadOnlyList<ProjectVersionView> versions = [];
 
     protected override async Task OnParametersSetAsync()
     {
+        model ??= new();
         var issue = await Data.GetIssueAsync(Id);
         if (issue is null) return;
         found = true;
@@ -158,6 +177,7 @@ else
 
         categories = await Data.GetProjectCategoriesAsync(issue.ProjectId);
         projectMembers = await Data.GetProjectMembersAsync(issue.ProjectId);
+        versions = await Data.GetProjectVersionsAsync(issue.ProjectId);
 
         if (!model.Loaded)
         {
@@ -176,6 +196,8 @@ else
             model.IsSticky = issue.IsSticky;
             model.IsPrivate = issue.IsPrivate;
             model.DueDate = issue.DueDate;
+            model.AffectsVersionId = issue.AffectsVersionId;
+            model.FixVersionId = issue.FixVersionId;
             model.Loaded = true;
         }
     }
@@ -188,7 +210,8 @@ else
             model.Title, model.Description, model.StepsToReproduce,
             model.ExpectedBehavior, model.ActualBehavior,
             model.Status, model.Severity, model.Priority, model.Reproducibility,
-            model.Resolution, model.AssigneeId, model.CategoryId, model.IsSticky, model.IsPrivate, model.DueDate));
+            model.Resolution, model.AssigneeId, model.CategoryId, model.IsSticky, model.IsPrivate, model.DueDate,
+            model.AffectsVersionId, model.FixVersionId));
         Nav.NavigateTo($"issues/{Id}");
     }
 
@@ -215,5 +238,7 @@ else
         public bool IsSticky { get; set; }
         public bool IsPrivate { get; set; }
         public DateTime? DueDate { get; set; }
+        public int? AffectsVersionId { get; set; }
+        public int? FixVersionId { get; set; }
     }
 }

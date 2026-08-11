@@ -132,6 +132,7 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
         var i = await db.Issues.AsNoTracking()
             .Include(x => x.Project).Include(x => x.Category)
             .Include(x => x.Reporter).Include(x => x.Assignee)
+            .Include(x => x.AffectsVersion).Include(x => x.FixVersion)
             .Include(x => x.Notes).ThenInclude(n => n.Author)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (i is null) return null;
@@ -146,6 +147,7 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
             i.Status, i.Severity, i.Priority, i.Reproducibility, i.Resolution,
             i.ReporterId, i.Reporter.UserName ?? "unknown", i.AssigneeId, i.Assignee?.UserName,
             i.CategoryId, i.Category?.Name, i.IsSticky, i.IsPrivate, i.CreatedAt, i.UpdatedAt, i.DueDate,
+            i.AffectsVersionId, i.AffectsVersion?.Name, i.FixVersionId, i.FixVersion?.Name,
             i.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
                 .OrderBy(n => n.CreatedAt)
                 .Select(n => new IssueNoteView(n.Id, n.Author.UserName ?? "unknown", n.Text, n.IsPrivate, n.CreatedAt))
@@ -171,7 +173,8 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
             StepsToReproduce = input.StepsToReproduce, ExpectedBehavior = input.ExpectedBehavior,
             ActualBehavior = input.ActualBehavior, CategoryId = input.CategoryId,
             Severity = input.Severity, Priority = input.Priority, Reproducibility = input.Reproducibility,
-            DueDate = input.DueDate, ReporterId = access.UserId, Status = IssueStatus.New,
+            DueDate = input.DueDate, AffectsVersionId = input.AffectsVersionId, FixVersionId = input.FixVersionId,
+            ReporterId = access.UserId, Status = IssueStatus.New,
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
         // Add the creation-history row via the navigation collection so the issue and its history
@@ -215,6 +218,8 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
         issue.Resolution = input.Resolution;
         issue.CategoryId = input.CategoryId;
         issue.DueDate = input.DueDate;
+        issue.AffectsVersionId = input.AffectsVersionId;
+        issue.FixVersionId = input.FixVersionId;
 
         // Privileged fields: silently keep the existing value if the caller lacks the right, so a
         // crafted request can never escalate (the UI already hides these controls by role).
@@ -400,4 +405,77 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
     /// <summary>Per-project roles range from Viewer to Manager; Administrator is global-only.</summary>
     private static bool IsAssignableProjectRole(UserRole role) =>
         (int)role >= (int)UserRole.Viewer && (int)role <= (int)UserRole.Manager;
+
+    // ---- Category & version management (Manager+ on the project) ----
+
+    public async Task<string?> CreateCategoryAsync(int projectId, string name, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        if (!access.For(projectId).CanManageProject())
+            throw new UnauthorizedAccessException("Managing categories requires the Manager role on this project.");
+        name = name.Trim();
+        if (string.IsNullOrEmpty(name)) return "Category name is required.";
+        if (await db.Categories.AnyAsync(c => c.ProjectId == projectId && c.Name == name, ct))
+            return "A category with that name already exists.";
+        db.Categories.Add(new Category { ProjectId = projectId, Name = name });
+        await db.SaveChangesAsync(ct);
+        return null;
+    }
+
+    public async Task DeleteCategoryAsync(int projectId, int categoryId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        if (!access.For(projectId).CanManageProject())
+            throw new UnauthorizedAccessException("Managing categories requires the Manager role on this project.");
+        var category = await db.Categories.FirstOrDefaultAsync(c => c.Id == categoryId && c.ProjectId == projectId, ct);
+        if (category is null) return;
+        db.Categories.Remove(category); // issues referencing it have Category set null (SetNull FK)
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<ProjectVersionView>> GetProjectVersionsAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        if (project is null || !access.For(projectId).CanViewProject(project.IsPublic))
+            return [];
+        return await db.Versions.AsNoTracking()
+            .Where(v => v.ProjectId == projectId).OrderBy(v => v.Name)
+            .Select(v => new ProjectVersionView(v.Id, v.Name, v.Description, v.ReleaseDate, v.IsReleased))
+            .ToListAsync(ct);
+    }
+
+    public async Task<string?> CreateVersionAsync(int projectId, CreateVersionInput input, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        if (!access.For(projectId).CanManageProject())
+            throw new UnauthorizedAccessException("Managing versions requires the Manager role on this project.");
+        var name = input.Name.Trim();
+        if (string.IsNullOrEmpty(name)) return "Version name is required.";
+        if (await db.Versions.AnyAsync(v => v.ProjectId == projectId && v.Name == name, ct))
+            return "A version with that name already exists.";
+        db.Versions.Add(new ProjectVersion
+        {
+            ProjectId = projectId, Name = name, Description = input.Description,
+            ReleaseDate = input.ReleaseDate, IsReleased = input.IsReleased
+        });
+        await db.SaveChangesAsync(ct);
+        return null;
+    }
+
+    public async Task DeleteVersionAsync(int projectId, int versionId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        if (!access.For(projectId).CanManageProject())
+            throw new UnauthorizedAccessException("Managing versions requires the Manager role on this project.");
+        var version = await db.Versions.FirstOrDefaultAsync(v => v.Id == versionId && v.ProjectId == projectId, ct);
+        if (version is null) return;
+        db.Versions.Remove(version); // issues referencing it have the version set null (SetNull FK)
+        await db.SaveChangesAsync(ct);
+    }
 }

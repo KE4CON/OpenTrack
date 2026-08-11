@@ -194,6 +194,78 @@ public static class ProjectEndpoints
     private static bool IsAssignableProjectRole(UserRole role) =>
         (int)role >= (int)UserRole.Viewer && (int)role <= (int)UserRole.Manager;
 
+    // ---- Category & version management (Manager+ on the project) ----
+
+    public static void MapProjectSettingsEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/projects").RequireAuthorization().WithTags("Projects");
+
+        group.MapPost("/{id:int}/categories", async (int id, CreateCategoryRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var name = req.Name.Trim();
+            if (string.IsNullOrEmpty(name)) return Results.BadRequest("Category name is required.");
+            if (await db.Categories.AnyAsync(c => c.ProjectId == id && c.Name == name, ct))
+                return Results.BadRequest("A category with that name already exists.");
+            db.Categories.Add(new Category { ProjectId = id, Name = name });
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        });
+
+        group.MapDelete("/{id:int}/categories/{categoryId:int}", async (int id, int categoryId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var category = await db.Categories.FirstOrDefaultAsync(c => c.Id == categoryId && c.ProjectId == id, ct);
+            if (category is null) return Results.NotFound();
+            db.Categories.Remove(category);
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        });
+
+        group.MapGet("/{id:int}/versions", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
+            if (project is null || !access.For(id).CanViewProject(project.IsPublic)) return Results.NotFound();
+            var rows = await db.Versions.AsNoTracking()
+                .Where(v => v.ProjectId == id).OrderBy(v => v.Name)
+                .Select(v => new ProjectVersionDto(v.Id, v.Name, v.Description, v.ReleaseDate, v.IsReleased))
+                .ToListAsync(ct);
+            return Results.Ok(rows);
+        });
+
+        group.MapPost("/{id:int}/versions", async (int id, CreateVersionRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var name = req.Name.Trim();
+            if (string.IsNullOrEmpty(name)) return Results.BadRequest("Version name is required.");
+            if (await db.Versions.AnyAsync(v => v.ProjectId == id && v.Name == name, ct))
+                return Results.BadRequest("A version with that name already exists.");
+            db.Versions.Add(new ProjectVersion { ProjectId = id, Name = name, Description = req.Description, ReleaseDate = req.ReleaseDate, IsReleased = req.IsReleased });
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        });
+
+        group.MapDelete("/{id:int}/versions/{versionId:int}", async (int id, int versionId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var version = await db.Versions.FirstOrDefaultAsync(v => v.Id == versionId && v.ProjectId == id, ct);
+            if (version is null) return Results.NotFound();
+            db.Versions.Remove(version);
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        });
+    }
+
     internal static int? GetUserId(ClaimsPrincipal user)
     {
         var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;

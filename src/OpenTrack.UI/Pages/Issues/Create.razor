@@ -92,6 +92,20 @@ else
                 <label class="form-label">Due Date <span class="text-muted">(optional)</span></label>
                 <InputDate @bind-Value="model.DueDate" class="form-control" />
             </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Affects Version</label>
+                <InputSelect @bind-Value="model.AffectsVersionId" class="form-select">
+                    <option value="">(none)</option>
+                    @foreach (var v in versions) { <option value="@v.Id">@v.Name</option> }
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Fix Version</label>
+                <InputSelect @bind-Value="model.FixVersionId" class="form-select">
+                    <option value="">(none)</option>
+                    @foreach (var v in versions) { <option value="@v.Id">@v.Name</option> }
+                </InputSelect>
+            </div>
         </div>
 
         @if (error is not null)
@@ -109,6 +123,7 @@ else
 
     private ProjectDetail? project;
     private IReadOnlyList<CategoryView> categories = [];
+    private IReadOnlyList<ProjectVersionView> versions = [];
     [SupplyParameterFromForm]
     private IssueFormModel model { get; set; } = default!;
     private string? error;
@@ -118,6 +133,7 @@ else
         model ??= new();
         project = await Data.GetProjectAsync(ProjectId);
         categories = await Data.GetProjectCategoriesAsync(ProjectId);
+        versions = await Data.GetProjectVersionsAsync(ProjectId);
     }
 
     private async Task HandleSubmit()
@@ -127,7 +143,8 @@ else
             var id = await Data.CreateIssueAsync(ProjectId, new CreateIssueInput(
                 model.Title, model.Description, model.StepsToReproduce,
                 model.ExpectedBehavior, model.ActualBehavior, model.CategoryId,
-                model.Severity, model.Priority, model.Reproducibility, model.DueDate));
+                model.Severity, model.Priority, model.Reproducibility, model.DueDate,
+                model.AffectsVersionId, model.FixVersionId));
             Nav.NavigateTo($"issues/{id}");
         }
         catch (InvalidOperationException ex)
@@ -156,5 +173,7 @@ else
         public IssuePriority Priority { get; set; } = IssuePriority.Normal;
         public IssueReproducibility Reproducibility { get; set; } = IssueReproducibility.HaveNotTried;
         public DateTime? DueDate { get; set; }
+        public int? AffectsVersionId { get; set; }
+        public int? FixVersionId { get; set; }
     }
 }

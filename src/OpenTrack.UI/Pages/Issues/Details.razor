@@ -37,11 +37,13 @@ else
     <div class="row mb-3">
         <div class="col-md-3"><strong>Resolution:</strong> @issue.Resolution</div>
         <div class="col-md-3"><strong>Due:</strong> @(issue.DueDate is { } d ? d.ToString("d") : "—")</div>
-        @if (issue.IsPrivate)
-        {
-            <div class="col-md-3"><span class="badge text-bg-warning">Private</span></div>
-        }
+        <div class="col-md-3"><strong>Affects:</strong> @(issue.AffectsVersionName ?? "—")</div>
+        <div class="col-md-3"><strong>Fixed in:</strong> @(issue.FixVersionName ?? "—")</div>
     </div>
+    @if (issue.IsPrivate)
+    {
+        <p><span class="badge text-bg-warning">Private issue</span></p>
+    }
 
     <h2 class="h5">Description</h2>
     <p style="white-space: pre-wrap">@issue.Description</p>

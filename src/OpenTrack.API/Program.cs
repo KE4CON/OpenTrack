@@ -95,6 +95,7 @@ app.MapGet("/api/auth/me", (System.Security.Claims.ClaimsPrincipal user) =>
 }).RequireAuthorization();
 
 app.MapProjectEndpoints();
+app.MapProjectSettingsEndpoints();
 app.MapIssueEndpoints();
 
 app.Run();

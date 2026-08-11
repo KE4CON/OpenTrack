@@ -48,4 +48,13 @@ public interface IOpenTrackDataService
     Task<string?> AddProjectMemberAsync(int projectId, AddProjectMemberInput input, CancellationToken ct = default);
     Task SetProjectMemberRoleAsync(int projectId, int userId, OpenTrack.Core.Enums.UserRole role, CancellationToken ct = default);
     Task RemoveProjectMemberAsync(int projectId, int userId, CancellationToken ct = default);
+
+    // Category management (Manager+ on the project). Returns null on success or a reason on failure.
+    Task<string?> CreateCategoryAsync(int projectId, string name, CancellationToken ct = default);
+    Task DeleteCategoryAsync(int projectId, int categoryId, CancellationToken ct = default);
+
+    // Version management (Manager+ on the project).
+    Task<IReadOnlyList<ProjectVersionView>> GetProjectVersionsAsync(int projectId, CancellationToken ct = default);
+    Task<string?> CreateVersionAsync(int projectId, CreateVersionInput input, CancellationToken ct = default);
+    Task DeleteVersionAsync(int projectId, int versionId, CancellationToken ct = default);
 }

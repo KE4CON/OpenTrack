@@ -26,6 +26,8 @@ public record IssueDetailDto(
     int ReporterId, string ReporterName, int? AssigneeId, string? AssigneeName,
     int? CategoryId, string? CategoryName, bool IsSticky, bool IsPrivate,
     DateTime CreatedAt, DateTime UpdatedAt, DateTime? DueDate,
+    int? AffectsVersionId, string? AffectsVersionName,
+    int? FixVersionId, string? FixVersionName,
     IReadOnlyList<IssueNoteDto> Notes);
 
 public record IssueNoteDto(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
@@ -36,13 +38,14 @@ public record CreateIssueRequest(
     string Title, string Description, string? StepsToReproduce,
     string? ExpectedBehavior, string? ActualBehavior, int? CategoryId,
     IssueSeverity Severity, IssuePriority Priority, IssueReproducibility Reproducibility,
-    DateTime? DueDate);
+    DateTime? DueDate, int? AffectsVersionId, int? FixVersionId);
 
 public record UpdateIssueRequest(
     string Title, string Description, string? StepsToReproduce,
     string? ExpectedBehavior, string? ActualBehavior,
     IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
     IssueReproducibility Reproducibility, IssueResolution Resolution,
-    int? AssigneeId, int? CategoryId, bool IsSticky, bool IsPrivate, DateTime? DueDate);
+    int? AssigneeId, int? CategoryId, bool IsSticky, bool IsPrivate, DateTime? DueDate,
+    int? AffectsVersionId, int? FixVersionId);
 
 public record AddIssueNoteRequest(string Text, bool IsPrivate = false);

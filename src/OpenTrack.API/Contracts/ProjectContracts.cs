@@ -30,3 +30,9 @@ public record ProjectMemberDetailDto(int UserId, string UserName, UserRole Role,
 public record AddProjectMemberRequest(string Email, UserRole Role);
 
 public record SetMemberRoleRequest(UserRole Role);
+
+public record CreateCategoryRequest(string Name);
+
+public record ProjectVersionDto(int Id, string Name, string? Description, DateTime? ReleaseDate, bool IsReleased);
+
+public record CreateVersionRequest(string Name, string? Description, DateTime? ReleaseDate, bool IsReleased);

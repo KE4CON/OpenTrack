@@ -42,22 +42,29 @@ public record IssueDetail(
     int ReporterId, string ReporterName, int? AssigneeId, string? AssigneeName,
     int? CategoryId, string? CategoryName, bool IsSticky, bool IsPrivate,
     DateTime CreatedAt, DateTime UpdatedAt, DateTime? DueDate,
+    int? AffectsVersionId, string? AffectsVersionName,
+    int? FixVersionId, string? FixVersionName,
     IReadOnlyList<IssueNoteView> Notes);
 
 public record CreateIssueInput(
     string Title, string Description, string? StepsToReproduce,
     string? ExpectedBehavior, string? ActualBehavior, int? CategoryId,
     IssueSeverity Severity, IssuePriority Priority, IssueReproducibility Reproducibility,
-    DateTime? DueDate);
+    DateTime? DueDate, int? AffectsVersionId, int? FixVersionId);
 
 public record UpdateIssueInput(
     string Title, string Description, string? StepsToReproduce,
     string? ExpectedBehavior, string? ActualBehavior,
     IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
     IssueReproducibility Reproducibility, IssueResolution Resolution,
-    int? AssigneeId, int? CategoryId, bool IsSticky, bool IsPrivate, DateTime? DueDate);
+    int? AssigneeId, int? CategoryId, bool IsSticky, bool IsPrivate, DateTime? DueDate,
+    int? AffectsVersionId, int? FixVersionId);
 
 public record CategoryView(int Id, string Name);
+
+public record ProjectVersionView(int Id, string Name, string? Description, DateTime? ReleaseDate, bool IsReleased);
+
+public record CreateVersionInput(string Name, string? Description, DateTime? ReleaseDate, bool IsReleased);
 
 public record ProjectMemberView(int Id, string UserName);
 

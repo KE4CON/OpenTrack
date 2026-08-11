@@ -52,6 +52,7 @@ public static class IssueEndpoints
             var issue = await db.Issues.AsNoTracking()
                 .Include(i => i.Project).Include(i => i.Category)
                 .Include(i => i.Reporter).Include(i => i.Assignee)
+                .Include(i => i.AffectsVersion).Include(i => i.FixVersion)
                 .Include(i => i.Notes).ThenInclude(n => n.Author)
                 .FirstOrDefaultAsync(i => i.Id == id, ct);
             if (issue is null) return Results.NotFound();
@@ -69,6 +70,7 @@ public static class IssueEndpoints
                 issue.AssigneeId, issue.Assignee?.UserName,
                 issue.CategoryId, issue.Category?.Name, issue.IsSticky, issue.IsPrivate,
                 issue.CreatedAt, issue.UpdatedAt, issue.DueDate,
+                issue.AffectsVersionId, issue.AffectsVersion?.Name, issue.FixVersionId, issue.FixVersion?.Name,
                 issue.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
                     .OrderBy(n => n.CreatedAt)
                     .Select(n => new IssueNoteDto(n.Id, n.Author.UserName ?? "unknown", n.Text, n.IsPrivate, n.CreatedAt))
@@ -93,7 +95,8 @@ public static class IssueEndpoints
                 StepsToReproduce = req.StepsToReproduce, ExpectedBehavior = req.ExpectedBehavior,
                 ActualBehavior = req.ActualBehavior, CategoryId = req.CategoryId,
                 Severity = req.Severity, Priority = req.Priority, Reproducibility = req.Reproducibility,
-                DueDate = req.DueDate, ReporterId = access.UserId, Status = IssueStatus.New,
+                DueDate = req.DueDate, AffectsVersionId = req.AffectsVersionId, FixVersionId = req.FixVersionId,
+                ReporterId = access.UserId, Status = IssueStatus.New,
                 CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
             };
             // History via navigation => single atomic SaveChanges.
@@ -136,6 +139,8 @@ public static class IssueEndpoints
             issue.Resolution = req.Resolution;
             issue.CategoryId = req.CategoryId;
             issue.DueDate = req.DueDate;
+            issue.AffectsVersionId = req.AffectsVersionId;
+            issue.FixVersionId = req.FixVersionId;
 
             // Privileged fields: ignore (keep existing) unless the caller is authorized, so a crafted
             // request body cannot escalate past what the UI exposes for the caller's role.
