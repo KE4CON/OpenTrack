@@ -180,6 +180,35 @@ else
         </div>
     }
 
+    @if (aiEnabled)
+    {
+        <div class="card mb-3 border-primary-subtle">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">✨ AI summary</span>
+                    <EditForm Model="aiSummarizeModel" OnValidSubmit="SummarizeThread" FormName="aiSummarize">
+                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Uses your configured AI provider">
+                            @(aiSummary is null ? "Summarize thread" : "Refresh")
+                        </button>
+                    </EditForm>
+                </div>
+                @if (aiSummaryMessage is not null)
+                {
+                    <div class="text-muted small mt-1">@aiSummaryMessage</div>
+                }
+                else if (aiSummary is not null)
+                {
+                    <p class="mb-0 mt-2">@aiSummary</p>
+                    <div class="form-text">AI-generated from this issue and its notes — double-check anything important.</div>
+                }
+                else
+                {
+                    <div class="text-muted small mt-1">Get a plain-language recap of the problem, what's been tried, and what's next.</div>
+                }
+            </div>
+        </div>
+    }
+
     <h2 class="h5">Description</h2>
     <div class="ot-markdown">@((MarkupString)SafeMarkdown.ToHtml(issue.Description))</div>
 
@@ -473,6 +502,11 @@ else
     [SupplyParameterFromForm(FormName = "addTime")] private AddTimeModel addTime { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "delTime")] private DelTimeModel delTime { get; set; } = default!;
 
+    private bool aiEnabled;
+    [SupplyParameterFromForm(FormName = "aiSummarize")] private AiSummarizeModel aiSummarizeModel { get; set; } = default!;
+    private string? aiSummary;
+    private string? aiSummaryMessage;
+
     protected override async Task OnParametersSetAsync()
     {
         noteModel ??= new();
@@ -484,6 +518,8 @@ else
         cf ??= new();
         addTime ??= new();
         delTime ??= new();
+        aiSummarizeModel ??= new();
+        aiEnabled = await Data.IsAiEnabledAsync();
         await LoadIssue();
         // On first render (GET) cf.Entries is empty → seed it from the stored values so the inputs have
         // something to bind to. On an SSR post-back cf.Entries is already populated from the form, so we
@@ -491,6 +527,19 @@ else
         if (cf.Entries.Count == 0)
             SeedCustomFieldEntries();
     }
+
+    private async Task SummarizeThread()
+    {
+        aiSummary = null;
+        aiSummaryMessage = null;
+        var s = await Data.SummarizeIssueAsync(Id);
+        if (string.IsNullOrWhiteSpace(s))
+            aiSummaryMessage = "AI couldn't summarize this thread right now.";
+        else
+            aiSummary = s;
+    }
+
+    private sealed class AiSummarizeModel { }
 
     private void SeedCustomFieldEntries() =>
         cf.Entries = customFields.Select(f => new CustomFieldEntry { DefinitionId = f.DefinitionId, Value = f.Value }).ToList();

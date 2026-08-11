@@ -140,6 +140,39 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         return await http.GetFromJsonAsync<List<IssueRow>>(url, JsonOptions, ct) ?? [];
     }
 
+    public async Task<bool> IsAiEnabledAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<bool>("/api/ai/enabled", JsonOptions, ct);
+
+    private sealed record AiTriageDto(OpenTrack.Core.Enums.IssueSeverity? Severity, OpenTrack.Core.Enums.IssuePriority? Priority, string? Category, List<string>? Tags);
+    public async Task<AiTriageView?> SuggestTriageAsync(int projectId, string title, string? description, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/ai/triage", new { projectId, title, description }, JsonOptions, ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        var d = await resp.Content.ReadFromJsonAsync<AiTriageDto>(JsonOptions, ct);
+        return d is null ? null : new AiTriageView(d.Severity, d.Priority, d.Category, d.Tags ?? []);
+    }
+
+    private sealed record AiSearchDto(
+        OpenTrack.Core.Enums.IssueStatus? Status, OpenTrack.Core.Enums.IssueSeverity? Severity,
+        OpenTrack.Core.Enums.IssuePriority? Priority, string? Text, bool Stale,
+        OpenTrack.Core.Querying.IssueSort? Sort, string? ProjectName);
+    public async Task<AiSearchView?> InterpretIssueSearchAsync(string query, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/ai/search", new { query }, JsonOptions, ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        var d = await resp.Content.ReadFromJsonAsync<AiSearchDto>(JsonOptions, ct);
+        return d is null ? null : new AiSearchView(d.Status, d.Severity, d.Priority, d.Text, d.Stale, d.Sort, d.ProjectName);
+    }
+
+    private sealed record AiSummaryDto(string? Summary);
+    public async Task<string?> SummarizeIssueAsync(int issueId, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/ai/summarize", new { issueId }, JsonOptions, ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        var d = await resp.Content.ReadFromJsonAsync<AiSummaryDto>(JsonOptions, ct);
+        return d?.Summary;
+    }
+
     public async Task<DashboardView> GetDashboardAsync(CancellationToken ct = default) =>
         await http.GetFromJsonAsync<DashboardView>("/api/dashboard", JsonOptions, ct)
             ?? new DashboardView(0, 0, 0, [], [], []);
