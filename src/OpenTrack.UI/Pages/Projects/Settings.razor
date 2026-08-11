@@ -1,6 +1,7 @@
 @page "/projects/{Id:int}/settings"
 @attribute [Authorize]
 @inject IOpenTrackDataService Data
+@inject NavigationManager Nav
 
 <PageTitle>Settings — @(projectName ?? "Project")</PageTitle>
 
@@ -138,6 +139,32 @@ else
             </EditForm>
         </div>
     </div>
+
+    <hr class="my-4" />
+    <div class="row">
+        <div class="col-lg-8">
+            <h2 class="h5">Public trouble-ticket intake</h2>
+            <p class="form-text">
+                Let anyone submit a problem <em>without an account</em> through a public “Report a problem”
+                page — handy for a helpdesk, a club, or field reports. Submissions arrive as normal issues.
+                Off by default.
+            </p>
+            <p class="mb-1">Status: <strong>@(intakeEnabled ? "On" : "Off")</strong></p>
+            @if (intakeEnabled)
+            {
+                <p class="mb-2">
+                    Public link: <a href="report/@Id" target="_blank">@publicUrl</a>
+                    — share this with people who should be able to submit tickets. They can check status at
+                    <a href="report/status" target="_blank">@statusUrl</a>.
+                </p>
+            }
+            <EditForm Model="intakeForm" OnValidSubmit="ToggleIntake" FormName="intake">
+                <button type="submit" class="btn @(intakeEnabled ? "btn-outline-danger" : "btn-primary")">
+                    @(intakeEnabled ? "Turn off public intake" : "Turn on public intake")
+                </button>
+            </EditForm>
+        </div>
+    </div>
 }
 
 @code {
@@ -157,6 +184,11 @@ else
     [SupplyParameterFromForm(FormName = "delVersion")] private IdForm verDel { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "addHook")] private HookForm hookAdd { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "delHook")] private DelHookForm hookDel { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "intake")] private EmptyForm intakeForm { get; set; } = default!;
+
+    private bool intakeEnabled;
+    private string publicUrl = "";
+    private string statusUrl = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -166,13 +198,26 @@ else
         verDel ??= new();
         hookAdd ??= new();
         hookDel ??= new();
+        intakeForm ??= new();
         await Load();
     }
+
+    private async Task ToggleIntake()
+    {
+        try { await Data.SetPublicIntakeEnabledAsync(Id, !intakeEnabled); Report(null); }
+        catch (Exception ex) { Report(ex.Message); }
+        await Load();
+    }
+
+    private sealed class EmptyForm { }
 
     private async Task Load()
     {
         var project = await Data.GetProjectAsync(Id);
         projectName = project?.Name;
+        intakeEnabled = project?.PublicIntakeEnabled ?? false;
+        publicUrl = $"{Nav.BaseUri}report/{Id}";
+        statusUrl = $"{Nav.BaseUri}report/status";
         // Managers-only signal: member-details returns rows only to a manager.
         canManage = (await Data.GetProjectMemberDetailsAsync(Id)).Count > 0;
         categories = await Data.GetProjectCategoriesAsync(Id);

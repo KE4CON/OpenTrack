@@ -92,6 +92,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         {
             e.Property(i => i.Title).HasMaxLength(FieldLimits.IssueTitle).IsRequired();
             e.Property(i => i.Description).IsRequired();
+            e.Property(i => i.IntakeName).HasMaxLength(FieldLimits.IntakeName);
+            e.Property(i => i.IntakeEmail).HasMaxLength(FieldLimits.IntakeEmail);
             e.Property(i => i.RowVersion).IsConcurrencyToken();
 
             e.HasOne(i => i.Project)

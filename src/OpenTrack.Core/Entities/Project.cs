@@ -17,6 +17,11 @@ public class Project
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool IsPublic { get; set; } = true;
+
+    /// <summary>When true, anyone (no account) can submit a trouble ticket for this project via the
+    /// public "Report a problem" page. Off by default — a Manager turns it on in project settings.</summary>
+    public bool PublicIntakeEnabled { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public int OwnerId { get; set; }

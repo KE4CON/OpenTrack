@@ -1,0 +1,86 @@
+@page "/report/{ProjectId:int}"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@using Microsoft.EntityFrameworkCore
+@using OpenTrack.Infrastructure.Data
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>Report a problem@(projectName is null ? "" : $" — {projectName}")</PageTitle>
+
+<div class="container" style="max-width: 40rem;">
+    @if (!enabled)
+    {
+        <h1 class="h3 mt-4">Report a problem</h1>
+        <div class="alert alert-info mt-3">This project isn't accepting public submissions right now.</div>
+    }
+    else if (Ref is not null)
+    {
+        <div class="text-center mt-5">
+            <h1 class="h3">Thank you</h1>
+            @if (Ref > 0)
+            {
+                <p class="lead">Your report was received. Your reference number is <strong>#@Ref</strong>.</p>
+                <p>Keep that number — you can <a href="/report/status">check its status</a> anytime.</p>
+            }
+            else
+            {
+                <p class="lead">Your report was received.</p>
+            }
+            <a class="btn btn-outline-secondary mt-2" href="/report/@ProjectId">Submit another</a>
+        </div>
+    }
+    else
+    {
+        <h1 class="h3 mt-4">Report a problem — @projectName</h1>
+        <p class="text-muted">Tell us what's wrong. You don't need an account. Leave your email if you'd like updates.</p>
+
+        @if (!string.IsNullOrEmpty(Err))
+        {
+            <div class="alert alert-danger">@Err</div>
+        }
+
+        <form method="post" action="/report/@ProjectId/submit">
+            @* Honeypot: real people never see or fill this; bots do, and we silently drop those. *@
+            <div style="position:absolute; left:-9999px; top:-9999px;" aria-hidden="true">
+                <label>Leave this field empty<input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">Your name <span class="text-muted">(optional)</span></label>
+                <input name="name" class="form-control" maxlength="100" />
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Your email <span class="text-muted">(optional — for updates)</span></label>
+                <input name="email" type="email" class="form-control" maxlength="200" />
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Summary <span class="text-danger">*</span></label>
+                <input name="title" class="form-control" maxlength="200" required placeholder="A short description of the problem" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Details</label>
+                <textarea name="description" class="form-control" rows="4" placeholder="What happened? What were you doing? Anything else that helps."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit report</button>
+        </form>
+    }
+</div>
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+    [SupplyParameterFromQuery] public int? Ref { get; set; }
+    [SupplyParameterFromQuery] public string? Err { get; set; }
+
+    private string? projectName;
+    private bool enabled;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var p = await db.Projects.AsNoTracking()
+            .Where(x => x.Id == ProjectId)
+            .Select(x => new { x.Name, x.PublicIntakeEnabled })
+            .FirstOrDefaultAsync();
+        projectName = p?.Name;
+        enabled = p?.PublicIntakeEnabled ?? false;
+    }
+}

@@ -53,7 +53,19 @@ public static class ProjectEndpoints
                 return Results.NotFound();
 
             return Results.Ok(new ProjectDetailDto(project.Id, project.Name, project.Description,
-                project.IsPublic, project.OwnerId, project.CreatedAt, project.RowVersion));
+                project.IsPublic, project.OwnerId, project.CreatedAt, project.RowVersion, project.PublicIntakeEnabled));
+        });
+
+        group.MapPut("/{id:int}/public-intake", async (int id, SetPublicIntakeRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == id, ct);
+            if (project is null) return Results.NotFound();
+            project.PublicIntakeEnabled = req.Enabled;
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
         });
 
         // Creating a project is not scoped to an existing project: require global Manager+.

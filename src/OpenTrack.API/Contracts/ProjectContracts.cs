@@ -15,7 +15,9 @@ namespace OpenTrack.API.Contracts;
 
 public record ProjectDto(int Id, string Name, string? Description, bool IsPublic, int OwnerId, int OpenIssueCount);
 
-public record ProjectDetailDto(int Id, string Name, string? Description, bool IsPublic, int OwnerId, DateTime CreatedAt, Guid RowVersion);
+public record ProjectDetailDto(int Id, string Name, string? Description, bool IsPublic, int OwnerId, DateTime CreatedAt, Guid RowVersion, bool PublicIntakeEnabled = false);
+
+public record SetPublicIntakeRequest(bool Enabled);
 
 public record CreateProjectRequest(string Name, string? Description, bool IsPublic);
 

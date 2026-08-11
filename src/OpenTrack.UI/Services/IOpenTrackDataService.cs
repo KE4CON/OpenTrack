@@ -32,6 +32,8 @@ public interface IOpenTrackDataService
     Task<ProjectDetail?> GetProjectAsync(int id, CancellationToken ct = default);
     Task<int> CreateProjectAsync(CreateProjectInput input, CancellationToken ct = default);
     Task UpdateProjectAsync(int id, UpdateProjectInput input, CancellationToken ct = default);
+    // Turn the public "Report a problem" intake on/off for a project (Manager only).
+    Task SetPublicIntakeEnabledAsync(int projectId, bool enabled, CancellationToken ct = default);
 
     // Dashboard: a cross-project overview (open/overdue tallies, severity breakdown, recent activity),
     // filtered to what the signed-in user may see.
