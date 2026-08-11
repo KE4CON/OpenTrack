@@ -10,6 +10,7 @@
 // more details.
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OpenTrack.Core.Authorization;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
@@ -26,9 +27,23 @@ namespace OpenTrack.Infrastructure.Notifications;
 /// leak to someone who can no longer see it. Writes in-app notification rows and, if a mail server is
 /// configured, sends a best-effort email (a mail failure is logged, never thrown).
 /// </summary>
-public sealed class NotificationDispatch(IEmailService email)
+public sealed class NotificationDispatch(IEmailService email, ILogger<NotificationDispatch> logger)
 {
+    /// <summary>Best-effort: notification delivery must never fail the change that triggered it, so the
+    /// whole thing is wrapped and any error is logged rather than propagated to the caller.</summary>
     public async Task NotifyIssueChangedAsync(AppDbContext db, int actorUserId, int issueId, string summary, CancellationToken ct = default)
+    {
+        try
+        {
+            await DispatchAsync(db, actorUserId, issueId, summary, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to dispatch notifications for issue {IssueId}.", issueId);
+        }
+    }
+
+    private async Task DispatchAsync(AppDbContext db, int actorUserId, int issueId, string summary, CancellationToken ct)
     {
         var issue = await db.Issues.AsNoTracking().Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == issueId, ct);
         if (issue is null) return;

@@ -193,6 +193,14 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task<OpenTrack.Core.Bulk.BulkResult> BulkUpdateIssuesAsync(IReadOnlyCollection<int> issueIds, OpenTrack.Core.Bulk.BulkAction action, CancellationToken ct = default)
+    {
+        var body = new { issueIds = issueIds.ToArray(), type = action.Type, status = action.Status, assigneeId = action.AssigneeId, tag = action.Tag };
+        var resp = await http.PostAsJsonAsync("/api/issues/bulk", body, JsonOptions, ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<OpenTrack.Core.Bulk.BulkResult>(JsonOptions, ct) ?? new OpenTrack.Core.Bulk.BulkResult(0, 0);
+    }
+
     // Translate a 403 into the same exception the web/EF path throws, so the shared razor pages
     // handle a denied action identically on both hosts.
     private static void ThrowIfForbidden(HttpResponseMessage resp, string message)

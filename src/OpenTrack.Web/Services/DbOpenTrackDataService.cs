@@ -13,8 +13,10 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using OpenTrack.Core;
 using OpenTrack.Core.Authorization;
+using OpenTrack.Core.Bulk;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
+using OpenTrack.Infrastructure.Bulk;
 using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
@@ -274,15 +276,17 @@ public class DbOpenTrackDataService(
             });
 
         await SaveDetectingConflictAsync(db, ct);
-        await notifications.NotifyIssueChangedAsync(db, access.UserId, id, UpdateSummary(originalStatus, issue.Status, originalAssigneeId, issue.AssigneeId), ct);
+        var summary = UpdateSummary(originalStatus, issue.Status, originalAssigneeId, issue.AssigneeId);
+        if (summary is not null) // only notify on a meaningful change, not every edit — avoids mail floods
+            await notifications.NotifyIssueChangedAsync(db, access.UserId, id, summary, ct);
     }
 
-    private static string UpdateSummary(IssueStatus oldStatus, IssueStatus newStatus, int? oldAssignee, int? newAssignee)
+    private static string? UpdateSummary(IssueStatus oldStatus, IssueStatus newStatus, int? oldAssignee, int? newAssignee)
     {
         var parts = new List<string>();
         if (newStatus != oldStatus) parts.Add($"status set to {newStatus}");
         if (newAssignee != oldAssignee) parts.Add(newAssignee is null ? "unassigned" : "reassigned");
-        return parts.Count > 0 ? string.Join("; ", parts) : "updated";
+        return parts.Count > 0 ? string.Join("; ", parts) : null;
     }
 
     /// <summary>An assignee must be null (unassign) or an actual member of the issue's project.</summary>
@@ -676,5 +680,12 @@ public class DbOpenTrackDataService(
         await using var _ = db;
         await db.Notifications.Where(n => n.UserId == access.UserId && !n.IsRead)
             .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true), ct);
+    }
+
+    public async Task<BulkResult> BulkUpdateIssuesAsync(IReadOnlyCollection<int> issueIds, BulkAction action, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await BulkOperations.ApplyAsync(db, access, issueIds, action, notifications, ct);
     }
 }

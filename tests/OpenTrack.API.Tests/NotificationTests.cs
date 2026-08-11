@@ -11,6 +11,7 @@
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
 using OpenTrack.Infrastructure.Data;
@@ -68,7 +69,7 @@ public sealed class NotificationTests : IDisposable
     private async Task<int[]> RecipientsAfterChangeBy(int actorId)
     {
         await using var db = new AppDbContext(_options);
-        await new NotificationDispatch(new NoEmail()).NotifyIssueChangedAsync(db, actorId, Issue1, "status changed");
+        await new NotificationDispatch(new NoEmail(), NullLogger<NotificationDispatch>.Instance).NotifyIssueChangedAsync(db, actorId, Issue1, "status changed");
         await using var check = new AppDbContext(_options);
         return await check.Notifications.AsNoTracking().Where(n => n.IssueId == Issue1)
             .Select(n => n.UserId).Distinct().OrderBy(x => x).ToArrayAsync();

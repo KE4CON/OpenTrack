@@ -9,6 +9,7 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
+using OpenTrack.Core.Bulk;
 using OpenTrack.Core.Enums;
 using OpenTrack.Core.Querying;
 
@@ -89,4 +90,8 @@ public interface IOpenTrackDataService
     Task<IReadOnlyList<NotificationView>> GetNotificationsAsync(bool unreadOnly = false, CancellationToken ct = default);
     Task MarkNotificationReadAsync(int notificationId, CancellationToken ct = default);
     Task MarkAllNotificationsReadAsync(CancellationToken ct = default);
+
+    // Bulk actions: applied only to the issues the caller may act on; others are skipped (the result
+    // reports how many were updated vs skipped).
+    Task<BulkResult> BulkUpdateIssuesAsync(IReadOnlyCollection<int> issueIds, BulkAction action, CancellationToken ct = default);
 }

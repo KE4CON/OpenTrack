@@ -17,6 +17,8 @@ using OpenTrack.Core.Enums;
 using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Core.Bulk;
+using OpenTrack.Infrastructure.Bulk;
 using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
 using OpenTrack.Infrastructure.Relationships;
@@ -185,7 +187,8 @@ public static class IssueEndpoints
             var parts = new List<string>();
             if (issue.Status != originalStatus) parts.Add($"status set to {issue.Status}");
             if (issue.AssigneeId != originalAssigneeId) parts.Add(issue.AssigneeId is null ? "unassigned" : "reassigned");
-            await notifications.NotifyIssueChangedAsync(db, access.UserId, id, parts.Count > 0 ? string.Join("; ", parts) : "updated", ct);
+            if (parts.Count > 0) // only notify on a meaningful change, not every edit — avoids mail floods
+                await notifications.NotifyIssueChangedAsync(db, access.UserId, id, string.Join("; ", parts), ct);
             return Results.NoContent();
         });
 
@@ -208,6 +211,7 @@ public static class IssueEndpoints
             var note = new IssueNote { IssueId = id, AuthorId = access.UserId, Text = req.Text, IsPrivate = effectivePrivate, CreatedAt = DateTime.UtcNow };
             db.IssueNotes.Add(note);
             await db.SaveChangesAsync(ct);
+            await notifications.NotifyIssueChangedAsync(db, access.UserId, id, "a note was added", ct);
             return Results.Created($"/api/issues/{id}", note.Id);
         });
 
@@ -241,6 +245,15 @@ public static class IssueEndpoints
                 return removed ? Results.NoContent() : Results.NotFound();
             }
             catch (UnauthorizedAccessException) { return Results.Forbid(); }
+        });
+
+        group.MapPost("/issues/bulk", async (BulkUpdateRequest req, ClaimsPrincipal user, AppDbContext db, NotificationDispatch notifications, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var action = new BulkAction(req.Type, req.Status, req.AssigneeId, req.Tag);
+            var result = await BulkOperations.ApplyAsync(db, access, req.IssueIds, action, notifications, ct);
+            return Results.Ok(result);
         });
 
         group.MapGet("/issues/{id:int}/monitor", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>

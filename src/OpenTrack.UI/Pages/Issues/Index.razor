@@ -87,35 +87,42 @@
 }
 else
 {
-    <table class="table table-hover align-middle">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Project</th>
-                <th>Title</th>
-                <th>Status</th>
-                <th>Severity</th>
-                <th>Priority</th>
-                <th>Assignee</th>
-                <th>Updated</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var i in issues)
+    <AuthorizeView Policy="RequireUpdater" Context="auth">
+        <Authorized>
+            @if (bulkMessage is not null)
             {
-                <tr>
-                    <td>@i.Id</td>
-                    <td>@i.ProjectName</td>
-                    <td><a href="issues/@i.Id">@i.Title</a></td>
-                    <td>@i.Status</td>
-                    <td>@i.Severity</td>
-                    <td>@i.Priority</td>
-                    <td>@(i.AssigneeName ?? "Unassigned")</td>
-                    <td>@i.UpdatedAt.ToString("g")</td>
-                </tr>
+                <div class="alert alert-info py-1">@bulkMessage</div>
             }
-        </tbody>
-    </table>
+            <EditForm Model="bulk" OnValidSubmit="ApplyBulk" FormName="bulk">
+                <div class="row g-2 align-items-end mb-2">
+                    <div class="col-auto">
+                        <label class="form-label small mb-0">Bulk action on selected</label>
+                        <InputSelect @bind-Value="bulk.Action" class="form-select form-select-sm">
+                            <option value="@BulkActionType.SetStatus">Set status…</option>
+                            <option value="@BulkActionType.Close">Close</option>
+                            <option value="@BulkActionType.Unassign">Unassign</option>
+                            <option value="@BulkActionType.AddTag">Add tag…</option>
+                        </InputSelect>
+                    </div>
+                    <div class="col-auto">
+                        <InputSelect @bind-Value="bulk.Status" class="form-select form-select-sm">
+                            @foreach (var s in Enum.GetValues<IssueStatus>()) { <option value="@s">@s</option> }
+                        </InputSelect>
+                    </div>
+                    <div class="col-auto">
+                        <InputText @bind-Value="bulk.Tag" class="form-control form-control-sm" placeholder="tag" />
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-sm btn-secondary">Apply</button>
+                    </div>
+                </div>
+                @IssueTable(true)
+            </EditForm>
+        </Authorized>
+        <NotAuthorized>
+            @IssueTable(false)
+        </NotAuthorized>
+    </AuthorizeView>
 }
 
 @code {
@@ -133,13 +140,21 @@ else
     private List<(int Id, string Name)> projectOptions = [];
     private IReadOnlyList<TagView> tagOptions = [];
 
+    [SupplyParameterFromForm(FormName = "bulk")] private BulkModel bulk { get; set; } = default!;
+    private string? bulkMessage;
+
     protected override async Task OnParametersSetAsync()
     {
+        bulk ??= new();
         projectOptions = (await Data.GetProjectsAsync())
             .Select(p => (p.Id, p.Name))
             .ToList();
         tagOptions = await Data.GetAllTagsAsync();
+        await LoadIssues();
+    }
 
+    private async Task LoadIssues()
+    {
         var filter = new IssueFilter(
             ProjectId: ProjectId is > 0 ? ProjectId : null,
             Status: Status,
@@ -148,8 +163,70 @@ else
             Text: string.IsNullOrWhiteSpace(Text) ? null : Text,
             TagId: TagId is > 0 ? TagId : null,
             Sort: EffectiveSort);
-
         issues = await Data.GetIssuesAsync(filter);
+    }
+
+    private async Task ApplyBulk()
+    {
+        bulkMessage = null;
+        var ids = bulk.SelectedIds;
+        if (ids is null || ids.Count == 0) { bulkMessage = "No issues selected."; bulk = new(); return; }
+
+        var action = bulk.Action switch
+        {
+            BulkActionType.SetStatus => new BulkAction(BulkActionType.SetStatus, Status: bulk.Status),
+            BulkActionType.Close => new BulkAction(BulkActionType.Close),
+            BulkActionType.Unassign => new BulkAction(BulkActionType.Unassign),
+            BulkActionType.AddTag => new BulkAction(BulkActionType.AddTag, Tag: bulk.Tag),
+            _ => new BulkAction(BulkActionType.SetStatus, Status: bulk.Status),
+        };
+        var result = await Data.BulkUpdateIssuesAsync(ids, action);
+        bulkMessage = $"Updated {result.Updated}, skipped {result.Skipped}.";
+        bulk = new();
+        await LoadIssues();
+    }
+
+    private RenderFragment IssueTable(bool withCheckboxes) => @<table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                @if (withCheckboxes) { <th></th> }
+                <th>#</th>
+                <th>Project</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Severity</th>
+                <th>Priority</th>
+                <th>Assignee</th>
+                <th>Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var i in issues)
+            {
+                <tr>
+                    @if (withCheckboxes)
+                    {
+                        <td><input type="checkbox" name="SelectedIds" value="@i.Id" /></td>
+                    }
+                    <td>@i.Id</td>
+                    <td>@i.ProjectName</td>
+                    <td><a href="issues/@i.Id">@i.Title</a></td>
+                    <td>@i.Status</td>
+                    <td>@i.Severity</td>
+                    <td>@i.Priority</td>
+                    <td>@(i.AssigneeName ?? "Unassigned")</td>
+                    <td>@i.UpdatedAt.ToString("g")</td>
+                </tr>
+            }
+        </tbody>
+    </table>;
+
+    private sealed class BulkModel
+    {
+        public List<int> SelectedIds { get; set; } = [];
+        public BulkActionType Action { get; set; } = BulkActionType.SetStatus;
+        public IssueStatus Status { get; set; } = IssueStatus.Acknowledged;
+        public string? Tag { get; set; }
     }
 
     private static string SortLabel(IssueSort s) => s switch

@@ -50,17 +50,19 @@ public static class TagOperations
         if (name.Length > FieldLimits.TagName) return $"Tag name must be {FieldLimits.TagName} characters or fewer.";
 
         // Reuse an existing tag case-insensitively, else create it (create-on-assign).
-        var lowered = name.ToLower();
+        var lowered = name.ToLowerInvariant();
         var tag = await db.Tags.FirstOrDefaultAsync(t => t.Name.ToLower() == lowered, ct);
         if (tag is null)
         {
             tag = new Tag { Name = name };
             db.Tags.Add(tag);
             try { await db.SaveChangesAsync(ct); }
-            catch (DbUpdateException) // unique-index race: another request created the same tag
+            catch (DbUpdateException) // possibly the unique-index race: another request created it
             {
                 db.Entry(tag).State = EntityState.Detached;
-                tag = await db.Tags.FirstAsync(t => t.Name.ToLower() == lowered, ct);
+                // If the tag now exists it WAS the race; otherwise this was a different failure — rethrow.
+                tag = await db.Tags.FirstOrDefaultAsync(t => t.Name.ToLower() == lowered, ct);
+                if (tag is null) throw;
             }
         }
 
