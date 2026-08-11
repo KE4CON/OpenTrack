@@ -11,6 +11,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using OpenTrack.Core.Enums;
+using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
 
@@ -23,7 +24,7 @@ public readonly record struct DashboardRecentIssue(
     IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
     string ReporterName, string? AssigneeName, DateTime UpdatedAt);
 public readonly record struct DashboardResult(
-    int TotalOpen, int TotalOverdue,
+    int TotalOpen, int TotalOverdue, int TotalStale,
     IReadOnlyList<DashboardProjectTally> Projects,
     IReadOnlyList<DashboardSeverityTally> OpenBySeverity,
     IReadOnlyList<DashboardRecentIssue> Recent);
@@ -43,6 +44,8 @@ public static class DashboardQuery
     {
         var visible = db.Issues.AsNoTracking().WhereVisibleTo(access);
         var open = visible.Where(i => (int)i.Status < (int)IssueStatus.Resolved);
+        var staleBefore = nowUtc.AddDays(-IssueDefaults.StaleDays);
+        var totalStale = await open.CountAsync(i => i.UpdatedAt < staleBefore, ct);
 
         var projects = await open
             .GroupBy(i => new { i.ProjectId, ProjectName = i.Project.Name })
@@ -72,6 +75,7 @@ public static class DashboardQuery
         return new DashboardResult(
             orderedProjects.Sum(p => p.OpenCount),
             orderedProjects.Sum(p => p.OverdueCount),
+            totalStale,
             orderedProjects,
             bySeverity.OrderByDescending(s => (int)s.Severity).ToList(),
             recent);

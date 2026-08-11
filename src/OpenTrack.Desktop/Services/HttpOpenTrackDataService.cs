@@ -68,6 +68,7 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         if (filter.CategoryId is { } c) q.Add($"categoryId={c}");
         if (!string.IsNullOrWhiteSpace(filter.Text)) q.Add($"text={Uri.EscapeDataString(filter.Text)}");
         if (filter.TagId is { } tg) q.Add($"tagId={tg}");
+        if (filter.StaleBeforeUtc is not null) q.Add("stale=true");
         q.Add($"sort={filter.Sort}");
         var url = "/api/issues?" + string.Join("&", q);
         return await http.GetFromJsonAsync<List<IssueRow>>(url, JsonOptions, ct) ?? [];
@@ -75,7 +76,7 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
 
     public async Task<DashboardView> GetDashboardAsync(CancellationToken ct = default) =>
         await http.GetFromJsonAsync<DashboardView>("/api/dashboard", JsonOptions, ct)
-            ?? new DashboardView(0, 0, [], [], []);
+            ?? new DashboardView(0, 0, 0, [], [], []);
 
     public async Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default)
     {

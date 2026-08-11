@@ -37,14 +37,15 @@ public static class IssueEndpoints
         // Global list, optionally filtered by project. Row-level filtered to what the caller may see.
         group.MapGet("/issues", async (
             int? projectId, IssueStatus? status, IssueSeverity? severity, IssuePriority? priority,
-            int? assigneeId, int? categoryId, string? text, int? tagId, IssueSort? sort,
+            int? assigneeId, int? categoryId, string? text, int? tagId, IssueSort? sort, bool? stale,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
 
             var filter = new IssueFilter(projectId, status, severity, priority, assigneeId, categoryId, text,
-                tagId, sort ?? IssueSort.UpdatedDesc);
+                tagId, sort ?? IssueSort.UpdatedDesc,
+                StaleBeforeUtc: stale == true ? DateTime.UtcNow.AddDays(-IssueDefaults.StaleDays) : null);
 
             var rows = await db.Issues.AsNoTracking()
                 .WhereVisibleTo(access)   // ACL first — filtering can only narrow the visible set

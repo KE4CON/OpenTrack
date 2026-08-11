@@ -38,7 +38,16 @@ else
                 </div>
             </div>
         </div>
-        <div class="col-lg-6">
+        <div class="col-sm-6 col-lg-3">
+            <a class="card shadow-sm h-100 text-decoration-none @(data.TotalStale > 0 ? "border-warning" : "")" href="issues?stale=true">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Stale</div>
+                    <div class="display-6 @(data.TotalStale > 0 ? "text-warning-emphasis" : "")">@data.TotalStale</div>
+                    <div class="form-text">Open, untouched 30+ days.</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-3">
             <div class="card shadow-sm h-100">
                 <div class="card-body">
                     <div class="text-muted small text-uppercase mb-2">Open by severity</div>

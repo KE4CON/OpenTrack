@@ -163,6 +163,7 @@ public class DbOpenTrackDataService(
         return new DashboardView(
             r.TotalOpen,
             r.TotalOverdue,
+            r.TotalStale,
             r.Projects.Select(p => new DashboardProjectSummary(p.ProjectId, p.ProjectName, p.OpenCount, p.OverdueCount)).ToList(),
             r.OpenBySeverity.Select(s => new DashboardSeverityCount(s.Severity, s.Count)).ToList(),
             r.Recent.Select(i => new IssueRow(

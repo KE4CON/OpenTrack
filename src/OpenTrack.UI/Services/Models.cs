@@ -41,6 +41,7 @@ public record DashboardSeverityCount(IssueSeverity Severity, int Count);
 public record DashboardView(
     int TotalOpen,
     int TotalOverdue,
+    int TotalStale,
     IReadOnlyList<DashboardProjectSummary> Projects,
     IReadOnlyList<DashboardSeverityCount> OpenBySeverity,
     IReadOnlyList<IssueRow> Recent);
