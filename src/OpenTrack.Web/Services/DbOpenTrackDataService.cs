@@ -25,6 +25,7 @@ using OpenTrack.Infrastructure.CustomFields;
 using OpenTrack.Infrastructure.Dashboard;
 using OpenTrack.Infrastructure.Filters;
 using OpenTrack.Infrastructure.Preferences;
+using OpenTrack.Infrastructure.Webhooks;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
@@ -144,6 +145,28 @@ public class DbOpenTrackDataService(
 
     // ---- Issues ----
 
+    public async Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var items = await WebhookOperations.ListForProjectAsync(db, access, projectId, ct);
+        return items.Select(w => new WebhookView(w.Id, w.Url, w.Format, w.IsActive)).ToList();
+    }
+
+    public async Task<string?> AddWebhookAsync(int projectId, string url, WebhookFormat format, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await WebhookOperations.AddAsync(db, access, projectId, url, format, ct);
+    }
+
+    public async Task DeleteWebhookAsync(int projectId, int id, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        await WebhookOperations.DeleteAsync(db, access, projectId, id, ct);
+    }
+
     public async Task<IReadOnlyList<SavedFilterView>> GetSavedFiltersAsync(CancellationToken ct = default)
     {
         var (db, access) = await OpenAsync(ct);
@@ -179,6 +202,14 @@ public class DbOpenTrackDataService(
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
         await UserPreferenceOperations.SaveAsync(db, access.UserId, defaultProjectId, defaultSort, ct);
+    }
+
+    public async Task<IReadOnlyList<SimilarIssueView>> FindSimilarIssuesAsync(int? projectId, string title, int? excludeIssueId = null, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var rows = await SimilarIssueQuery.FindAsync(db, access, projectId, title, excludeIssueId, ct: ct);
+        return rows.Select(r => new SimilarIssueView(r.Id, r.ProjectId, r.ProjectName, r.Title, r.Status)).ToList();
     }
 
     public async Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default)
@@ -271,6 +302,8 @@ public class DbOpenTrackDataService(
         });
         db.Issues.Add(issue);
         await db.SaveChangesAsync(ct);
+        // Notify the assignee/monitors and fire any project webhooks for the new issue (best-effort).
+        await notifications.NotifyIssueChangedAsync(db, access.UserId, issue.Id, "a new issue was created", ct);
         return issue.Id;
     }
 

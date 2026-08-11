@@ -122,5 +122,9 @@ OpenTrack.Web.Endpoints.AttachmentWebEndpoints.MapAttachmentWebEndpoints(app);
 OpenTrack.Web.Endpoints.ExportWebEndpoints.MapExportWebEndpoints(app);
 // Cookie-authenticated MantisBT XML import upload for the web host.
 OpenTrack.Web.Endpoints.ImportWebEndpoints.MapImportWebEndpoints(app);
+// Cookie-authenticated change-token for smart-poll auto-refresh.
+OpenTrack.Web.Endpoints.ActivityWebEndpoints.MapActivityWebEndpoints(app);
+// Cookie-authenticated checklist status endpoint (offline check-off replay target).
+OpenTrack.Web.Endpoints.ChecklistWebEndpoints.MapChecklistWebEndpoints(app);
 
 app.Run();

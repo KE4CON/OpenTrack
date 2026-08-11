@@ -45,7 +45,7 @@ public static class ImportWebEndpoints
             try
             {
                 var s = await MantisImporter.ImportAsync(db, access, xml, ct);
-                return Results.Redirect($"/backup?imp=ok&pc={s.ProjectsCreated}&pm={s.ProjectsMatched}&ic={s.IssuesImported}&nc={s.NotesImported}&tc={s.TagsLinked}");
+                return Results.Redirect($"/backup?imp=ok&pc={s.ProjectsCreated}&pm={s.ProjectsMatched}&ic={s.IssuesImported}&sk={s.IssuesSkipped}&nc={s.NotesImported}&tc={s.TagsLinked}");
             }
             catch (UnauthorizedAccessException) { return Results.Redirect("/backup?imp=forbidden"); }
             catch (FormatException) { return Results.Redirect("/backup?imp=badfile"); }

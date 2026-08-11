@@ -52,6 +52,9 @@ public record ChecklistItemView(
     int Id, int ProjectId, string Title, string? Details, string? Area,
     ChecklistItemStatus Status, string? Notes, int? LinkedIssueId, int DisplayOrder);
 
+/// <summary>A possible-duplicate match for a proposed issue title.</summary>
+public record SimilarIssueView(int Id, int ProjectId, string ProjectName, string Title, IssueStatus Status);
+
 public record IssueNoteView(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
 
 public record IssueHistoryEntry(int Id, string UserName, string FieldChanged, string? OldValue, string? NewValue, DateTime ChangedAt);
@@ -69,6 +72,9 @@ public record SavedFilterView(int Id, string Name, string Query);
 
 /// <summary>A user's personal defaults.</summary>
 public record PreferencesView(int? DefaultProjectId, IssueSort? DefaultSort);
+
+/// <summary>A project's outgoing webhook (Manager-managed).</summary>
+public record WebhookView(int Id, string Url, WebhookFormat Format, bool IsActive);
 
 public record NotificationView(int Id, int IssueId, string Text, bool IsRead, DateTime CreatedAt);
 

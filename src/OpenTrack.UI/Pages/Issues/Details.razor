@@ -166,6 +166,19 @@ else
         </div>
     }
 
+    @if (similarIssues.Count > 0)
+    {
+        <div class="alert alert-light border">
+            <strong class="small text-uppercase text-muted">Possibly related</strong>
+            <ul class="mb-0 mt-1">
+                @foreach (var s in similarIssues)
+                {
+                    <li><a href="issues/@s.Id">#@s.Id @s.Title</a> <span class="text-muted small">(@s.Status)</span></li>
+                }
+            </ul>
+        </div>
+    }
+
     <h2 class="h5">Description</h2>
     <div class="ot-markdown">@((MarkupString)SafeMarkdown.ToHtml(issue.Description))</div>
 
@@ -389,6 +402,7 @@ else
     private IReadOnlyList<CustomFieldValueView> customFields = [];
     private string? cfMessage;
     private bool cfIsError;
+    private IReadOnlyList<SimilarIssueView> similarIssues = [];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -473,6 +487,7 @@ else
         tags = issue is null ? [] : await Data.GetIssueTagsAsync(Id);
         allTags = issue is null ? [] : await Data.GetAllTagsAsync();
         customFields = issue is null ? [] : await Data.GetIssueCustomFieldsAsync(Id);
+        similarIssues = issue is null ? [] : await Data.FindSimilarIssuesAsync(issue.ProjectId, issue.Title, excludeIssueId: issue.Id);
         isMonitoring = issue is not null && await Data.IsMonitoringIssueAsync(Id);
     }
 

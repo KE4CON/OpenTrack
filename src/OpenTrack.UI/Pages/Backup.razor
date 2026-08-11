@@ -18,7 +18,7 @@
         @switch (Imp)
         {
             case "ok":
-                <text>Import complete — @Ic issue(s) across @(Pc + Pm) project(s) (@Pc new, @Pm existing), @Nc note(s), @Tc tag link(s).</text>
+                <text>Import complete — @Ic issue(s) across @(Pc + Pm) project(s) (@Pc new, @Pm existing), @Nc note(s), @Tc tag link(s)@(Sk > 0 ? $", {Sk} already-imported skipped" : "").</text>
                 break;
             case "forbidden": <text>You need the Manager role to import.</text> break;
             case "badfile": <text>That file didn't look like a MantisBT XML export. Use MantisBT's "Export Issues" to produce the XML, then upload it here.</text> break;
@@ -126,6 +126,7 @@ else
     [SupplyParameterFromQuery] public int Pc { get; set; }
     [SupplyParameterFromQuery] public int Pm { get; set; }
     [SupplyParameterFromQuery] public int Ic { get; set; }
+    [SupplyParameterFromQuery] public int Sk { get; set; }
     [SupplyParameterFromQuery] public int Nc { get; set; }
     [SupplyParameterFromQuery] public int Tc { get; set; }
 

@@ -27,6 +27,8 @@ public static class DependencyInjection
         services.AddSingleton<Email.SmtpEmailSender>();
         services.AddSingleton<IEmailSender<User>>(sp => sp.GetRequiredService<Email.SmtpEmailSender>());
         services.AddSingleton<Email.IEmailService>(sp => sp.GetRequiredService<Email.SmtpEmailSender>());
+        // Typed HttpClient for outgoing project webhooks — short timeout so a dead endpoint can't hang.
+        services.AddHttpClient<Webhooks.WebhookDispatch>(c => c.Timeout = TimeSpan.FromSeconds(5));
         services.AddScoped<Notifications.NotificationDispatch>();
         return services;
     }

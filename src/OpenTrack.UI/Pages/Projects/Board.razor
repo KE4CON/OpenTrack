@@ -6,7 +6,10 @@
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h1 class="h3 mb-0">Board@(projectName is null ? "" : $" — {projectName}")</h1>
-    <div class="d-flex gap-2">
+    <div class="d-flex align-items-center gap-3">
+        <label class="small text-muted mb-0" title="Auto-refresh when something changes">
+            <input type="checkbox" class="ot-autorefresh form-check-input me-1" data-key="board-@Id" /> Live
+        </label>
         <a class="btn btn-outline-secondary" href="issues?ProjectId=@Id">List view</a>
         <a class="btn btn-outline-secondary" href="projects/@Id">Back to project</a>
     </div>

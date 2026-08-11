@@ -34,13 +34,29 @@
         <InputTextArea @bind-Value="form.Description" class="form-control mb-1" rows="3" placeholder="Anything else you remember. Markdown & code blocks welcome." />
         <div class="form-text mb-3">Leave blank if you're in a hurry — you can add detail, severity, and steps on the issue afterward.</div>
 
-        <button type="submit" class="btn btn-primary btn-lg">Save issue</button>
-        <a class="btn btn-outline-secondary btn-lg" href="issues">Cancel</a>
+        @if (similar.Count > 0)
+        {
+            <div class="alert alert-warning">
+                <strong>Possible duplicates</strong> — is it one of these already?
+                <ul class="mb-0 mt-1">
+                    @foreach (var s in similar)
+                    {
+                        <li><a href="issues/@s.Id">#@s.Id @s.Title</a> <span class="text-muted small">(@s.ProjectName · @s.Status)</span></li>
+                    }
+                </ul>
+                <div class="small mt-1">Not one of these? Go ahead and save.</div>
+            </div>
+        }
+
+        <button type="submit" name="Action" value="save" class="btn btn-primary btn-lg">Save issue</button>
+        <button type="submit" name="Action" value="check" class="btn btn-outline-secondary btn-lg">Check for duplicates</button>
+        <a class="btn btn-link btn-lg" href="issues">Cancel</a>
     </EditForm>
 </div>
 
 @code {
     private IReadOnlyList<ProjectRow> projects = [];
+    private IReadOnlyList<SimilarIssueView> similar = [];
     private string? error;
 
     [SupplyParameterFromForm(FormName = "quick")] private QuickForm form { get; set; } = default!;
@@ -61,6 +77,16 @@
     private async Task Save()
     {
         error = null;
+        similar = [];
+
+        // The "Check for duplicates" button surfaces similar issues instead of saving.
+        if (form.Action == "check")
+        {
+            if (!string.IsNullOrWhiteSpace(form.Title))
+                similar = await Data.FindSimilarIssuesAsync(form.ProjectId > 0 ? form.ProjectId : null, form.Title!);
+            return;
+        }
+
         if (form.ProjectId <= 0) { error = "Please choose a project."; return; }
         try
         {
@@ -86,5 +112,6 @@
         [System.ComponentModel.DataAnnotations.StringLength(FieldLimits.IssueTitle)]
         public string? Title { get; set; }
         public string? Description { get; set; }
+        public string? Action { get; set; }
     }
 }

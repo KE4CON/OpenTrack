@@ -50,6 +50,23 @@ account and you're in. Bookmark it / add it to the home screen for one-tap acces
 
 ---
 
+## Install it as an app (and use the checklist offline)
+
+Once you can open OpenTrack in the tablet's browser, you can install it like a
+real app:
+
+- **iPad (Safari):** tap the Share button → **Add to Home Screen**.
+- **Android (Chrome):** tap the ⋮ menu → **Install app** (or **Add to Home
+  screen**).
+
+It then launches full-screen from your home screen, no browser chrome. Pages
+you've opened stay viewable **offline**, which is handy for the **bug-hunt
+checklist**: open the checklist while you're on the network, then walk somewhere
+with no signal and keep tapping **Pass / Fail / N-A**. Those taps are saved on
+the device and **sync automatically the next time you're back online** (a "pending
+sync" note shows until they do). Creating an issue from a failure still needs a
+connection — it'll be ready when you're back.
+
 ## If the tablet can't connect
 
 - **Same network?** The tablet and the host computer must be on the same Wi-Fi /

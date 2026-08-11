@@ -16,6 +16,7 @@ using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Email;
+using OpenTrack.Infrastructure.Webhooks;
 
 namespace OpenTrack.Infrastructure.Notifications;
 
@@ -27,7 +28,7 @@ namespace OpenTrack.Infrastructure.Notifications;
 /// leak to someone who can no longer see it. Writes in-app notification rows and, if a mail server is
 /// configured, sends a best-effort email (a mail failure is logged, never thrown).
 /// </summary>
-public sealed class NotificationDispatch(IEmailService email, ILogger<NotificationDispatch> logger)
+public sealed class NotificationDispatch(IEmailService email, ILogger<NotificationDispatch> logger, WebhookDispatch? webhooks = null)
 {
     /// <summary>Best-effort: notification delivery must never fail the change that triggered it, so the
     /// whole thing is wrapped and any error is logged rather than propagated to the caller.</summary>
@@ -47,6 +48,11 @@ public sealed class NotificationDispatch(IEmailService email, ILogger<Notificati
     {
         var issue = await db.Issues.AsNoTracking().Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == issueId, ct);
         if (issue is null) return;
+
+        // Fire project webhooks regardless of who (if anyone) is subscribed in-app. Best-effort and
+        // non-blocking; it only awaits a quick DB read for the active hooks.
+        if (webhooks is not null)
+            await webhooks.DispatchAsync(db, issue.ProjectId, issue.Project.Name, issue.Id, issue.Title, issue.Status.ToString(), summary, ct);
 
         var candidateIds = new HashSet<int> { issue.ReporterId };
         if (issue.AssigneeId is { } assigneeId) candidateIds.Add(assigneeId);

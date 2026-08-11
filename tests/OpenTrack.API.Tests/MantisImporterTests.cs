@@ -114,7 +114,7 @@ public sealed class MantisImporterTests : IDisposable
     }
 
     [Fact]
-    public async Task ReImport_MatchesExistingProject_DoesNotDuplicateIt()
+    public async Task ReImport_MatchesProject_AndSkipsAlreadyImportedIssues()
     {
         var admin = await Access(Importer, UserRole.Administrator);
         await using (var db = new AppDbContext(_options))
@@ -125,10 +125,12 @@ public sealed class MantisImporterTests : IDisposable
 
         Assert.Equal(0, second.ProjectsCreated);
         Assert.Equal(1, second.ProjectsMatched);
+        Assert.Equal(0, second.IssuesImported);   // duplicate-safe: nothing re-imported
+        Assert.Equal(1, second.IssuesSkipped);    // the already-imported issue is skipped
 
         await using var check = new AppDbContext(_options);
         Assert.Equal(1, await check.Projects.CountAsync(p => p.Name == "Rocket"));  // still one project
-        Assert.Equal(2, await check.Issues.CountAsync());                          // but issues appended
+        Assert.Equal(1, await check.Issues.CountAsync());                          // and NOT duplicated
     }
 
     public void Dispose() => _connection.Dispose();

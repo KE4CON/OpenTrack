@@ -21,7 +21,7 @@ namespace OpenTrack.Infrastructure.Import;
 
 /// <summary>What an import did.</summary>
 public sealed record MantisImportSummary(
-    int ProjectsCreated, int ProjectsMatched, int IssuesImported, int NotesImported, int TagsLinked,
+    int ProjectsCreated, int ProjectsMatched, int IssuesImported, int IssuesSkipped, int NotesImported, int TagsLinked,
     IReadOnlyList<string> Warnings);
 
 /// <summary>
@@ -42,7 +42,7 @@ public static class MantisImporter
 
         var issues = MantisImport.Parse(xml); // may throw FormatException — surfaced to the caller
         var warnings = new List<string>();
-        int projectsCreated = 0, projectsMatched = 0, issuesImported = 0, notesImported = 0, tagsLinked = 0;
+        int projectsCreated = 0, projectsMatched = 0, issuesImported = 0, issuesSkipped = 0, notesImported = 0, tagsLinked = 0;
 
         // Match Mantis usernames to existing OpenTrack accounts (case-insensitive).
         var users = await db.Users.AsNoTracking()
@@ -86,8 +86,16 @@ public static class MantisImporter
                 return created;
             }
 
+            // Which Mantis ids are already imported into this project, so a re-run skips them.
+            var alreadyImported = await db.Issues
+                .Where(i => i.ProjectId == project.Id && i.ImportedMantisId != null)
+                .Select(i => i.ImportedMantisId!.Value)
+                .ToHashSetAsync(ct);
+
             foreach (var m in group)
             {
+                if (m.MantisId is { } existingId && alreadyImported.Contains(existingId)) { issuesSkipped++; continue; }
+
                 var reporterId = MapUser(m.Reporter) ?? access.UserId;
                 var reporterMapped = MapUser(m.Reporter) is not null;
                 var now = DateTime.UtcNow;
@@ -108,9 +116,11 @@ public static class MantisImporter
                     AssigneeId = MapUser(m.Handler),
                     IsPrivate = m.Private,
                     IsSticky = m.Sticky,
+                    ImportedMantisId = m.MantisId,
                     CreatedAt = m.DateSubmitted ?? now,
                     UpdatedAt = m.LastUpdated ?? m.DateSubmitted ?? now,
                 };
+                if (m.MantisId is { } newId) alreadyImported.Add(newId); // guard against dupes within one file
                 issue.History.Add(new IssueHistory
                 {
                     UserId = access.UserId,
@@ -149,8 +159,8 @@ public static class MantisImporter
             await db.SaveChangesAsync(ct);
         }
 
-        if (issuesImported == 0) warnings.Add("No issues were found in the file.");
-        return new MantisImportSummary(projectsCreated, projectsMatched, issuesImported, notesImported, tagsLinked, warnings);
+        if (issuesImported == 0 && issuesSkipped == 0) warnings.Add("No issues were found in the file.");
+        return new MantisImportSummary(projectsCreated, projectsMatched, issuesImported, issuesSkipped, notesImported, tagsLinked, warnings);
     }
 
     private static async Task<Tag?> GetOrAddTagAsync(AppDbContext db, Dictionary<string, Tag> cache, string rawName, CancellationToken ct)

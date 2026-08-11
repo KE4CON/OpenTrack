@@ -46,6 +46,15 @@ public interface IOpenTrackDataService
     Task<PreferencesView> GetPreferencesAsync(CancellationToken ct = default);
     Task SavePreferencesAsync(int? defaultProjectId, IssueSort? defaultSort, CancellationToken ct = default);
 
+    // Project webhooks (Manager only — a URL can carry a secret token). Returns null/reason on add.
+    Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default);
+    Task<string?> AddWebhookAsync(int projectId, string url, WebhookFormat format, CancellationToken ct = default);
+    Task DeleteWebhookAsync(int projectId, int id, CancellationToken ct = default);
+
+    // Possible-duplicate suggestions for a proposed title (ACL-filtered). Optionally scoped to a project
+    // and excluding a specific issue (when checking from an existing one).
+    Task<IReadOnlyList<SimilarIssueView>> FindSimilarIssuesAsync(int? projectId, string title, int? excludeIssueId = null, CancellationToken ct = default);
+
     // Issues
     Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default);
     Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default);
