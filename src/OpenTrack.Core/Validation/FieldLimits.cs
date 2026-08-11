@@ -31,4 +31,6 @@ public static class FieldLimits
     public const int ChecklistTitle = 300;
     public const int ChecklistArea = 100;
     public const int ChecklistText = 2000;
+    public const int SavedFilterName = 100;
+    public const int SavedFilterQuery = 1000;
 }

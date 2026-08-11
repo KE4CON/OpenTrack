@@ -1,0 +1,81 @@
+@page "/preferences"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+
+<PageTitle>Preferences</PageTitle>
+
+<div class="mx-auto" style="max-width: 34rem;">
+    <h1 class="h3 mb-3">Your preferences</h1>
+
+    @if (saved)
+    {
+        <div class="alert alert-success">Saved.</div>
+    }
+
+    <EditForm Model="form" OnValidSubmit="Save" FormName="prefs">
+        <label class="form-label">Default project for new issues</label>
+        <InputSelect @bind-Value="form.DefaultProjectId" class="form-select mb-1">
+            <option value="0">— none —</option>
+            @foreach (var p in projects)
+            {
+                <option value="@p.Id">@p.Name</option>
+            }
+        </InputSelect>
+        <div class="form-text mb-3">When set, Quick-add pre-selects this project. Leave as “none” to choose each time.</div>
+
+        <label class="form-label">Default sort on the issue list</label>
+        <InputSelect @bind-Value="form.DefaultSort" class="form-select mb-1">
+            <option value="">— newest updated (default) —</option>
+            @foreach (var s in Enum.GetValues<IssueSort>())
+            {
+                <option value="@s">@SortLabel(s)</option>
+            }
+        </InputSelect>
+        <div class="form-text mb-3">Applied when the issue list URL doesn’t already specify a sort order.</div>
+
+        <button type="submit" class="btn btn-primary">Save preferences</button>
+    </EditForm>
+</div>
+
+@code {
+    private IReadOnlyList<ProjectRow> projects = [];
+    private bool saved;
+
+    [SupplyParameterFromForm(FormName = "prefs")] private PrefForm form { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        projects = await Data.GetProjectsAsync();
+        if (form is null)
+        {
+            var p = await Data.GetPreferencesAsync();
+            form = new PrefForm { DefaultProjectId = p.DefaultProjectId ?? 0, DefaultSort = p.DefaultSort };
+        }
+    }
+
+    private async Task Save()
+    {
+        await Data.SavePreferencesAsync(form.DefaultProjectId > 0 ? form.DefaultProjectId : null, form.DefaultSort);
+        saved = true;
+    }
+
+    private static string SortLabel(IssueSort s) => s switch
+    {
+        IssueSort.UpdatedDesc => "Updated (newest)",
+        IssueSort.UpdatedAsc => "Updated (oldest)",
+        IssueSort.CreatedDesc => "Created (newest)",
+        IssueSort.CreatedAsc => "Created (oldest)",
+        IssueSort.PriorityDesc => "Priority (high→low)",
+        IssueSort.SeverityDesc => "Severity (high→low)",
+        IssueSort.StatusAsc => "Status",
+        IssueSort.IdDesc => "ID (newest)",
+        IssueSort.IdAsc => "ID (oldest)",
+        _ => s.ToString()
+    };
+
+    private sealed class PrefForm
+    {
+        public int DefaultProjectId { get; set; }
+        public IssueSort? DefaultSort { get; set; }
+    }
+}

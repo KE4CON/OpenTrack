@@ -49,6 +49,13 @@
     {
         form ??= new();
         projects = await Data.GetProjectsAsync();
+        // Pre-select the user's default project (if they set one and can still see it) on first render.
+        if (form.ProjectId == 0)
+        {
+            var pref = await Data.GetPreferencesAsync();
+            if (pref.DefaultProjectId is { } dp && projects.Any(p => p.Id == dp))
+                form.ProjectId = dp;
+        }
     }
 
     private async Task Save()

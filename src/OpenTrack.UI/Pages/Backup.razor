@@ -9,8 +9,25 @@
 
 <p class="text-muted">
     Export your issues to take them elsewhere, share a report, or keep a safe copy. Exports only ever
-    include what you're allowed to see.
+    include what you're allowed to see. Coming from MantisBT? You can import your old data below.
 </p>
+
+@if (Imp is not null)
+{
+    <div class="alert @(Imp == "ok" ? "alert-success" : "alert-danger")">
+        @switch (Imp)
+        {
+            case "ok":
+                <text>Import complete — @Ic issue(s) across @(Pc + Pm) project(s) (@Pc new, @Pm existing), @Nc note(s), @Tc tag link(s).</text>
+                break;
+            case "forbidden": <text>You need the Manager role to import.</text> break;
+            case "badfile": <text>That file didn't look like a MantisBT XML export. Use MantisBT's "Export Issues" to produce the XML, then upload it here.</text> break;
+            case "empty": <text>No file was selected.</text> break;
+            case "toobig": <text>That file is too large (25 MB limit).</text> break;
+            default: <text>Import could not be completed.</text> break;
+        }
+    </div>
+}
 
 @if (Transfer.Host == ClientHostKind.Web)
 {
@@ -61,6 +78,34 @@ else
     </div>
 }
 
+@if (Transfer.Host == ClientHostKind.Web)
+{
+    <AuthorizeView Policy="RequireManager">
+        <Authorized>
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h2 class="h5">Import from MantisBT</h2>
+                    <p class="form-text">
+                        Moving from MantisBT? In MantisBT, use <em>Export Issues</em> (the XML export) to
+                        download a <code>.xml</code> file, then upload it here. Projects, issues, notes,
+                        and tags come across; statuses, severities, and priorities map exactly. MantisBT
+                        users are matched to your OpenTrack accounts by username where possible, otherwise
+                        the original name is kept in the text. Imported projects start private. Run it once
+                        per export — re-uploading the same file adds the issues again.
+                    </p>
+                    <form method="post" action="/import/mantis" enctype="multipart/form-data">
+                        <AntiforgeryToken />
+                        <div class="input-group" style="max-width: 32rem;">
+                            <input type="file" name="file" accept=".xml,text/xml,application/xml" class="form-control" required />
+                            <button type="submit" class="btn btn-primary">Import</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+}
+
 <div class="card shadow-sm">
     <div class="card-body">
         <h2 class="h5">Backing up the whole database</h2>
@@ -75,6 +120,14 @@ else
 
 @code {
     private IReadOnlyList<ProjectRow> projects = [];
+
+    // Import result, passed back by the /import/mantis endpoint via redirect.
+    [SupplyParameterFromQuery] public string? Imp { get; set; }
+    [SupplyParameterFromQuery] public int Pc { get; set; }
+    [SupplyParameterFromQuery] public int Pm { get; set; }
+    [SupplyParameterFromQuery] public int Ic { get; set; }
+    [SupplyParameterFromQuery] public int Nc { get; set; }
+    [SupplyParameterFromQuery] public int Tc { get; set; }
 
     protected override async Task OnInitializedAsync() => projects = await Data.GetProjectsAsync();
 }

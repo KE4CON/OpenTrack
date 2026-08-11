@@ -10,6 +10,7 @@
 // more details.
 
 using OpenTrack.Core.Enums;
+using OpenTrack.Core.Querying;
 
 namespace OpenTrack.UI.Services;
 
@@ -62,6 +63,12 @@ public record AttachmentView(int Id, string FileName, long FileSize, string Cont
 public record IssueRelationshipView(int Id, int OtherIssueId, string OtherIssueTitle, string OtherProjectName, string Label);
 
 public record TagView(int Id, string Name);
+
+/// <summary>A user's saved issue filter — a name plus the issue-list query string to apply.</summary>
+public record SavedFilterView(int Id, string Name, string Query);
+
+/// <summary>A user's personal defaults.</summary>
+public record PreferencesView(int? DefaultProjectId, IssueSort? DefaultSort);
 
 public record NotificationView(int Id, int IssueId, string Text, bool IsRead, DateTime CreatedAt);
 

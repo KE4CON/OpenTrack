@@ -62,7 +62,7 @@
     </div>
     <div class="col-md-3">
         <label class="form-label">Text</label>
-        <input class="form-control" name="Text" value="@Text" placeholder="title or description" />
+        <input class="form-control" name="Text" value="@Text" placeholder="title, description, or notes" />
     </div>
     <div class="col-md-2">
         <label class="form-label">Sort by</label>
@@ -84,6 +84,45 @@
         <a href="issues" class="btn btn-outline-secondary">Clear</a>
     </div>
 </form>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+    <span class="text-muted small">Saved filters:</span>
+    @if (savedFilters.Count == 0)
+    {
+        <span class="text-muted small fst-italic">none yet</span>
+    }
+    else
+    {
+        @foreach (var f in savedFilters)
+        {
+            <a class="badge rounded-pill text-bg-light border text-decoration-none" href="issues?@f.Query">@f.Name</a>
+        }
+    }
+
+    <EditForm Model="saveFilter" OnValidSubmit="SaveCurrentFilter" FormName="saveFilter" class="d-inline-flex">
+        <div class="input-group input-group-sm" style="width: 20rem;">
+            <InputText @bind-Value="saveFilter.Name" class="form-control" placeholder="Save current filter as…" />
+            <button type="submit" class="btn btn-outline-primary">Save</button>
+        </div>
+    </EditForm>
+
+    @if (savedFilters.Count > 0)
+    {
+        <EditForm Model="deleteFilter" OnValidSubmit="DeleteSavedFilter" FormName="deleteFilter" class="d-inline-flex">
+            <div class="input-group input-group-sm" style="width: 16rem;">
+                <InputSelect @bind-Value="deleteFilter.Id" class="form-select">
+                    <option value="0" disabled>Delete a saved filter…</option>
+                    @foreach (var f in savedFilters) { <option value="@f.Id">@f.Name</option> }
+                </InputSelect>
+                <button type="submit" class="btn btn-outline-danger">Delete</button>
+            </div>
+        </EditForm>
+    }
+</div>
+@if (savedFilterMessage is not null)
+{
+    <div class="alert alert-danger py-1">@savedFilterMessage</div>
+}
 
 <p class="text-muted small">@issues.Count issue(s) match.</p>
 
@@ -141,7 +180,8 @@ else
     [SupplyParameterFromQuery] public IssueSort? Sort { get; set; }
     [SupplyParameterFromQuery] public bool? Stale { get; set; }
 
-    private IssueSort EffectiveSort => Sort ?? IssueSort.UpdatedDesc;
+    private IssueSort? prefDefaultSort;
+    private IssueSort EffectiveSort => Sort ?? prefDefaultSort ?? IssueSort.UpdatedDesc;
 
     private IReadOnlyList<IssueRow> issues = [];
     private List<(int Id, string Name)> projectOptions = [];
@@ -150,15 +190,58 @@ else
     [SupplyParameterFromForm(FormName = "bulk")] private BulkModel bulk { get; set; } = default!;
     private string? bulkMessage;
 
+    private IReadOnlyList<SavedFilterView> savedFilters = [];
+    [SupplyParameterFromForm(FormName = "saveFilter")] private NameOnly saveFilter { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "deleteFilter")] private IdOnly deleteFilter { get; set; } = default!;
+    private string? savedFilterMessage;
+
     protected override async Task OnParametersSetAsync()
     {
         bulk ??= new();
+        saveFilter ??= new();
+        deleteFilter ??= new();
         projectOptions = (await Data.GetProjectsAsync())
             .Select(p => (p.Id, p.Name))
             .ToList();
         tagOptions = await Data.GetAllTagsAsync();
+        savedFilters = await Data.GetSavedFiltersAsync();
+        prefDefaultSort = (await Data.GetPreferencesAsync()).DefaultSort;
         await LoadIssues();
     }
+
+    // Rebuild the current filter as a query string, so it can be saved and re-applied (or shared).
+    private string CurrentQuery()
+    {
+        var parts = new List<string>();
+        if (ProjectId is > 0) parts.Add($"ProjectId={ProjectId}");
+        if (Status is { } s) parts.Add($"Status={s}");
+        if (Severity is { } sv) parts.Add($"Severity={sv}");
+        if (Priority is { } p) parts.Add($"Priority={p}");
+        if (TagId is > 0) parts.Add($"TagId={TagId}");
+        if (!string.IsNullOrWhiteSpace(Text)) parts.Add($"Text={Uri.EscapeDataString(Text)}");
+        if (Sort is { } so) parts.Add($"Sort={so}");
+        if (Stale == true) parts.Add("Stale=true");
+        return string.Join("&", parts);
+    }
+
+    private async Task SaveCurrentFilter()
+    {
+        savedFilterMessage = null;
+        if (!string.IsNullOrWhiteSpace(saveFilter.Name))
+            savedFilterMessage = await Data.SaveFilterAsync(saveFilter.Name!, CurrentQuery());
+        saveFilter = new();
+        savedFilters = await Data.GetSavedFiltersAsync();
+    }
+
+    private async Task DeleteSavedFilter()
+    {
+        if (deleteFilter.Id > 0) await Data.DeleteSavedFilterAsync(deleteFilter.Id);
+        deleteFilter = new();
+        savedFilters = await Data.GetSavedFiltersAsync();
+    }
+
+    private sealed class NameOnly { public string? Name { get; set; } }
+    private sealed class IdOnly { public int Id { get; set; } }
 
     private async Task LoadIssues()
     {

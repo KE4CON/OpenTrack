@@ -38,9 +38,14 @@ public static class IssueQueries
         if (!string.IsNullOrWhiteSpace(filter.Text))
         {
             // Case-insensitive contains: EF translates string.Contains to a case-SENSITIVE match on
-            // SQLite (instr), so lower-case both sides to get the search behaviour users expect.
+            // SQLite (instr), so lower-case both sides to get the search behaviour users expect. Also
+            // match PUBLIC note text — private notes are deliberately excluded so search can't reveal
+            // that a note the searcher can't read contains their term.
             var text = filter.Text.Trim().ToLower();
-            query = query.Where(i => i.Title.ToLower().Contains(text) || i.Description.ToLower().Contains(text));
+            query = query.Where(i =>
+                i.Title.ToLower().Contains(text)
+                || i.Description.ToLower().Contains(text)
+                || i.Notes.Any(n => !n.IsPrivate && n.Text.ToLower().Contains(text)));
         }
 
         // Sticky first, then the requested order (with a stable UpdatedAt tie-break where relevant).

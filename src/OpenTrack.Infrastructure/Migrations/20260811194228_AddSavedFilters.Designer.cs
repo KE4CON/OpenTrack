@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OpenTrack.Infrastructure.Data;
 
@@ -10,9 +11,11 @@ using OpenTrack.Infrastructure.Data;
 namespace OpenTrack.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260811194228_AddSavedFilters")]
+    partial class AddSavedFilters
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
@@ -743,22 +746,6 @@ namespace OpenTrack.Infrastructure.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("OpenTrack.Core.Entities.UserPreference", b =>
-                {
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("DefaultProjectId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("DefaultSort")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("UserId");
-
-                    b.ToTable("UserPreferences");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
                 {
                     b.HasOne("OpenTrack.Core.Entities.User", null)
@@ -1126,17 +1113,6 @@ namespace OpenTrack.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("OpenTrack.Core.Entities.SavedFilter", b =>
-                {
-                    b.HasOne("OpenTrack.Core.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("OpenTrack.Core.Entities.UserPreference", b =>
                 {
                     b.HasOne("OpenTrack.Core.Entities.User", "User")
                         .WithMany()
