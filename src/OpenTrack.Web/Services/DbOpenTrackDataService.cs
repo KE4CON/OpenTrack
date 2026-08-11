@@ -15,9 +15,11 @@ using OpenTrack.Core;
 using OpenTrack.Core.Authorization;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
+using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Infrastructure.Queries;
 using OpenTrack.UI.Services;
 
 namespace OpenTrack.Web.Services;
@@ -131,14 +133,13 @@ public class DbOpenTrackDataService(
 
     // ---- Issues ----
 
-    public async Task<IReadOnlyList<IssueRow>> GetIssuesAsync(int? projectId = null, CancellationToken ct = default)
+    public async Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default)
     {
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
-        var q = db.Issues.AsNoTracking().WhereVisibleTo(access);
-        if (projectId is not null) q = q.Where(i => i.ProjectId == projectId);
-        return await q
-            .OrderByDescending(i => i.IsSticky).ThenByDescending(i => i.UpdatedAt)
+        return await db.Issues.AsNoTracking()
+            .WhereVisibleTo(access)   // ACL first — filtering can only narrow what the user may see
+            .ApplyFilter(filter)
             .Select(i => new IssueRow(
                 i.Id, i.ProjectId, i.Project.Name, i.Title, i.Status, i.Severity, i.Priority,
                 i.Reporter.UserName ?? "unknown", i.Assignee != null ? i.Assignee.UserName : null, i.UpdatedAt))

@@ -14,8 +14,10 @@ using Microsoft.EntityFrameworkCore;
 using OpenTrack.API.Contracts;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
+using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Infrastructure.Queries;
 using OpenTrack.API;
 
 namespace OpenTrack.API.Endpoints;
@@ -27,16 +29,20 @@ public static class IssueEndpoints
         var group = app.MapGroup("/api").RequireAuthorization().WithTags("Issues");
 
         // Global list, optionally filtered by project. Row-level filtered to what the caller may see.
-        group.MapGet("/issues", async (int? projectId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        group.MapGet("/issues", async (
+            int? projectId, IssueStatus? status, IssueSeverity? severity, IssuePriority? priority,
+            int? assigneeId, int? categoryId, string? text, IssueSort? sort,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
 
-            var query = db.Issues.AsNoTracking().WhereVisibleTo(access);
-            if (projectId is not null) query = query.Where(i => i.ProjectId == projectId);
+            var filter = new IssueFilter(projectId, status, severity, priority, assigneeId, categoryId, text,
+                sort ?? IssueSort.UpdatedDesc);
 
-            var rows = await query
-                .OrderByDescending(i => i.IsSticky).ThenByDescending(i => i.UpdatedAt)
+            var rows = await db.Issues.AsNoTracking()
+                .WhereVisibleTo(access)   // ACL first — filtering can only narrow the visible set
+                .ApplyFilter(filter)
                 .Select(i => new IssueDto(
                     i.Id, i.ProjectId, i.Project.Name, i.Title, i.Status, i.Severity, i.Priority,
                     i.Reporter.UserName ?? "unknown", i.Assignee != null ? i.Assignee.UserName : null, i.UpdatedAt))

@@ -12,6 +12,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using OpenTrack.Core.Querying;
 using OpenTrack.UI.Services;
 
 namespace OpenTrack.Desktop.Services;
@@ -56,9 +57,18 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
-    public async Task<IReadOnlyList<IssueRow>> GetIssuesAsync(int? projectId = null, CancellationToken ct = default)
+    public async Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default)
     {
-        var url = projectId is null ? "/api/issues" : $"/api/issues?projectId={projectId}";
+        var q = new List<string>();
+        if (filter.ProjectId is { } p) q.Add($"projectId={p}");
+        if (filter.Status is { } s) q.Add($"status={s}");
+        if (filter.Severity is { } sv) q.Add($"severity={sv}");
+        if (filter.Priority is { } pr) q.Add($"priority={pr}");
+        if (filter.AssigneeId is { } a) q.Add($"assigneeId={a}");
+        if (filter.CategoryId is { } c) q.Add($"categoryId={c}");
+        if (!string.IsNullOrWhiteSpace(filter.Text)) q.Add($"text={Uri.EscapeDataString(filter.Text)}");
+        q.Add($"sort={filter.Sort}");
+        var url = "/api/issues?" + string.Join("&", q);
         return await http.GetFromJsonAsync<List<IssueRow>>(url, JsonOptions, ct) ?? [];
     }
 
