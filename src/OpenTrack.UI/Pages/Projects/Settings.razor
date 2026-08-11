@@ -143,6 +143,47 @@ else
     <hr class="my-4" />
     <div class="row">
         <div class="col-lg-8">
+            <h2 class="h5">Workflow</h2>
+            <p class="form-text">
+                Restrict which <em>status changes</em> are allowed. Leave this empty to allow any change
+                (the default). Once you add even one rule, only the rules you list are permitted.
+            </p>
+            @if (workflow.Count == 0)
+            {
+                <p class="text-muted">Open workflow — any status change is allowed.</p>
+            }
+            else
+            {
+                <EditForm Model="flowDel" OnValidSubmit="DeleteFlow" FormName="delFlow">
+                    <ul class="mb-2">
+                        @foreach (var w in workflow)
+                        {
+                            <li>
+                                @w.FromStatus <span aria-hidden="true">→</span> @w.ToStatus
+                                <button type="submit" name="Id" value="@w.Id" class="btn btn-sm btn-link text-danger p-0 ms-1">remove</button>
+                            </li>
+                        }
+                    </ul>
+                </EditForm>
+            }
+            <EditForm Model="flowAdd" OnValidSubmit="AddFlow" FormName="addFlow">
+                <div class="input-group" style="max-width: 28rem;">
+                    <InputSelect @bind-Value="flowAdd.From" class="form-select">
+                        @foreach (var s in Enum.GetValues<IssueStatus>()) { <option value="@s">@s</option> }
+                    </InputSelect>
+                    <span class="input-group-text">→</span>
+                    <InputSelect @bind-Value="flowAdd.To" class="form-select">
+                        @foreach (var s in Enum.GetValues<IssueStatus>()) { <option value="@s">@s</option> }
+                    </InputSelect>
+                    <button type="submit" class="btn btn-primary">Allow</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+
+    <hr class="my-4" />
+    <div class="row">
+        <div class="col-lg-8">
             <h2 class="h5">Public trouble-ticket intake</h2>
             <p class="form-text">
                 Let anyone submit a problem <em>without an account</em> through a public “Report a problem”
@@ -185,6 +226,10 @@ else
     [SupplyParameterFromForm(FormName = "addHook")] private HookForm hookAdd { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "delHook")] private DelHookForm hookDel { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "intake")] private EmptyForm intakeForm { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "addFlow")] private FlowForm flowAdd { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "delFlow")] private IdForm flowDel { get; set; } = default!;
+
+    private IReadOnlyList<WorkflowTransitionView> workflow = [];
 
     private bool intakeEnabled;
     private string publicUrl = "";
@@ -199,8 +244,24 @@ else
         hookAdd ??= new();
         hookDel ??= new();
         intakeForm ??= new();
+        flowAdd ??= new();
+        flowDel ??= new();
         await Load();
     }
+
+    private async Task AddFlow()
+    {
+        try { Report(await Data.AddWorkflowTransitionAsync(Id, flowAdd.From, flowAdd.To)); }
+        catch (Exception ex) { Report(ex.Message); }
+        flowAdd = new(); await Load();
+    }
+    private async Task DeleteFlow()
+    {
+        if (flowDel.Id > 0) { try { await Data.DeleteWorkflowTransitionAsync(Id, flowDel.Id); Report(null); } catch (Exception ex) { Report(ex.Message); } }
+        flowDel = new(); await Load();
+    }
+
+    private sealed class FlowForm { public IssueStatus From { get; set; } = IssueStatus.New; public IssueStatus To { get; set; } = IssueStatus.Acknowledged; }
 
     private async Task ToggleIntake()
     {
@@ -223,6 +284,7 @@ else
         categories = await Data.GetProjectCategoriesAsync(Id);
         versions = await Data.GetProjectVersionsAsync(Id);
         webhooks = canManage ? await Data.GetWebhooksAsync(Id) : [];
+        workflow = canManage ? await Data.GetWorkflowAsync(Id) : [];
     }
 
     private async Task AddWebhook()

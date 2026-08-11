@@ -57,6 +57,26 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task<IReadOnlyList<WorkflowTransitionView>> GetWorkflowAsync(int projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<WorkflowTransitionView>>($"/api/projects/{projectId}/workflow", JsonOptions, ct) ?? [];
+
+    public async Task<string?> AddWorkflowTransitionAsync(int projectId, OpenTrack.Core.Enums.IssueStatus from, OpenTrack.Core.Enums.IssueStatus to, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/projects/{projectId}/workflow", new { from, to }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Managing the workflow requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task DeleteWorkflowTransitionAsync(int projectId, int id, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/projects/{projectId}/workflow/{id}", ct);
+        ThrowIfForbidden(resp, "Managing the workflow requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+    }
+
     public async Task SetPublicIntakeEnabledAsync(int projectId, bool enabled, CancellationToken ct = default)
     {
         var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/public-intake", new { enabled }, JsonOptions, ct);
@@ -167,6 +187,9 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
     {
         var resp = await http.PutAsJsonAsync($"/api/issues/{id}", input, JsonOptions, ct);
         await ThrowIfConflictAsync(resp, ct);
+        // A workflow-disallowed status change comes back as 400 — surface it like the web host does.
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            throw new InvalidOperationException(await resp.Content.ReadAsStringAsync(ct));
         resp.EnsureSuccessStatusCode();
     }
 

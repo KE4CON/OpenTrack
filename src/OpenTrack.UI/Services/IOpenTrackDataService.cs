@@ -48,6 +48,12 @@ public interface IOpenTrackDataService
     Task<PreferencesView> GetPreferencesAsync(CancellationToken ct = default);
     Task SavePreferencesAsync(int? defaultProjectId, IssueSort? defaultSort, CancellationToken ct = default);
 
+    // Per-project workflow: the allowed status transitions (Manager only). Empty = all transitions
+    // allowed (the default). Add returns null on success or a reason.
+    Task<IReadOnlyList<WorkflowTransitionView>> GetWorkflowAsync(int projectId, CancellationToken ct = default);
+    Task<string?> AddWorkflowTransitionAsync(int projectId, IssueStatus from, IssueStatus to, CancellationToken ct = default);
+    Task DeleteWorkflowTransitionAsync(int projectId, int id, CancellationToken ct = default);
+
     // Project webhooks (Manager only — a URL can carry a secret token). Returns null/reason on add.
     Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default);
     Task<string?> AddWebhookAsync(int projectId, string url, WebhookFormat format, CancellationToken ct = default);

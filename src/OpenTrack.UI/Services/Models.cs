@@ -88,6 +88,9 @@ public record PreferencesView(int? DefaultProjectId, IssueSort? DefaultSort);
 /// <summary>A project's outgoing webhook (Manager-managed).</summary>
 public record WebhookView(int Id, string Url, WebhookFormat Format, bool IsActive);
 
+/// <summary>An allowed status transition in a project's workflow.</summary>
+public record WorkflowTransitionView(int Id, IssueStatus FromStatus, IssueStatus ToStatus);
+
 /// <summary>An issue targeted to a version, for the roadmap/changelog.</summary>
 public record RoadmapIssueView(int Id, string Title, IssueStatus Status, IssueSeverity Severity, bool Done);
 

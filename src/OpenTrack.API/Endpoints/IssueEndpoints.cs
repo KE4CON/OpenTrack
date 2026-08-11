@@ -25,6 +25,7 @@ using OpenTrack.Infrastructure.Queries;
 using OpenTrack.Infrastructure.Relationships;
 using OpenTrack.Infrastructure.Tags;
 using OpenTrack.Infrastructure.TimeLogs;
+using OpenTrack.Infrastructure.Workflow;
 using OpenTrack.API;
 
 namespace OpenTrack.API.Endpoints;
@@ -153,6 +154,10 @@ public static class IssueEndpoints
 
             var originalStatus = issue.Status;
             var originalAssigneeId = issue.AssigneeId;
+
+            if (req.Status != originalStatus &&
+                !await WorkflowOperations.IsAllowedAsync(db, issue.ProjectId, originalStatus, req.Status, ct))
+                return Results.BadRequest($"Changing status from {originalStatus} to {req.Status} isn't allowed by this project's workflow.");
 
             issue.Title = req.Title;
             issue.Description = req.Description;

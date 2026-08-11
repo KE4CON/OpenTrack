@@ -28,6 +28,7 @@ using OpenTrack.Infrastructure.Preferences;
 using OpenTrack.Infrastructure.Reporting;
 using OpenTrack.Infrastructure.TimeLogs;
 using OpenTrack.Infrastructure.Webhooks;
+using OpenTrack.Infrastructure.Workflow;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
@@ -158,6 +159,28 @@ public class DbOpenTrackDataService(
     }
 
     // ---- Issues ----
+
+    public async Task<IReadOnlyList<WorkflowTransitionView>> GetWorkflowAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var items = await WorkflowOperations.ListForProjectAsync(db, access, projectId, ct);
+        return items.Select(w => new WorkflowTransitionView(w.Id, w.FromStatus, w.ToStatus)).ToList();
+    }
+
+    public async Task<string?> AddWorkflowTransitionAsync(int projectId, IssueStatus from, IssueStatus to, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await WorkflowOperations.AddAsync(db, access, projectId, from, to, ct);
+    }
+
+    public async Task DeleteWorkflowTransitionAsync(int projectId, int id, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        await WorkflowOperations.DeleteAsync(db, access, projectId, id, ct);
+    }
 
     public async Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default)
     {
@@ -359,6 +382,11 @@ public class DbOpenTrackDataService(
 
         var originalStatus = issue.Status;
         var originalAssigneeId = issue.AssigneeId;
+
+        // Enforce the project's workflow (if it defines one) before accepting a status change.
+        if (input.Status != originalStatus &&
+            !await WorkflowOperations.IsAllowedAsync(db, issue.ProjectId, originalStatus, input.Status, ct))
+            throw new InvalidOperationException($"Changing status from {originalStatus} to {input.Status} isn't allowed by this project's workflow.");
 
         // Fields any Updater may change.
         issue.Title = input.Title;
