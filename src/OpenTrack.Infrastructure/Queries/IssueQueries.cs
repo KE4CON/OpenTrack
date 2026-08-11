@@ -10,6 +10,7 @@
 // more details.
 
 using OpenTrack.Core.Entities;
+using OpenTrack.Core.Enums;
 using OpenTrack.Core.Querying;
 
 namespace OpenTrack.Infrastructure.Queries;
@@ -31,6 +32,8 @@ public static class IssueQueries
         if (filter.AssigneeId is { } assigneeId) query = query.Where(i => i.AssigneeId == assigneeId);
         if (filter.CategoryId is { } categoryId) query = query.Where(i => i.CategoryId == categoryId);
         if (filter.TagId is { } tagId) query = query.Where(i => i.IssueTags.Any(it => it.TagId == tagId));
+        if (filter.StaleBeforeUtc is { } staleBefore)
+            query = query.Where(i => (int)i.Status < (int)IssueStatus.Resolved && i.UpdatedAt < staleBefore);
 
         if (!string.IsNullOrWhiteSpace(filter.Text))
         {

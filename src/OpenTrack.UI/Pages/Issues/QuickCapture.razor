@@ -1,0 +1,83 @@
+@page "/issues/quick"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+@inject NavigationManager Nav
+
+<PageTitle>Quick add</PageTitle>
+
+<div class="mx-auto" style="max-width: 40rem;">
+    <h1 class="h3 mb-1">Quick add a problem</h1>
+    <p class="text-muted">Just pick a project and describe it in a few words — everything else can be filled in later. It saves as a normal issue you can flesh out anytime.</p>
+
+    @if (error is not null)
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+
+    <EditForm Model="form" OnValidSubmit="Save" FormName="quick">
+        <DataAnnotationsValidator />
+
+        <label class="form-label">Project</label>
+        <InputSelect @bind-Value="form.ProjectId" class="form-select form-select-lg mb-3">
+            <option value="0" disabled>Choose a project…</option>
+            @foreach (var p in projects)
+            {
+                <option value="@p.Id">@p.Name</option>
+            }
+        </InputSelect>
+
+        <label class="form-label">What's the problem?</label>
+        <InputText @bind-Value="form.Title" class="form-control form-control-lg mb-1" placeholder="e.g. App crashes when saving an empty note" />
+        <ValidationMessage For="() => form.Title" />
+
+        <label class="form-label mt-3">More detail (optional)</label>
+        <InputTextArea @bind-Value="form.Description" class="form-control mb-1" rows="3" placeholder="Anything else you remember. Markdown & code blocks welcome." />
+        <div class="form-text mb-3">Leave blank if you're in a hurry — you can add detail, severity, and steps on the issue afterward.</div>
+
+        <button type="submit" class="btn btn-primary btn-lg">Save issue</button>
+        <a class="btn btn-outline-secondary btn-lg" href="issues">Cancel</a>
+    </EditForm>
+</div>
+
+@code {
+    private IReadOnlyList<ProjectRow> projects = [];
+    private string? error;
+
+    [SupplyParameterFromForm(FormName = "quick")] private QuickForm form { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        form ??= new();
+        projects = await Data.GetProjectsAsync();
+    }
+
+    private async Task Save()
+    {
+        error = null;
+        if (form.ProjectId <= 0) { error = "Please choose a project."; return; }
+        try
+        {
+            var id = await Data.CreateIssueAsync(form.ProjectId, new CreateIssueInput(
+                Title: form.Title!.Trim(),
+                Description: string.IsNullOrWhiteSpace(form.Description) ? "" : form.Description.Trim(),
+                StepsToReproduce: null, ExpectedBehavior: null, ActualBehavior: null, CategoryId: null,
+                Severity: IssueSeverity.Minor, Priority: IssuePriority.Normal,
+                Reproducibility: IssueReproducibility.HaveNotTried,
+                DueDate: null, AffectsVersionId: null, FixVersionId: null));
+            Nav.NavigateTo($"issues/{id}");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            error = "You don't have permission to report an issue on that project.";
+        }
+    }
+
+    private sealed class QuickForm
+    {
+        public int ProjectId { get; set; }
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Enter a short description of the problem.")]
+        [System.ComponentModel.DataAnnotations.StringLength(FieldLimits.IssueTitle)]
+        public string? Title { get; set; }
+        public string? Description { get; set; }
+    }
+}

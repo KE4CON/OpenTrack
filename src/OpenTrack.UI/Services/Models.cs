@@ -30,6 +30,27 @@ public record IssueRow(
     IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
     string ReporterName, string? AssigneeName, DateTime UpdatedAt);
 
+/// <summary>Per-project open/overdue tallies for the cross-project dashboard.</summary>
+public record DashboardProjectSummary(int ProjectId, string ProjectName, int OpenCount, int OverdueCount);
+
+/// <summary>Count of open issues at one severity, for the dashboard breakdown.</summary>
+public record DashboardSeverityCount(IssueSeverity Severity, int Count);
+
+/// <summary>The cross-project "where should I look" overview. Every number and row is already filtered
+/// to what the signed-in user may see.</summary>
+public record DashboardView(
+    int TotalOpen,
+    int TotalOverdue,
+    int TotalStale,
+    IReadOnlyList<DashboardProjectSummary> Projects,
+    IReadOnlyList<DashboardSeverityCount> OpenBySeverity,
+    IReadOnlyList<IssueRow> Recent);
+
+/// <summary>A bug-hunt checklist item for a project (display + working state).</summary>
+public record ChecklistItemView(
+    int Id, int ProjectId, string Title, string? Details, string? Area,
+    ChecklistItemStatus Status, string? Notes, int? LinkedIssueId, int DisplayOrder);
+
 public record IssueNoteView(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
 
 public record IssueHistoryEntry(int Id, string UserName, string FieldChanged, string? OldValue, string? NewValue, DateTime ChangedAt);

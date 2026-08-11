@@ -1,0 +1,106 @@
+@page "/projects/{Id:int}/board"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+
+<PageTitle>Board — @(projectName ?? "Project")</PageTitle>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Board@(projectName is null ? "" : $" — {projectName}")</h1>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="issues?ProjectId=@Id">List view</a>
+        <a class="btn btn-outline-secondary" href="projects/@Id">Back to project</a>
+    </div>
+</div>
+
+@if (message is not null)
+{
+    <div class="alert alert-info py-1">@message</div>
+}
+
+<p class="text-muted">Each column is a status. Use the arrows on a card to move it one step
+    left or right through the workflow.</p>
+
+<EditForm Model="move" OnValidSubmit="RunMove" FormName="board">
+    <div class="d-flex gap-3 overflow-x-auto pb-2">
+        @foreach (var status in Statuses)
+        {
+            var inColumn = issues.Where(i => i.Status == status).ToList();
+            <div class="flex-shrink-0" style="width: 15rem;">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold">@status</span>
+                        <span class="badge text-bg-secondary">@inColumn.Count</span>
+                    </div>
+                    <div class="card-body p-2">
+                        @if (inColumn.Count == 0)
+                        {
+                            <p class="text-muted small mb-0">—</p>
+                        }
+                        @foreach (var i in inColumn)
+                        {
+                            <div class="border rounded p-2 mb-2">
+                                <a href="issues/@i.Id" class="d-block text-decoration-none">#@i.Id @i.Title</a>
+                                <div class="small text-muted mb-1">@i.Severity · @i.Priority · @(i.AssigneeName ?? "Unassigned")</div>
+                                <AuthorizeView Policy="RequireUpdater" Context="auth">
+                                    <Authorized>
+                                        <div class="btn-group btn-group-sm w-100" role="group">
+                                            <button type="submit" name="Move" value="left:@i.Id" class="btn btn-outline-secondary" disabled="@(IndexOf(status) == 0)">◀</button>
+                                            <button type="submit" name="Move" value="right:@i.Id" class="btn btn-outline-secondary" disabled="@(IndexOf(status) == Statuses.Length - 1)">▶</button>
+                                        </div>
+                                    </Authorized>
+                                </AuthorizeView>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private static readonly IssueStatus[] Statuses = Enum.GetValues<IssueStatus>().OrderBy(s => (int)s).ToArray();
+
+    private string? projectName;
+    private IReadOnlyList<IssueRow> issues = [];
+    private string? message;
+
+    [SupplyParameterFromForm(FormName = "board")] private MoveForm move { get; set; } = default!;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        move ??= new();
+        var project = await Data.GetProjectAsync(Id);
+        projectName = project?.Name;
+        issues = await Data.GetIssuesAsync(new IssueFilter(ProjectId: Id, Sort: IssueSort.PriorityDesc));
+    }
+
+    private async Task RunMove()
+    {
+        message = null;
+        var cmd = move.Move;
+        move = new();
+        if (string.IsNullOrEmpty(cmd)) return;
+
+        var parts = cmd.Split(':', 2);
+        if (parts.Length != 2 || !int.TryParse(parts[1], out var issueId)) return;
+        var issue = issues.FirstOrDefault(i => i.Id == issueId);
+        if (issue is null) return;
+
+        var idx = IndexOf(issue.Status);
+        var target = parts[0] == "left" ? idx - 1 : idx + 1;
+        if (target < 0 || target >= Statuses.Length) return;
+
+        var newStatus = Statuses[target];
+        var result = await Data.BulkUpdateIssuesAsync(new[] { issueId }, new BulkAction(BulkActionType.SetStatus, Status: newStatus));
+        message = result.Updated == 1 ? $"Moved #{issueId} to {newStatus}." : "You don't have permission to move that issue.";
+
+        issues = await Data.GetIssuesAsync(new IssueFilter(ProjectId: Id, Sort: IssueSort.PriorityDesc));
+    }
+
+    private static int IndexOf(IssueStatus s) => Array.IndexOf(Statuses, s);
+
+    private sealed class MoveForm { public string? Move { get; set; } }
+}

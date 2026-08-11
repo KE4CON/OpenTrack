@@ -33,6 +33,10 @@ public interface IOpenTrackDataService
     Task<int> CreateProjectAsync(CreateProjectInput input, CancellationToken ct = default);
     Task UpdateProjectAsync(int id, UpdateProjectInput input, CancellationToken ct = default);
 
+    // Dashboard: a cross-project overview (open/overdue tallies, severity breakdown, recent activity),
+    // filtered to what the signed-in user may see.
+    Task<DashboardView> GetDashboardAsync(CancellationToken ct = default);
+
     // Issues
     Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default);
     Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default);
@@ -107,4 +111,16 @@ public interface IOpenTrackDataService
     // clears it) requires edit access. Returns null on success or a reason on failure.
     Task<IReadOnlyList<CustomFieldValueView>> GetIssueCustomFieldsAsync(int issueId, CancellationToken ct = default);
     Task<string?> SetIssueCustomFieldAsync(int issueId, int fieldId, string? value, CancellationToken ct = default);
+
+    // Bug-hunt checklist (per project). Reading needs project view; defining items (add/import/edit/
+    // delete) needs Manager; working through them (status/notes, convert-to-issue) needs Updater.
+    // Mutations return null on success or a reason on failure; import returns the count added; convert
+    // returns the new (or already-linked) issue id, or null if it couldn't.
+    Task<IReadOnlyList<ChecklistItemView>> GetChecklistAsync(int projectId, CancellationToken ct = default);
+    Task<string?> AddChecklistItemAsync(int projectId, string title, string? details, string? area, CancellationToken ct = default);
+    Task<int> ImportChecklistAsync(int projectId, string text, CancellationToken ct = default);
+    Task<string?> UpdateChecklistItemAsync(int projectId, int itemId, string title, string? details, string? area, CancellationToken ct = default);
+    Task DeleteChecklistItemAsync(int projectId, int itemId, CancellationToken ct = default);
+    Task<string?> SetChecklistItemStatusAsync(int projectId, int itemId, ChecklistItemStatus status, string? notes, CancellationToken ct = default);
+    Task<int?> ConvertChecklistItemToIssueAsync(int projectId, int itemId, CancellationToken ct = default);
 }

@@ -31,4 +31,13 @@ public record IssueFilter(
     int? CategoryId = null,
     string? Text = null,
     int? TagId = null,
-    IssueSort Sort = IssueSort.UpdatedDesc);
+    IssueSort Sort = IssueSort.UpdatedDesc,
+    // When set, keep only "stale" issues: still open (below Resolved) and not updated since this instant.
+    DateTime? StaleBeforeUtc = null);
+
+/// <summary>Shared defaults for issue querying.</summary>
+public static class IssueDefaults
+{
+    /// <summary>How long an open issue can sit untouched before it's considered stale.</summary>
+    public const int StaleDays = 30;
+}

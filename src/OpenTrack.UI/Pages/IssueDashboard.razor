@@ -1,0 +1,133 @@
+@inject IOpenTrackDataService Data
+
+@* Shared, render-mode-agnostic overview component. Read-only: loads once and renders, so it works on
+   both the static-SSR web host and the interactive desktop host. Every figure is ACL-filtered upstream
+   in DashboardQuery. *@
+
+@if (data is null)
+{
+    <p class="text-muted">Loading your overview…</p>
+}
+else if (data.Projects.Count == 0 && data.Recent.Count == 0)
+{
+    <div class="alert alert-info">
+        Nothing to show yet. <a href="projects">Create a project</a> and start logging issues, and this
+        page will summarize what's open and what needs attention across all of them.
+    </div>
+}
+else
+{
+    <div class="mb-3">
+        <a class="btn btn-primary" href="issues/quick"><span aria-hidden="true">＋</span> Quick add a problem</a>
+    </div>
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Open issues</div>
+                    <div class="display-6">@data.TotalOpen</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card shadow-sm h-100 @(data.TotalOverdue > 0 ? "border-danger" : "")">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Overdue</div>
+                    <div class="display-6 @(data.TotalOverdue > 0 ? "text-danger" : "")">@data.TotalOverdue</div>
+                    <div class="form-text">Open past their due date.</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <a class="card shadow-sm h-100 text-decoration-none @(data.TotalStale > 0 ? "border-warning" : "")" href="issues?stale=true">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Stale</div>
+                    <div class="display-6 @(data.TotalStale > 0 ? "text-warning-emphasis" : "")">@data.TotalStale</div>
+                    <div class="form-text">Open, untouched 30+ days.</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase mb-2">Open by severity</div>
+                    @if (data.OpenBySeverity.Count == 0)
+                    {
+                        <span class="text-muted">No open issues.</span>
+                    }
+                    else
+                    {
+                        @foreach (var s in data.OpenBySeverity)
+                        {
+                            <span class="badge rounded-pill text-bg-@SeverityColor(s.Severity) me-1 mb-1">@s.Severity: @s.Count</span>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <h2 class="h5">By project</h2>
+            @if (data.Projects.Count == 0)
+            {
+                <p class="text-muted">No open issues in any project.</p>
+            }
+            else
+            {
+                <table class="table table-sm table-hover align-middle">
+                    <thead><tr><th>Project</th><th class="text-end">Open</th><th class="text-end">Overdue</th></tr></thead>
+                    <tbody>
+                        @foreach (var p in data.Projects)
+                        {
+                            <tr>
+                                <td><a href="issues?ProjectId=@p.ProjectId">@p.ProjectName</a></td>
+                                <td class="text-end">@p.OpenCount</td>
+                                <td class="text-end @(p.OverdueCount > 0 ? "text-danger fw-semibold" : "text-muted")">@p.OverdueCount</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        <div class="col-lg-6">
+            <h2 class="h5">Recently updated</h2>
+            @if (data.Recent.Count == 0)
+            {
+                <p class="text-muted">No activity yet.</p>
+            }
+            else
+            {
+                <ul class="list-group">
+                    @foreach (var i in data.Recent)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div class="me-2">
+                                <a href="issues/@i.Id">#@i.Id @i.Title</a>
+                                <div class="small text-muted">@i.ProjectName · @i.Status</div>
+                            </div>
+                            <span class="small text-muted text-nowrap">@i.UpdatedAt.ToLocalTime().ToString("g")</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardView? data;
+
+    protected override async Task OnInitializedAsync() => data = await Data.GetDashboardAsync();
+
+    private static string SeverityColor(IssueSeverity s) => s switch
+    {
+        IssueSeverity.Block => "danger",
+        IssueSeverity.Crash => "danger",
+        IssueSeverity.Major => "warning",
+        IssueSeverity.Minor => "info",
+        _ => "secondary"
+    };
+}

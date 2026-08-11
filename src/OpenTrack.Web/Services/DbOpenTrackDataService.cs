@@ -20,7 +20,9 @@ using OpenTrack.Infrastructure.Bulk;
 using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
+using OpenTrack.Infrastructure.Checklist;
 using OpenTrack.Infrastructure.CustomFields;
+using OpenTrack.Infrastructure.Dashboard;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
@@ -151,6 +153,22 @@ public class DbOpenTrackDataService(
                 i.Id, i.ProjectId, i.Project.Name, i.Title, i.Status, i.Severity, i.Priority,
                 i.Reporter.UserName ?? "unknown", i.Assignee != null ? i.Assignee.UserName : null, i.UpdatedAt))
             .ToListAsync(ct);
+    }
+
+    public async Task<DashboardView> GetDashboardAsync(CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var r = await DashboardQuery.BuildAsync(db, access, DateTime.UtcNow, ct);
+        return new DashboardView(
+            r.TotalOpen,
+            r.TotalOverdue,
+            r.TotalStale,
+            r.Projects.Select(p => new DashboardProjectSummary(p.ProjectId, p.ProjectName, p.OpenCount, p.OverdueCount)).ToList(),
+            r.OpenBySeverity.Select(s => new DashboardSeverityCount(s.Severity, s.Count)).ToList(),
+            r.Recent.Select(i => new IssueRow(
+                i.Id, i.ProjectId, i.ProjectName, i.Title, i.Status, i.Severity, i.Priority,
+                i.ReporterName, i.AssigneeName, i.UpdatedAt)).ToList());
     }
 
     public async Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default)
@@ -663,6 +681,58 @@ public class DbOpenTrackDataService(
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
         return await CustomFieldOperations.SetValueAsync(db, access, issueId, fieldId, value, ct);
+    }
+
+    // ---- Bug-hunt checklist (ACL logic shared with the API via ChecklistOperations) ----
+
+    public async Task<IReadOnlyList<ChecklistItemView>> GetChecklistAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var items = await ChecklistOperations.ListForProjectAsync(db, access, projectId, ct);
+        return items.Select(c => new ChecklistItemView(c.Id, c.ProjectId, c.Title, c.Details, c.Area, c.Status, c.Notes, c.LinkedIssueId, c.DisplayOrder)).ToList();
+    }
+
+    public async Task<string?> AddChecklistItemAsync(int projectId, string title, string? details, string? area, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await ChecklistOperations.AddItemAsync(db, access, projectId, title, details, area, ct);
+    }
+
+    public async Task<int> ImportChecklistAsync(int projectId, string text, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await ChecklistOperations.ImportAsync(db, access, projectId, text, ct);
+    }
+
+    public async Task<string?> UpdateChecklistItemAsync(int projectId, int itemId, string title, string? details, string? area, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await ChecklistOperations.UpdateItemAsync(db, access, projectId, itemId, title, details, area, ct);
+    }
+
+    public async Task DeleteChecklistItemAsync(int projectId, int itemId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        await ChecklistOperations.DeleteItemAsync(db, access, projectId, itemId, ct);
+    }
+
+    public async Task<string?> SetChecklistItemStatusAsync(int projectId, int itemId, ChecklistItemStatus status, string? notes, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await ChecklistOperations.SetStatusAsync(db, access, projectId, itemId, status, notes, ct);
+    }
+
+    public async Task<int?> ConvertChecklistItemToIssueAsync(int projectId, int itemId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await ChecklistOperations.ConvertToIssueAsync(db, access, projectId, itemId, ct);
     }
 
     // ---- Monitoring & notifications ----

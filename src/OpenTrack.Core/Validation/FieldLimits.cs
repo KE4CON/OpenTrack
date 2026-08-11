@@ -28,4 +28,7 @@ public static class FieldLimits
     public const int CustomFieldName = 100;
     public const int CustomFieldValue = 2000;
     public const int CustomFieldEnumOptions = 2000;
+    public const int ChecklistTitle = 300;
+    public const int ChecklistArea = 100;
+    public const int ChecklistText = 2000;
 }

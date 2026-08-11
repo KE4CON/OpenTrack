@@ -1,0 +1,80 @@
+@page "/backup"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+@inject IAttachmentTransfer Transfer
+
+<PageTitle>Backup &amp; export</PageTitle>
+
+<h1 class="h3 mb-3">Backup &amp; export</h1>
+
+<p class="text-muted">
+    Export your issues to take them elsewhere, share a report, or keep a safe copy. Exports only ever
+    include what you're allowed to see.
+</p>
+
+@if (Transfer.Host == ClientHostKind.Web)
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h2 class="h5">Spreadsheet (CSV)</h2>
+            <p class="form-text">A flat list of issues — opens in Excel, Numbers, or Google Sheets.</p>
+            <a class="btn btn-outline-primary" href="export/issues.csv">All issues (CSV)</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h2 class="h5">Full backup (JSON), per project</h2>
+            <p class="form-text">Everything in a project — issues with their notes, tags, custom-field values, and bug-hunt checklist — in one file you can archive.</p>
+            @if (projects.Count == 0)
+            {
+                <p class="text-muted mb-0">No projects yet.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead><tr><th>Project</th><th class="text-end">Export</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in projects)
+                            {
+                                <tr>
+                                    <td>@p.Name</td>
+                                    <td class="text-end">
+                                        <a class="btn btn-sm btn-outline-primary" href="export/issues.csv?projectId=@p.Id">CSV</a>
+                                        <a class="btn btn-sm btn-outline-primary" href="export/project/@(p.Id).json">JSON</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        One-click CSV/JSON downloads are available in the <strong>web version</strong> of OpenTrack
+        (open it in a browser). In the desktop app you can still back up by copying the database file, below.
+    </div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h2 class="h5">Backing up the whole database</h2>
+        <p class="mb-1">Everything OpenTrack stores lives in a single SQLite database file on the computer that runs the server. The simplest complete backup is to copy that file somewhere safe (an external drive, a cloud folder).</p>
+        <ul class="mb-0">
+            <li>Stop the server first (or copy when it's idle) so the copy is consistent.</li>
+            <li>The file is named <code>opentrack.db</code> by default, in the server's data folder; back up the matching <code>-wal</code> and <code>-shm</code> files too if they're present.</li>
+            <li>To restore, put the file back in the same place and start the server.</li>
+        </ul>
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<ProjectRow> projects = [];
+
+    protected override async Task OnInitializedAsync() => projects = await Data.GetProjectsAsync();
+}
