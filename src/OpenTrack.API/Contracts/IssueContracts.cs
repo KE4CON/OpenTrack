@@ -35,6 +35,8 @@ public record IssueNoteDto(int Id, string AuthorName, string Text, bool IsPrivat
 
 public record IssueHistoryDto(int Id, string UserName, string FieldChanged, string? OldValue, string? NewValue, DateTime ChangedAt);
 
+public record AttachmentDto(int Id, string FileName, long FileSize, string ContentType, string UploadedByName, DateTime UploadedAt);
+
 public record CreateIssueRequest(
     string Title, string Description, string? StepsToReproduce,
     string? ExpectedBehavior, string? ActualBehavior, int? CategoryId,

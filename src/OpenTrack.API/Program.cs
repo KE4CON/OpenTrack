@@ -33,6 +33,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 // OpenTrack data layer (shared SQLite database with OpenTrack.Web).
 var connectionString = builder.Configuration.ResolveOpenTrackConnectionString();
 builder.Services.AddOpenTrackInfrastructure(connectionString);
+builder.Services.AddSingleton<OpenTrack.Infrastructure.Attachments.IAttachmentStorage,
+    OpenTrack.Infrastructure.Attachments.FileSystemAttachmentStorage>();
 
 // Bearer-token Identity for the API (desktop/thin-client consumers) — separate auth
 // scheme from OpenTrack.Web's cookie-based Identity, but backed by the same AppDbContext
@@ -97,5 +99,6 @@ app.MapGet("/api/auth/me", (System.Security.Claims.ClaimsPrincipal user) =>
 app.MapProjectEndpoints();
 app.MapProjectSettingsEndpoints();
 app.MapIssueEndpoints();
+app.MapAttachmentEndpoints();
 
 app.Run();

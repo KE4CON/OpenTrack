@@ -37,6 +37,11 @@ public interface IOpenTrackDataService
     Task AddIssueNoteAsync(int issueId, string text, bool isPrivate = false, CancellationToken ct = default);
     Task<IReadOnlyList<IssueHistoryEntry>> GetIssueHistoryAsync(int issueId, CancellationToken ct = default);
 
+    // Attachment metadata + delete go through the seam (JSON). Upload/download are stream operations
+    // handled by host-specific endpoints (web multipart form / desktop HttpClient), not here.
+    Task<IReadOnlyList<AttachmentView>> GetIssueAttachmentsAsync(int issueId, CancellationToken ct = default);
+    Task DeleteAttachmentAsync(int attachmentId, CancellationToken ct = default);
+
     // Lookups used by the issue create/edit forms
     Task<IReadOnlyList<CategoryView>> GetProjectCategoriesAsync(int projectId, CancellationToken ct = default);
     Task<IReadOnlyList<ProjectMemberView>> GetProjectMembersAsync(int projectId, CancellationToken ct = default);

@@ -1,6 +1,7 @@
 @page "/issues/{Id:int}"
 @attribute [Authorize]
 @inject IOpenTrackDataService Data
+@inject IAttachmentTransfer Transfer
 
 <PageTitle>@(issue?.Title ?? "Issue")</PageTitle>
 
@@ -66,6 +67,63 @@ else
         <p style="white-space: pre-wrap">@issue.ActualBehavior</p>
     }
 
+    <h2 class="h5 mt-4">Attachments</h2>
+    @if (attachments.Count == 0)
+    {
+        <p class="text-muted">No attachments.</p>
+    }
+    else
+    {
+        <ul class="list-unstyled">
+            @foreach (var a in attachments)
+            {
+                <li class="mb-1 d-flex align-items-center gap-2">
+                    @if (Transfer.Host == ClientHostKind.Web)
+                    {
+                        <a href="@Transfer.DownloadUrl(a.Id)">@a.FileName</a>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-link p-0" @onclick="() => Download(a)">@a.FileName</button>
+                    }
+                    <span class="text-muted small">@FormatSize(a.FileSize) &middot; @a.UploadedByName</span>
+                    @if (Transfer.Host == ClientHostKind.Web)
+                    {
+                        <form method="post" action="/attachments/@a.Id/delete" class="d-inline">
+                            <AntiforgeryToken />
+                            <button type="submit" class="btn btn-sm btn-outline-danger py-0">Delete</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-danger py-0" @onclick="() => DeleteAttachment(a.Id)">Delete</button>
+                    }
+                </li>
+            }
+        </ul>
+    }
+
+    @if (Transfer.Host == ClientHostKind.Web)
+    {
+        <form method="post" action="/attachments/@issue.Id/upload" enctype="multipart/form-data" class="col-md-6 mb-2">
+            <AntiforgeryToken />
+            <div class="input-group">
+                <input type="file" name="file" class="form-control" required />
+                <button type="submit" class="btn btn-secondary">Upload</button>
+            </div>
+        </form>
+    }
+    else
+    {
+        <div class="col-md-6 mb-2">
+            <InputFile OnChange="OnFileSelected" class="form-control" />
+            @if (uploadError is not null)
+            {
+                <div class="text-danger small mt-1">@uploadError</div>
+            }
+        </div>
+    }
+
     <h2 class="h5 mt-4">Notes</h2>
     @if (issue.Notes.Count == 0)
     {
@@ -123,6 +181,8 @@ else
     [Parameter] public int Id { get; set; }
     private IssueDetail? issue;
     private IReadOnlyList<IssueHistoryEntry> history = [];
+    private IReadOnlyList<AttachmentView> attachments = [];
+    private string? uploadError;
     [SupplyParameterFromForm]
     private NoteFormModel noteModel { get; set; } = default!;
 
@@ -136,7 +196,37 @@ else
     {
         issue = await Data.GetIssueAsync(Id);
         history = issue is null ? [] : await Data.GetIssueHistoryAsync(Id);
+        attachments = issue is null ? [] : await Data.GetIssueAttachmentsAsync(Id);
     }
+
+    // Desktop-host interactive handlers (the web host uses plain forms/links instead).
+    private Task Download(AttachmentView a) => Transfer.DownloadAndOpenAsync(a.Id, a.FileName);
+
+    private async Task DeleteAttachment(int attachmentId)
+    {
+        await Data.DeleteAttachmentAsync(attachmentId);
+        await LoadIssue();
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        uploadError = null;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(maxAllowedSize: 10L * 1024 * 1024);
+            await Transfer.UploadAsync(Id, e.File.Name, e.File.ContentType, stream);
+            await LoadIssue();
+        }
+        catch (Exception ex)
+        {
+            uploadError = ex.Message;
+        }
+    }
+
+    private static string FormatSize(long bytes) =>
+        bytes < 1024 ? $"{bytes} B"
+        : bytes < 1024 * 1024 ? $"{bytes / 1024} KB"
+        : $"{bytes / (1024 * 1024)} MB";
 
     private async Task AddNote()
     {

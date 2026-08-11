@@ -103,6 +103,15 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
     public async Task<IReadOnlyList<IssueHistoryEntry>> GetIssueHistoryAsync(int issueId, CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<IssueHistoryEntry>>($"/api/issues/{issueId}/history", JsonOptions, ct) ?? [];
 
+    public async Task<IReadOnlyList<AttachmentView>> GetIssueAttachmentsAsync(int issueId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<AttachmentView>>($"/api/issues/{issueId}/attachments", JsonOptions, ct) ?? [];
+
+    public async Task DeleteAttachmentAsync(int attachmentId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/attachments/{attachmentId}", ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
     public async Task<IReadOnlyList<CategoryView>> GetProjectCategoriesAsync(int projectId, CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<CategoryView>>($"/api/projects/{projectId}/categories", JsonOptions, ct) ?? [];
 
