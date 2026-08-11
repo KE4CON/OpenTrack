@@ -30,7 +30,9 @@ public record IssueRow(
     IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
     string ReporterName, string? AssigneeName, DateTime UpdatedAt);
 
-public record IssueNoteView(int Id, string AuthorName, string Text, DateTime CreatedAt);
+public record IssueNoteView(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
+
+public record IssueHistoryEntry(int Id, string UserName, string FieldChanged, string? OldValue, string? NewValue, DateTime ChangedAt);
 
 public record IssueDetail(
     int Id, int ProjectId, string ProjectName, string Title, string Description,

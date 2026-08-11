@@ -28,7 +28,9 @@ public record IssueDetailDto(
     DateTime CreatedAt, DateTime UpdatedAt, DateTime? DueDate,
     IReadOnlyList<IssueNoteDto> Notes);
 
-public record IssueNoteDto(int Id, string AuthorName, string Text, DateTime CreatedAt);
+public record IssueNoteDto(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
+
+public record IssueHistoryDto(int Id, string UserName, string FieldChanged, string? OldValue, string? NewValue, DateTime ChangedAt);
 
 public record CreateIssueRequest(
     string Title, string Description, string? StepsToReproduce,
@@ -43,4 +45,4 @@ public record UpdateIssueRequest(
     IssueReproducibility Reproducibility, IssueResolution Resolution,
     int? AssigneeId, int? CategoryId, bool IsSticky, bool IsPrivate, DateTime? DueDate);
 
-public record AddIssueNoteRequest(string Text);
+public record AddIssueNoteRequest(string Text, bool IsPrivate = false);

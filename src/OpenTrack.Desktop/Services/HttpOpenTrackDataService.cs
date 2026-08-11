@@ -82,11 +82,14 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
-    public async Task AddIssueNoteAsync(int issueId, string text, CancellationToken ct = default)
+    public async Task AddIssueNoteAsync(int issueId, string text, bool isPrivate = false, CancellationToken ct = default)
     {
-        var resp = await http.PostAsJsonAsync($"/api/issues/{issueId}/notes", new { text }, JsonOptions, ct);
+        var resp = await http.PostAsJsonAsync($"/api/issues/{issueId}/notes", new { text, isPrivate }, JsonOptions, ct);
         resp.EnsureSuccessStatusCode();
     }
+
+    public async Task<IReadOnlyList<IssueHistoryEntry>> GetIssueHistoryAsync(int issueId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<IssueHistoryEntry>>($"/api/issues/{issueId}/history", JsonOptions, ct) ?? [];
 
     public async Task<IReadOnlyList<CategoryView>> GetProjectCategoriesAsync(int projectId, CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<CategoryView>>($"/api/projects/{projectId}/categories", JsonOptions, ct) ?? [];

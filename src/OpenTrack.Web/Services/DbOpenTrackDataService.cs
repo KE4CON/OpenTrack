@@ -148,7 +148,7 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
             i.CategoryId, i.Category?.Name, i.IsSticky, i.IsPrivate, i.CreatedAt, i.UpdatedAt, i.DueDate,
             i.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
                 .OrderBy(n => n.CreatedAt)
-                .Select(n => new IssueNoteView(n.Id, n.Author.UserName ?? "unknown", n.Text, n.CreatedAt))
+                .Select(n => new IssueNoteView(n.Id, n.Author.UserName ?? "unknown", n.Text, n.IsPrivate, n.CreatedAt))
                 .ToList());
     }
 
@@ -251,7 +251,7 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
             .AnyAsync(m => m.ProjectId == projectId && m.UserId == assigneeId, ct);
     }
 
-    public async Task AddIssueNoteAsync(int issueId, string text, CancellationToken ct = default)
+    public async Task AddIssueNoteAsync(int issueId, string text, bool isPrivate = false, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
         var (db, access) = await OpenAsync(ct);
@@ -265,12 +265,32 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
             return;
         if (!ctx.CanAddNote())
             throw new UnauthorizedAccessException("Adding a note requires the Reporter role on this project.");
+        // A caller who cannot author private notes has the flag silently forced off.
+        var effectivePrivate = isPrivate && ctx.CanAddPrivateNote();
 
         db.IssueNotes.Add(new IssueNote
         {
-            IssueId = issueId, AuthorId = access.UserId, Text = text, CreatedAt = DateTime.UtcNow
+            IssueId = issueId, AuthorId = access.UserId, Text = text, IsPrivate = effectivePrivate, CreatedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<IssueHistoryEntry>> GetIssueHistoryAsync(int issueId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var issue = await db.Issues.AsNoTracking().Include(i => i.Project)
+            .FirstOrDefaultAsync(i => i.Id == issueId, ct);
+        if (issue is null) return [];
+        var ctx = access.For(issue.ProjectId);
+        if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+            return [];
+
+        return await db.IssueHistories.AsNoTracking()
+            .Where(h => h.IssueId == issueId)
+            .OrderByDescending(h => h.ChangedAt)
+            .Select(h => new IssueHistoryEntry(h.Id, h.User.UserName ?? "unknown", h.FieldChanged, h.OldValue, h.NewValue, h.ChangedAt))
+            .ToListAsync(ct);
     }
 
     // ---- Lookups ----

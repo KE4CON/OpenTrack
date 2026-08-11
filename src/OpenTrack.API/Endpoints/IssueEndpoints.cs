@@ -71,7 +71,7 @@ public static class IssueEndpoints
                 issue.CreatedAt, issue.UpdatedAt, issue.DueDate,
                 issue.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
                     .OrderBy(n => n.CreatedAt)
-                    .Select(n => new IssueNoteDto(n.Id, n.Author.UserName ?? "unknown", n.Text, n.CreatedAt))
+                    .Select(n => new IssueNoteDto(n.Id, n.Author.UserName ?? "unknown", n.Text, n.IsPrivate, n.CreatedAt))
                     .ToList()));
         });
 
@@ -179,11 +179,30 @@ public static class IssueEndpoints
             if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
                 return Results.NotFound();
             if (!ctx.CanAddNote()) return Results.Forbid();
+            var effectivePrivate = req.IsPrivate && ctx.CanAddPrivateNote();
 
-            var note = new IssueNote { IssueId = id, AuthorId = access.UserId, Text = req.Text, CreatedAt = DateTime.UtcNow };
+            var note = new IssueNote { IssueId = id, AuthorId = access.UserId, Text = req.Text, IsPrivate = effectivePrivate, CreatedAt = DateTime.UtcNow };
             db.IssueNotes.Add(note);
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/issues/{id}", note.Id);
+        });
+
+        group.MapGet("/issues/{id:int}/history", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var issue = await db.Issues.AsNoTracking().Include(i => i.Project)
+                .FirstOrDefaultAsync(i => i.Id == id, ct);
+            if (issue is null) return Results.NotFound();
+            var ctx = access.For(issue.ProjectId);
+            if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+                return Results.NotFound();
+
+            var rows = await db.IssueHistories.AsNoTracking()
+                .Where(h => h.IssueId == id).OrderByDescending(h => h.ChangedAt)
+                .Select(h => new IssueHistoryDto(h.Id, h.User.UserName ?? "unknown", h.FieldChanged, h.OldValue, h.NewValue, h.ChangedAt))
+                .ToListAsync(ct);
+            return Results.Ok(rows);
         });
     }
 

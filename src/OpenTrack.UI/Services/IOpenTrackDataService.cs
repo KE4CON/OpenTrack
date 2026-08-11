@@ -34,7 +34,8 @@ public interface IOpenTrackDataService
     Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default);
     Task<int> CreateIssueAsync(int projectId, CreateIssueInput input, CancellationToken ct = default);
     Task UpdateIssueAsync(int id, UpdateIssueInput input, CancellationToken ct = default);
-    Task AddIssueNoteAsync(int issueId, string text, CancellationToken ct = default);
+    Task AddIssueNoteAsync(int issueId, string text, bool isPrivate = false, CancellationToken ct = default);
+    Task<IReadOnlyList<IssueHistoryEntry>> GetIssueHistoryAsync(int issueId, CancellationToken ct = default);
 
     // Lookups used by the issue create/edit forms
     Task<IReadOnlyList<CategoryView>> GetProjectCategoriesAsync(int projectId, CancellationToken ct = default);
