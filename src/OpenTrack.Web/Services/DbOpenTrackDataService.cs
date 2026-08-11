@@ -9,11 +9,12 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
-using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
+using OpenTrack.Core.Authorization;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
+using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.UI.Services;
 
@@ -21,45 +22,72 @@ namespace OpenTrack.Web.Services;
 
 /// <summary>
 /// EF Core-backed implementation of <see cref="IOpenTrackDataService"/> for the web app.
-/// Talks directly to <see cref="AppDbContext"/> and resolves the current user from the
-/// authenticated Blazor Server circuit. This is the exact logic that previously lived
-/// inline in the CRUD pages, lifted behind the shared interface so the desktop app can
-/// provide an HTTP-backed equivalent without the pages changing.
+/// Creates a short-lived <see cref="AppDbContext"/> per operation via the factory (a single scoped
+/// context would live for the whole Blazor Server circuit and is not thread-safe), and enforces the
+/// same per-project access rules as the Web API by calling the shared <see cref="AccessContext"/> /
+/// <see cref="VisibilityQueries"/> from OpenTrack.Core/Infrastructure. Reads the current user from
+/// the authenticated Blazor Server circuit.
+///
+/// Read methods return null/empty for content the user may not see (so a page renders "not found"
+/// rather than leaking existence); write methods throw <see cref="UnauthorizedAccessException"/> for
+/// forbidden actions (the UI hides those controls by role, so this is defense in depth).
 /// </summary>
-public class DbOpenTrackDataService(AppDbContext db, AuthenticationStateProvider authState)
+public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, AuthenticationStateProvider authState)
     : IOpenTrackDataService
 {
-    private async Task<int> RequireUserIdAsync()
+    private async Task<AccessIdentity> RequireIdentityAsync()
     {
         var state = await authState.GetAuthenticationStateAsync();
-        var claim = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (claim is null || !int.TryParse(claim, out var id))
-            throw new InvalidOperationException("Could not determine the signed-in user.");
-        return id;
+        return state.User.GetAccessIdentity()
+            ?? throw new InvalidOperationException("Could not determine the signed-in user.");
     }
 
-    public async Task<IReadOnlyList<ProjectRow>> GetProjectsAsync(CancellationToken ct = default) =>
-        await db.Projects.AsNoTracking()
+    private async Task<(AppDbContext Db, AccessSnapshot Access)> OpenAsync(CancellationToken ct)
+    {
+        var identity = await RequireIdentityAsync();
+        var db = await dbFactory.CreateDbContextAsync(ct);
+        var access = await AccessSnapshot.LoadAsync(db, identity, ct);
+        return (db, access);
+    }
+
+    // ---- Projects ----
+
+    public async Task<IReadOnlyList<ProjectRow>> GetProjectsAsync(CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await db.Projects.AsNoTracking()
+            .WhereVisibleTo(access)
             .OrderBy(p => p.Name)
             .Select(p => new ProjectRow(
                 p.Id, p.Name, p.Description, p.IsPublic, p.OwnerId,
                 p.Issues.Count(i => i.Status != IssueStatus.Closed)))
             .ToListAsync(ct);
+    }
 
     public async Task<ProjectDetail?> GetProjectAsync(int id, CancellationToken ct = default)
     {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
         var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        return p is null ? null : new ProjectDetail(p.Id, p.Name, p.Description, p.IsPublic, p.OwnerId, p.CreatedAt);
+        if (p is null || !access.For(p.Id).CanViewProject(p.IsPublic))
+            return null;
+        return new ProjectDetail(p.Id, p.Name, p.Description, p.IsPublic, p.OwnerId, p.CreatedAt);
     }
 
     public async Task<int> CreateProjectAsync(CreateProjectInput input, CancellationToken ct = default)
     {
-        var userId = await RequireUserIdAsync();
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        // Creating a project isn't scoped to an existing project: require global Manager+.
+        if (!access.GlobalAtLeast(UserRole.Manager))
+            throw new UnauthorizedAccessException("Creating a project requires the Manager role.");
+
         var project = new Project
         {
-            Name = input.Name, Description = input.Description, IsPublic = input.IsPublic, OwnerId = userId
+            Name = input.Name, Description = input.Description, IsPublic = input.IsPublic, OwnerId = access.UserId
         };
-        project.Members.Add(new ProjectMembership { UserId = userId, Role = UserRole.Manager });
+        project.Members.Add(new ProjectMembership { UserId = access.UserId, Role = UserRole.Manager });
         db.Projects.Add(project);
         await db.SaveChangesAsync(ct);
         return project.Id;
@@ -67,17 +95,27 @@ public class DbOpenTrackDataService(AppDbContext db, AuthenticationStateProvider
 
     public async Task UpdateProjectAsync(int id, UpdateProjectInput input, CancellationToken ct = default)
     {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
         var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == id, ct);
-        if (project is null) return;
+        if (project is null || !access.For(project.Id).CanViewProject(project.IsPublic))
+            return; // treat as not-found; don't leak existence
+        if (!access.For(project.Id).CanEditProject())
+            throw new UnauthorizedAccessException("Editing this project requires the Manager role on it.");
+
         project.Name = input.Name;
         project.Description = input.Description;
         project.IsPublic = input.IsPublic;
         await db.SaveChangesAsync(ct);
     }
 
+    // ---- Issues ----
+
     public async Task<IReadOnlyList<IssueRow>> GetIssuesAsync(int? projectId = null, CancellationToken ct = default)
     {
-        var q = db.Issues.AsNoTracking().AsQueryable();
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var q = db.Issues.AsNoTracking().WhereVisibleTo(access);
         if (projectId is not null) q = q.Where(i => i.ProjectId == projectId);
         return await q
             .OrderByDescending(i => i.IsSticky).ThenByDescending(i => i.UpdatedAt)
@@ -89,6 +127,8 @@ public class DbOpenTrackDataService(AppDbContext db, AuthenticationStateProvider
 
     public async Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default)
     {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
         var i = await db.Issues.AsNoTracking()
             .Include(x => x.Project).Include(x => x.Category)
             .Include(x => x.Reporter).Include(x => x.Assignee)
@@ -96,95 +136,158 @@ public class DbOpenTrackDataService(AppDbContext db, AuthenticationStateProvider
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (i is null) return null;
 
+        var ctx = access.For(i.ProjectId);
+        if (!ctx.CanViewIssue(i.Project.IsPublic, i.IsPrivate, i.ReporterId, i.AssigneeId))
+            return null;
+
         return new IssueDetail(
             i.Id, i.ProjectId, i.Project.Name, i.Title, i.Description, i.StepsToReproduce,
             i.Status, i.Severity, i.Priority, i.Reproducibility, i.Resolution,
             i.ReporterId, i.Reporter.UserName ?? "unknown", i.AssigneeId, i.Assignee?.UserName,
             i.CategoryId, i.Category?.Name, i.IsSticky, i.IsPrivate, i.CreatedAt, i.UpdatedAt,
-            i.Notes.OrderBy(n => n.CreatedAt)
+            i.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
+                .OrderBy(n => n.CreatedAt)
                 .Select(n => new IssueNoteView(n.Id, n.Author.UserName ?? "unknown", n.Text, n.CreatedAt))
                 .ToList());
     }
 
     public async Task<int> CreateIssueAsync(int projectId, CreateIssueInput input, CancellationToken ct = default)
     {
-        var userId = await RequireUserIdAsync();
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct)
+            ?? throw new InvalidOperationException($"Project {projectId} does not exist.");
+
+        var ctx = access.For(projectId);
+        if (!ctx.CanViewProject(project.IsPublic))
+            throw new UnauthorizedAccessException("You do not have access to this project.");
+        if (!ctx.CanCreateIssue(project.IsPublic))
+            throw new UnauthorizedAccessException("Reporting an issue requires the Reporter role on this project.");
+
         var issue = new Issue
         {
             ProjectId = projectId, Title = input.Title, Description = input.Description,
             StepsToReproduce = input.StepsToReproduce, CategoryId = input.CategoryId,
             Severity = input.Severity, Priority = input.Priority, Reproducibility = input.Reproducibility,
-            ReporterId = userId, Status = IssueStatus.New,
+            ReporterId = access.UserId, Status = IssueStatus.New,
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
-        db.Issues.Add(issue);
-        await db.SaveChangesAsync(ct);
-
-        db.IssueHistories.Add(new IssueHistory
+        // Add the creation-history row via the navigation collection so the issue and its history
+        // persist in a SINGLE SaveChanges — atomic, no half-written issue with no history.
+        issue.History.Add(new IssueHistory
         {
-            IssueId = issue.Id, UserId = userId, FieldChanged = "Status",
+            UserId = access.UserId, FieldChanged = "Status",
             OldValue = null, NewValue = IssueStatus.New.ToString(), ChangedAt = DateTime.UtcNow
         });
+        db.Issues.Add(issue);
         await db.SaveChangesAsync(ct);
         return issue.Id;
     }
 
     public async Task UpdateIssueAsync(int id, UpdateIssueInput input, CancellationToken ct = default)
     {
-        var issue = await db.Issues.FirstOrDefaultAsync(i => i.Id == id, ct);
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var issue = await db.Issues.Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == id, ct);
         if (issue is null) return;
-        var userId = await RequireUserIdAsync();
+
+        var ctx = access.For(issue.ProjectId);
+        if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+            return; // not-found to this user
+        if (!ctx.CanEditIssue())
+            throw new UnauthorizedAccessException("Editing this issue requires the Updater role on its project.");
 
         var originalStatus = issue.Status;
         var originalAssigneeId = issue.AssigneeId;
 
+        // Fields any Updater may change.
         issue.Title = input.Title;
         issue.Description = input.Description;
         issue.Status = input.Status;
         issue.Severity = input.Severity;
         issue.Priority = input.Priority;
         issue.Resolution = input.Resolution;
-        issue.AssigneeId = input.AssigneeId;
         issue.CategoryId = input.CategoryId;
-        issue.IsSticky = input.IsSticky;
-        issue.IsPrivate = input.IsPrivate;
+
+        // Privileged fields: silently keep the existing value if the caller lacks the right, so a
+        // crafted request can never escalate (the UI already hides these controls by role).
+        if (ctx.CanAssignIssue() && await IsAssignableAsync(db, issue.ProjectId, input.AssigneeId, ct))
+            issue.AssigneeId = input.AssigneeId;
+        if (ctx.CanSetIssuePrivacy())
+            issue.IsPrivate = input.IsPrivate;
+        if (ctx.CanSetIssueSticky())
+            issue.IsSticky = input.IsSticky;
+
         issue.UpdatedAt = DateTime.UtcNow;
 
         if (issue.Status != originalStatus)
-            db.IssueHistories.Add(new IssueHistory
+            issue.History.Add(new IssueHistory
             {
-                IssueId = issue.Id, UserId = userId, FieldChanged = "Status",
+                UserId = access.UserId, FieldChanged = "Status",
                 OldValue = originalStatus.ToString(), NewValue = issue.Status.ToString(), ChangedAt = DateTime.UtcNow
             });
         if (issue.AssigneeId != originalAssigneeId)
-            db.IssueHistories.Add(new IssueHistory
+            issue.History.Add(new IssueHistory
             {
-                IssueId = issue.Id, UserId = userId, FieldChanged = "Assignee",
+                UserId = access.UserId, FieldChanged = "Assignee",
                 OldValue = originalAssigneeId?.ToString(), NewValue = issue.AssigneeId?.ToString(), ChangedAt = DateTime.UtcNow
             });
 
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>An assignee must be null (unassign) or an actual member of the issue's project.</summary>
+    private static async Task<bool> IsAssignableAsync(AppDbContext db, int projectId, int? assigneeId, CancellationToken ct)
+    {
+        if (assigneeId is null) return true;
+        return await db.ProjectMemberships.AsNoTracking()
+            .AnyAsync(m => m.ProjectId == projectId && m.UserId == assigneeId, ct);
+    }
+
     public async Task AddIssueNoteAsync(int issueId, string text, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
-        var userId = await RequireUserIdAsync();
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var issue = await db.Issues.AsNoTracking().Include(i => i.Project)
+            .FirstOrDefaultAsync(i => i.Id == issueId, ct);
+        if (issue is null) return;
+
+        var ctx = access.For(issue.ProjectId);
+        if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+            return;
+        if (!ctx.CanAddNote())
+            throw new UnauthorizedAccessException("Adding a note requires the Reporter role on this project.");
+
         db.IssueNotes.Add(new IssueNote
         {
-            IssueId = issueId, AuthorId = userId, Text = text, CreatedAt = DateTime.UtcNow
+            IssueId = issueId, AuthorId = access.UserId, Text = text, CreatedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<CategoryView>> GetProjectCategoriesAsync(int projectId, CancellationToken ct = default) =>
-        await db.Categories.AsNoTracking()
+    // ---- Lookups ----
+
+    public async Task<IReadOnlyList<CategoryView>> GetProjectCategoriesAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        if (project is null || !access.For(projectId).CanViewProject(project.IsPublic))
+            return [];
+        return await db.Categories.AsNoTracking()
             .Where(c => c.ProjectId == projectId).OrderBy(c => c.Name)
             .Select(c => new CategoryView(c.Id, c.Name))
             .ToListAsync(ct);
+    }
 
     public async Task<IReadOnlyList<ProjectMemberView>> GetProjectMembersAsync(int projectId, CancellationToken ct = default)
     {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        if (project is null || !access.For(projectId).CanViewProject(project.IsPublic))
+            return [];
         var memberIds = await db.ProjectMemberships.AsNoTracking()
             .Where(m => m.ProjectId == projectId).Select(m => m.UserId).ToListAsync(ct);
         return await db.Users.AsNoTracking()

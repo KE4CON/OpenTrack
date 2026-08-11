@@ -10,11 +10,11 @@
 // more details.
 
 using System.Security.Claims;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenTrack.API.Contracts;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
+using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.API;
 
@@ -26,65 +26,97 @@ public static class ProjectEndpoints
     {
         var group = app.MapGroup("/api/projects").RequireAuthorization().WithTags("Projects");
 
-        group.MapGet("/", async (AppDbContext db) =>
-            await db.Projects.AsNoTracking()
+        group.MapGet("/", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+
+            var rows = await db.Projects.AsNoTracking()
+                .WhereVisibleTo(access)
                 .OrderBy(p => p.Name)
                 .Select(p => new ProjectDto(
                     p.Id, p.Name, p.Description, p.IsPublic, p.OwnerId,
                     p.Issues.Count(i => i.Status != IssueStatus.Closed)))
-                .ToListAsync());
-
-        group.MapGet("/{id:int}", async (int id, AppDbContext db) =>
-        {
-            var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
-            return project is null
-                ? Results.NotFound()
-                : Results.Ok(new ProjectDetailDto(project.Id, project.Name, project.Description,
-                    project.IsPublic, project.OwnerId, project.CreatedAt));
+                .ToListAsync(ct);
+            return Results.Ok(rows);
         });
 
-        group.MapPost("/", async (CreateProjectRequest req, ClaimsPrincipal user, AppDbContext db) =>
+        group.MapGet("/{id:int}", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
-            if (userId is null) return Results.Unauthorized();
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
 
-            var project = new Project { Name = req.Name, Description = req.Description, IsPublic = req.IsPublic, OwnerId = userId.Value };
-            project.Members.Add(new ProjectMembership { UserId = userId.Value, Role = UserRole.Manager });
+            var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
+            if (project is null || !access.For(project.Id).CanViewProject(project.IsPublic))
+                return Results.NotFound();
+
+            return Results.Ok(new ProjectDetailDto(project.Id, project.Name, project.Description,
+                project.IsPublic, project.OwnerId, project.CreatedAt));
+        });
+
+        // Creating a project is not scoped to an existing project: require global Manager+.
+        group.MapPost("/", async (CreateProjectRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            if (!access.GlobalAtLeast(UserRole.Manager)) return Results.Forbid();
+
+            var project = new Project { Name = req.Name, Description = req.Description, IsPublic = req.IsPublic, OwnerId = access.UserId };
+            project.Members.Add(new ProjectMembership { UserId = access.UserId, Role = UserRole.Manager });
 
             db.Projects.Add(project);
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(ct);
 
             return Results.Created($"/api/projects/{project.Id}",
                 new ProjectDetailDto(project.Id, project.Name, project.Description, project.IsPublic, project.OwnerId, project.CreatedAt));
         }).RequireAuthorization(AuthorizationPolicies.RequireManager);
 
-        group.MapPut("/{id:int}", async (int id, UpdateProjectRequest req, AppDbContext db) =>
+        group.MapPut("/{id:int}", async (int id, UpdateProjectRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == id);
-            if (project is null) return Results.NotFound();
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+
+            var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == id, ct);
+            if (project is null || !access.For(project.Id).CanViewProject(project.IsPublic))
+                return Results.NotFound();
+            if (!access.For(project.Id).CanEditProject()) return Results.Forbid();
 
             project.Name = req.Name;
             project.Description = req.Description;
             project.IsPublic = req.IsPublic;
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(ct);
             return Results.NoContent();
-        }).RequireAuthorization(AuthorizationPolicies.RequireManager);
+        });
 
         // Lookups for the issue create/edit forms (categories to pick from, members to assign to).
-        group.MapGet("/{id:int}/categories", async (int id, AppDbContext db) =>
-            await db.Categories.AsNoTracking()
+        group.MapGet("/{id:int}/categories", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
+            if (project is null || !access.For(id).CanViewProject(project.IsPublic)) return Results.NotFound();
+
+            var rows = await db.Categories.AsNoTracking()
                 .Where(c => c.ProjectId == id).OrderBy(c => c.Name)
                 .Select(c => new CategoryDto(c.Id, c.Name))
-                .ToListAsync());
+                .ToListAsync(ct);
+            return Results.Ok(rows);
+        });
 
-        group.MapGet("/{id:int}/members", async (int id, AppDbContext db) =>
+        group.MapGet("/{id:int}/members", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
+            if (project is null || !access.For(id).CanViewProject(project.IsPublic)) return Results.NotFound();
+
             var memberIds = await db.ProjectMemberships.AsNoTracking()
-                .Where(m => m.ProjectId == id).Select(m => m.UserId).ToListAsync();
-            return await db.Users.AsNoTracking()
+                .Where(m => m.ProjectId == id).Select(m => m.UserId).ToListAsync(ct);
+            var rows = await db.Users.AsNoTracking()
                 .Where(u => memberIds.Contains(u.Id)).OrderBy(u => u.UserName)
                 .Select(u => new ProjectMemberDto(u.Id, u.UserName ?? "unknown"))
-                .ToListAsync();
+                .ToListAsync(ct);
+            return Results.Ok(rows);
         });
     }
 

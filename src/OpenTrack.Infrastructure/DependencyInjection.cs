@@ -20,11 +20,21 @@ namespace OpenTrack.Infrastructure;
 
 public static class DependencyInjection
 {
-    /// <summary>Registers OpenTrack's data layer (EF Core + SQLite).</summary>
+    /// <summary>
+    /// Registers OpenTrack's data layer (EF Core + SQLite).
+    /// Registers an <see cref="IDbContextFactory{TContext}"/> so the Blazor Server data service can
+    /// create a short-lived context per operation — a single scoped context lives for the entire
+    /// SignalR circuit and DbContext is not thread-safe, so concurrent component operations on a
+    /// shared instance throw. A scoped shim is also registered so ASP.NET Identity and the API
+    /// endpoints can still inject <see cref="AppDbContext"/> directly (they run per-HTTP-request,
+    /// where a request-scoped context is short-lived and safe).
+    /// </summary>
     public static IServiceCollection AddOpenTrackInfrastructure(
         this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+        services.AddDbContextFactory<AppDbContext>(options => options.UseSqlite(connectionString));
+        services.AddScoped<AppDbContext>(sp =>
+            sp.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext());
         return services;
     }
 

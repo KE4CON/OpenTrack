@@ -80,7 +80,7 @@ else
         // (which arrives pre-populated by the form binder) isn't overwritten.
         public bool Loaded { get; set; }
 
-        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.StringLength(200)]
+        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.StringLength(OpenTrack.Core.Validation.FieldLimits.ProjectName)]
         public string Name { get; set; } = string.Empty;
 
         [System.ComponentModel.DataAnnotations.StringLength(2000)]
