@@ -131,6 +131,50 @@ small model (roughly 1–3 billion parameters, e.g. `llama3.2:3b`); stick to sma
 models and keep expectations modest. This is why the OpenAI provider is given a
 longer (60-second) timeout than the cloud path.
 
+## Good hardware for local AI (and what won't help)
+
+You don't need much for OpenTrack's use — triage and summaries are short, bursty
+calls, not constant heavy use. Two things decide whether a machine is "good"
+enough: **enough memory to hold a decent model**, and (nice-to-have) **some
+GPU/NPU acceleration** for speed. Of the two, memory matters most.
+
+**Memory is the main number — 16 GB is the sweet spot, 24–32 GB gives headroom:**
+
+| RAM | What it can run | Verdict |
+|---|---|---|
+| 8 GB | ~3B models only | Works, but weaker suggestions |
+| 16 GB | 7–8B models (~5–6 GB) | The practical sweet spot for triage/summaries |
+| 24–32 GB | 13–14B models, or the AI **and** OpenTrack on one box | Comfortable headroom |
+| 64 GB+ | 30B+ models | Overkill for this |
+
+**What actually helps speed:**
+
+- **Apple Silicon (Mac mini M-series)** — its unified memory doubles as fast GPU
+  memory and Ollama uses it out of the box. The easiest strong option; a 16–24 GB
+  M-series Mac mini runs a 7–8B model quickly and sips power as an always-on box.
+- **An NVIDIA GPU** (even a modest one) — CUDA acceleration that Ollama/llama.cpp
+  love. Fastest, but pricier and more setup.
+- **A CPU-only mini PC** (e.g. an Intel/AMD box like a Beelink) — runs local
+  models on the CPU at a few tokens/second. Not instant, but perfectly fine for
+  occasional triage/summaries, and often a machine you **already own**. If it's
+  the same box already running OpenTrack, just install Ollama alongside and point
+  `BaseUrl` at `localhost` — no second machine, no network setup. A modern mini PC
+  with **16–24 GB** is a sensible home for local AI here.
+
+**What won't help (for text AI):**
+
+- **Vision NPUs / "AI HAT" add-on boards** (e.g. a Raspberry Pi AI HAT+ with a
+  Hailo accelerator). These are built for **computer-vision** models; Ollama and
+  llama.cpp can't offload language models onto them, so they sit idle for
+  OpenTrack's purposes. Great for camera projects — not for this. Put the money
+  toward **RAM** or **Apple Silicon** instead.
+- **Weak integrated graphics** (e.g. Intel UHD): don't count on iGPU acceleration;
+  the model will just run on the CPU. That's okay for occasional use.
+
+**Bottom line:** for personal, occasional use, a mini PC with **16–24 GB of RAM**
+is plenty — ideally one you already have. Only reach for Apple Silicon or an
+NVIDIA GPU if you want it to feel snappy rather than merely work.
+
 ---
 
 ## Turn it on
