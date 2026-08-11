@@ -19,6 +19,7 @@ using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Core.Bulk;
 using OpenTrack.Infrastructure.Bulk;
+using OpenTrack.Infrastructure.CustomFields;
 using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
 using OpenTrack.Infrastructure.Relationships;
@@ -324,6 +325,26 @@ public static class IssueEndpoints
             {
                 var removed = await TagOperations.RemoveAsync(db, access, id, tagId, ct);
                 return removed ? Results.NoContent() : Results.NotFound();
+            }
+            catch (UnauthorizedAccessException) { return Results.Forbid(); }
+        });
+
+        group.MapGet("/issues/{id:int}/custom-fields", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var items = await CustomFieldOperations.ListValuesForIssueAsync(db, access, id, ct);
+            return Results.Ok(items.Select(v => new CustomFieldValueDto(v.DefinitionId, v.Name, v.Type, v.EnumOptions, v.Required, v.DisplayOrder, v.Value)));
+        });
+
+        group.MapPut("/issues/{id:int}/custom-fields/{fieldId:int}", async (int id, int fieldId, SetCustomFieldValueRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            try
+            {
+                var error = await CustomFieldOperations.SetValueAsync(db, access, id, fieldId, req.Value, ct);
+                return error is null ? Results.NoContent() : Results.BadRequest(error);
             }
             catch (UnauthorizedAccessException) { return Results.Forbid(); }
         });

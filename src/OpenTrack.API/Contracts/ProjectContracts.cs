@@ -36,3 +36,9 @@ public record CreateCategoryRequest(string Name);
 public record ProjectVersionDto(int Id, string Name, string? Description, DateTime? ReleaseDate, bool IsReleased);
 
 public record CreateVersionRequest(string Name, string? Description, DateTime? ReleaseDate, bool IsReleased);
+
+public record CustomFieldDefinitionDto(int Id, int ProjectId, string Name, CustomFieldType Type, string? EnumOptions, bool Required, int DisplayOrder);
+
+public record CreateCustomFieldRequest(string Name, CustomFieldType Type, string? EnumOptions, bool Required);
+
+public record UpdateCustomFieldRequest(string Name, string? EnumOptions, bool Required, int DisplayOrder);

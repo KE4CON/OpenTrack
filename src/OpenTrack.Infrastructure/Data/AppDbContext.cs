@@ -224,6 +224,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasOne(n => n.Issue).WithMany().HasForeignKey(n => n.IssueId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(n => new { n.UserId, n.IsRead });
         });
+
+        // ---- CustomFieldDefinition / CustomFieldValue ----
+        b.Entity<CustomFieldDefinition>(e =>
+        {
+            e.Property(d => d.Name).HasMaxLength(FieldLimits.CustomFieldName).IsRequired();
+            e.Property(d => d.EnumOptions).HasMaxLength(FieldLimits.CustomFieldEnumOptions);
+            e.HasOne(d => d.Project)
+                .WithMany(p => p.CustomFields)
+                .HasForeignKey(d => d.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(d => new { d.ProjectId, d.Name }).IsUnique();
+        });
+        b.Entity<CustomFieldValue>(e =>
+        {
+            e.HasKey(v => new { v.IssueId, v.CustomFieldDefinitionId });
+            e.Property(v => v.Value).HasMaxLength(FieldLimits.CustomFieldValue);
+            // A project cascades to BOTH its issues and its custom-field definitions, each of which
+            // would then cascade into this table — two cascade paths to one table, which SQL Server
+            // rejects at schema creation. So the Definition FK cascades (deleting a field removes its
+            // values, which DeleteDefinitionAsync relies on) and the Issue FK restricts. Nothing
+            // deletes issues in the app today; WHEN an issue-delete feature is added it must first
+            // clear that issue's custom-field values (same rule as IssueRelationship above).
+            e.HasOne(v => v.Definition).WithMany(d => d.Values).HasForeignKey(v => v.CustomFieldDefinitionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(v => v.Issue).WithMany(i => i.CustomFieldValues).HasForeignKey(v => v.IssueId).OnDelete(DeleteBehavior.Restrict);
+        });
     }
 
     public DbSet<IssueRelationship> IssueRelationships => Set<IssueRelationship>();
@@ -231,4 +256,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<IssueTag> IssueTags => Set<IssueTag>();
     public DbSet<IssueMonitor> IssueMonitors => Set<IssueMonitor>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<CustomFieldDefinition> CustomFieldDefinitions => Set<CustomFieldDefinition>();
+    public DbSet<CustomFieldValue> CustomFieldValues => Set<CustomFieldValue>();
 }

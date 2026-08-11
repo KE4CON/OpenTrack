@@ -157,6 +157,51 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
+    // ---- Custom fields (server enforces the same ACL as the shared operations) ----
+
+    public async Task<IReadOnlyList<CustomFieldDefinitionView>> GetCustomFieldsAsync(int projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<CustomFieldDefinitionView>>($"/api/projects/{projectId}/custom-fields", JsonOptions, ct) ?? [];
+
+    public async Task<string?> CreateCustomFieldAsync(int projectId, string name, OpenTrack.Core.Enums.CustomFieldType type, string? enumOptions, bool required, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/projects/{projectId}/custom-fields", new { name, type, enumOptions, required }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Managing custom fields requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task<string?> UpdateCustomFieldAsync(int projectId, int fieldId, string name, string? enumOptions, bool required, int displayOrder, CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/custom-fields/{fieldId}", new { name, enumOptions, required, displayOrder }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Managing custom fields requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task DeleteCustomFieldAsync(int projectId, int fieldId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/projects/{projectId}/custom-fields/{fieldId}", ct);
+        ThrowIfForbidden(resp, "Managing custom fields requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task<IReadOnlyList<CustomFieldValueView>> GetIssueCustomFieldsAsync(int issueId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<CustomFieldValueView>>($"/api/issues/{issueId}/custom-fields", JsonOptions, ct) ?? [];
+
+    public async Task<string?> SetIssueCustomFieldAsync(int issueId, int fieldId, string? value, CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync($"/api/issues/{issueId}/custom-fields/{fieldId}", new { value }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Editing custom fields requires the Updater role on this project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
     private sealed record MonitorState(bool Monitoring);
 
     public async Task<bool> IsMonitoringIssueAsync(int issueId, CancellationToken ct = default)

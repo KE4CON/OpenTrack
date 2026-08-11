@@ -1,0 +1,218 @@
+@page "/projects/{Id:int}/custom-fields"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+
+<PageTitle>Custom fields — @(projectName ?? "Project")</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Custom fields@(projectName is null ? "" : $" — {projectName}")</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="projects/@Id">Back to project</a>
+</div>
+
+<p class="text-muted">
+    Custom fields let this project capture extra information on every issue — for example a
+    <em>Customer</em> name, an <em>Estimated hours</em> number, a <em>Target date</em>, or a
+    <em>Severity tier</em> chosen from a list. Anyone who can edit an issue fills in the values;
+    only a project Manager can add or change the fields themselves.
+</p>
+
+@if (!canManage)
+{
+    <div class="alert alert-warning">You need the Manager role on this project to manage its custom fields.</div>
+}
+else
+{
+    @if (message is not null)
+    {
+        <div class="alert @(messageIsError ? "alert-danger" : "alert-success")">@message</div>
+    }
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <h2 class="h5">Fields on this project</h2>
+            @if (fields.Count == 0)
+            {
+                <p class="text-muted">No custom fields yet. Add one on the right.</p>
+            }
+            else
+            {
+                <table class="table align-middle">
+                    <thead><tr><th>Name</th><th>Type</th><th>Required</th><th>Options</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var f in fields)
+                        {
+                            <tr>
+                                <td>@f.Name</td>
+                                <td>@f.Type</td>
+                                <td>@(f.Required ? "Yes" : "No")</td>
+                                <td class="small text-muted">@(f.Type == CustomFieldType.Enum ? string.Join(", ", CustomFieldValidation.ParseEnumOptions(f.EnumOptions)) : "—")</td>
+                                <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="projects/@Id/custom-fields?edit=@f.Id">Edit</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <EditForm Model="del" OnValidSubmit="DeleteField" FormName="delField">
+                    <div class="input-group" style="max-width: 30rem;">
+                        <InputSelect @bind-Value="del.Id" class="form-select">
+                            <option value="0" disabled>Select a field to delete…</option>
+                            @foreach (var f in fields) { <option value="@f.Id">@f.Name</option> }
+                        </InputSelect>
+                        <button type="submit" class="btn btn-outline-danger">Delete</button>
+                    </div>
+                    <div class="form-text">Deleting a field also removes its values from every issue in this project.</div>
+                </EditForm>
+            }
+        </div>
+
+        <div class="col-lg-5">
+            @if (editing is not null)
+            {
+                <h2 class="h5">Edit “@editing.Name”</h2>
+                <EditForm Model="edit" OnValidSubmit="SaveEdit" FormName="editField" class="mb-3">
+                    @* Carry the field id through the SSR post so SaveEdit targets the right row and the
+                       prefill guard in Load() recognizes the post-back instead of overwriting the input. *@
+                    <input type="hidden" name="Id" value="@edit.Id" />
+                    <label class="form-label">Name</label>
+                    <InputText @bind-Value="edit.Name" class="form-control mb-2" />
+
+                    <label class="form-label">Type</label>
+                    <input class="form-control mb-1" value="@editing.Type" disabled />
+                    <div class="form-text mb-2">The type can't be changed after a field is created — it would invalidate values already saved. Delete and re-add to change it.</div>
+
+                    @if (editing.Type == CustomFieldType.Enum)
+                    {
+                        <label class="form-label">Options (one per line)</label>
+                        <InputTextArea @bind-Value="edit.EnumOptions" class="form-control mb-2" rows="4" />
+                    }
+
+                    <label class="form-label">Display order</label>
+                    <InputNumber @bind-Value="edit.DisplayOrder" class="form-control mb-1" />
+                    <div class="form-text mb-2">Lower numbers sort first on the issue page. 0 puts this field at the top.</div>
+
+                    <div class="form-check mb-3">
+                        <InputCheckbox @bind-Value="edit.Required" class="form-check-input" id="editReq" />
+                        <label class="form-check-label" for="editReq">Required — flagged with * and must be filled in on the issue's page</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                    <a class="btn btn-outline-secondary" href="projects/@Id/custom-fields">Cancel</a>
+                </EditForm>
+            }
+            else
+            {
+                <h2 class="h5">Add a field</h2>
+                <EditForm Model="add" OnValidSubmit="AddField" FormName="addField">
+                    <label class="form-label">Name</label>
+                    <InputText @bind-Value="add.Name" class="form-control mb-2" placeholder="e.g. Customer" />
+
+                    <label class="form-label">Type</label>
+                    <InputSelect @bind-Value="add.Type" class="form-select mb-1">
+                        @foreach (var t in Enum.GetValues<CustomFieldType>()) { <option value="@t">@TypeLabel(t)</option> }
+                    </InputSelect>
+                    <div class="form-text mb-2">Text = free text · Number = numeric · Date = a calendar date · List = one choice from options you define.</div>
+
+                    <label class="form-label">Options (one per line — only used for the List type)</label>
+                    <InputTextArea @bind-Value="add.EnumOptions" class="form-control mb-2" rows="4" placeholder="High&#10;Medium&#10;Low" />
+
+                    <div class="form-check mb-3">
+                        <InputCheckbox @bind-Value="add.Required" class="form-check-input" id="addReq" />
+                        <label class="form-check-label" for="addReq">Required — flagged with * and must be filled in on the issue's page</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add field</button>
+                </EditForm>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery] public int? Edit { get; set; }
+
+    private string? projectName;
+    private bool canManage;
+    private IReadOnlyList<CustomFieldDefinitionView> fields = [];
+    private CustomFieldDefinitionView? editing;
+    private string? message;
+    private bool messageIsError;
+
+    [SupplyParameterFromForm(FormName = "addField")] private AddForm add { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "editField")] private EditFieldForm edit { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "delField")] private IdForm del { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        add ??= new();
+        edit ??= new();
+        del ??= new();
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        var project = await Data.GetProjectAsync(Id);
+        projectName = project?.Name;
+        // Managers-only signal: member-details returns rows only to a manager.
+        canManage = (await Data.GetProjectMemberDetailsAsync(Id)).Count > 0;
+        fields = await Data.GetCustomFieldsAsync(Id);
+
+        editing = Edit is { } e ? fields.FirstOrDefault(f => f.Id == e) : null;
+        // Prefill the edit form from the selected field (only when not a form post-back of its own).
+        if (editing is not null && edit.Id != editing.Id)
+        {
+            edit = new EditFieldForm { Id = editing.Id, Name = editing.Name, EnumOptions = editing.EnumOptions, Required = editing.Required, DisplayOrder = editing.DisplayOrder };
+        }
+    }
+
+    private async Task AddField()
+    {
+        Report(await Data.CreateCustomFieldAsync(Id, add.Name, add.Type, add.EnumOptions, add.Required));
+        add = new();
+        await Load();
+    }
+
+    private async Task SaveEdit()
+    {
+        Report(await Data.UpdateCustomFieldAsync(Id, edit.Id, edit.Name, edit.EnumOptions, edit.Required, edit.DisplayOrder));
+        await Load();
+    }
+
+    private async Task DeleteField()
+    {
+        if (del.Id > 0)
+        {
+            try { await Data.DeleteCustomFieldAsync(Id, del.Id); Report(null); }
+            catch (Exception ex) { Report(ex.Message); }
+        }
+        del = new();
+        await Load();
+    }
+
+    private void Report(string? error) { messageIsError = error is not null; message = error ?? "Saved."; }
+
+    private static string TypeLabel(CustomFieldType t) => t switch
+    {
+        CustomFieldType.Text => "Text",
+        CustomFieldType.Number => "Number",
+        CustomFieldType.Date => "Date",
+        CustomFieldType.Enum => "List (choose one)",
+        _ => t.ToString()
+    };
+
+    private sealed class AddForm
+    {
+        public string Name { get; set; } = "";
+        public CustomFieldType Type { get; set; } = CustomFieldType.Text;
+        public string? EnumOptions { get; set; }
+        public bool Required { get; set; }
+    }
+    private sealed class EditFieldForm
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string? EnumOptions { get; set; }
+        public bool Required { get; set; }
+        public int DisplayOrder { get; set; }
+    }
+    private sealed class IdForm { public int Id { get; set; } }
+}

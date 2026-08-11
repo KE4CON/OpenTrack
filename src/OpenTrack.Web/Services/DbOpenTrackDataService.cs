@@ -20,6 +20,7 @@ using OpenTrack.Infrastructure.Bulk;
 using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
+using OpenTrack.Infrastructure.CustomFields;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
@@ -616,6 +617,52 @@ public class DbOpenTrackDataService(
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
         await TagOperations.RemoveAsync(db, access, issueId, tagId, ct);
+    }
+
+    // ---- Custom fields (ACL logic shared with the API via CustomFieldOperations) ----
+
+    public async Task<IReadOnlyList<CustomFieldDefinitionView>> GetCustomFieldsAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var items = await CustomFieldOperations.ListDefinitionsAsync(db, access, projectId, ct);
+        return items.Select(d => new CustomFieldDefinitionView(d.Id, d.ProjectId, d.Name, d.Type, d.EnumOptions, d.Required, d.DisplayOrder)).ToList();
+    }
+
+    public async Task<string?> CreateCustomFieldAsync(int projectId, string name, CustomFieldType type, string? enumOptions, bool required, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await CustomFieldOperations.CreateDefinitionAsync(db, access, projectId, name, type, enumOptions, required, ct);
+    }
+
+    public async Task<string?> UpdateCustomFieldAsync(int projectId, int fieldId, string name, string? enumOptions, bool required, int displayOrder, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await CustomFieldOperations.UpdateDefinitionAsync(db, access, projectId, fieldId, name, enumOptions, required, displayOrder, ct);
+    }
+
+    public async Task DeleteCustomFieldAsync(int projectId, int fieldId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        await CustomFieldOperations.DeleteDefinitionAsync(db, access, projectId, fieldId, ct);
+    }
+
+    public async Task<IReadOnlyList<CustomFieldValueView>> GetIssueCustomFieldsAsync(int issueId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var items = await CustomFieldOperations.ListValuesForIssueAsync(db, access, issueId, ct);
+        return items.Select(v => new CustomFieldValueView(v.DefinitionId, v.Name, v.Type, v.EnumOptions, v.Required, v.DisplayOrder, v.Value)).ToList();
+    }
+
+    public async Task<string?> SetIssueCustomFieldAsync(int issueId, int fieldId, string? value, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await CustomFieldOperations.SetValueAsync(db, access, issueId, fieldId, value, ct);
     }
 
     // ---- Monitoring & notifications ----

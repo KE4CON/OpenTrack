@@ -104,6 +104,68 @@ else
         </AuthorizeView>
     </div>
 
+    @if (customFields.Count > 0)
+    {
+        <div class="mb-3">
+            <strong>Custom fields:</strong>
+            <AuthorizeView Policy="RequireUpdater" Context="cfauth">
+                <Authorized>
+                    @if (cfMessage is not null)
+                    {
+                        <span class="@(cfIsError ? "text-danger" : "text-success") small ms-2">@cfMessage</span>
+                    }
+                    @* Values bind via @bind-Value into the pre-populated cf.Entries list so the form works
+                       on BOTH the static-SSR web host (form POST) and the interactive desktop host (live
+                       binding). The hidden DefinitionId round-trips the key on the SSR post. *@
+                    <EditForm Model="cf" OnValidSubmit="SaveCustomFields" FormName="customFields" class="mt-1">
+                        <div class="row g-2">
+                            @for (var i = 0; i < customFields.Count && i < cf.Entries.Count; i++)
+                            {
+                                var idx = i;
+                                var f = customFields[idx];
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-0">@f.Name @(f.Required ? "*" : "")</label>
+                                    <input type="hidden" name="Entries[@idx].DefinitionId" value="@cf.Entries[idx].DefinitionId" />
+                                    @switch (f.Type)
+                                    {
+                                        case CustomFieldType.Enum:
+                                            <InputSelect @bind-Value="cf.Entries[idx].Value" class="form-select form-select-sm">
+                                                <option value="">— none —</option>
+                                                @foreach (var opt in CustomFieldValidation.ParseEnumOptions(f.EnumOptions))
+                                                {
+                                                    <option value="@opt">@opt</option>
+                                                }
+                                            </InputSelect>
+                                            break;
+                                        case CustomFieldType.Date:
+                                            <InputText type="date" @bind-Value="cf.Entries[idx].Value" class="form-control form-control-sm" />
+                                            break;
+                                        case CustomFieldType.Number:
+                                            <InputText type="number" step="any" @bind-Value="cf.Entries[idx].Value" class="form-control form-control-sm" />
+                                            break;
+                                        default:
+                                            <InputText @bind-Value="cf.Entries[idx].Value" class="form-control form-control-sm" />
+                                            break;
+                                    }
+                                </div>
+                            }
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-outline-secondary mt-2">Save custom fields</button>
+                        <span class="form-text ms-2">* required. Leave a field blank to clear it (unless required).</span>
+                    </EditForm>
+                </Authorized>
+                <NotAuthorized>
+                    <ul class="mb-0">
+                        @foreach (var f in customFields)
+                        {
+                            <li>@f.Name: @(string.IsNullOrEmpty(f.Value) ? "—" : f.Value)</li>
+                        }
+                    </ul>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    }
+
     <h2 class="h5">Description</h2>
     <p style="white-space: pre-wrap">@issue.Description</p>
 
@@ -317,11 +379,16 @@ else
     private RemoveTagModel removeTag { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "monitor")]
     private MonitorModel monitorModel { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "customFields")]
+    private CustomFieldsForm cf { get; set; } = default!;
 
     private bool isMonitoring;
     private IReadOnlyList<TagView> tags = [];
     private IReadOnlyList<TagView> allTags = [];
     private string? tagMessage;
+    private IReadOnlyList<CustomFieldValueView> customFields = [];
+    private string? cfMessage;
+    private bool cfIsError;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -331,8 +398,40 @@ else
         addTag ??= new();
         removeTag ??= new();
         monitorModel ??= new();
+        cf ??= new();
         await LoadIssue();
+        // On first render (GET) cf.Entries is empty → seed it from the stored values so the inputs have
+        // something to bind to. On an SSR post-back cf.Entries is already populated from the form, so we
+        // leave it alone (guard on Count) and never clobber the user's input.
+        if (cf.Entries.Count == 0)
+            SeedCustomFieldEntries();
     }
+
+    private void SeedCustomFieldEntries() =>
+        cf.Entries = customFields.Select(f => new CustomFieldEntry { DefinitionId = f.DefinitionId, Value = f.Value }).ToList();
+
+    private async Task SaveCustomFields()
+    {
+        cfMessage = null;
+        var errors = new List<string>();
+        foreach (var e in cf.Entries)
+        {
+            try
+            {
+                var error = await Data.SetIssueCustomFieldAsync(Id, e.DefinitionId, e.Value);
+                if (error is not null) errors.Add(error);
+            }
+            catch (UnauthorizedAccessException ex) { errors.Add(ex.Message); }
+        }
+        cfIsError = errors.Count > 0;
+        cfMessage = errors.Count == 0 ? "Saved." : string.Join(" ", errors);
+        await LoadIssue();
+        cf = new();
+        SeedCustomFieldEntries(); // reflect the stored (normalized) values back into the form
+    }
+
+    private sealed class CustomFieldsForm { public List<CustomFieldEntry> Entries { get; set; } = []; }
+    private sealed class CustomFieldEntry { public int DefinitionId { get; set; } public string? Value { get; set; } }
 
     private async Task ToggleMonitor()
     {
@@ -373,6 +472,7 @@ else
         relationships = issue is null ? [] : await Data.GetIssueRelationshipsAsync(Id);
         tags = issue is null ? [] : await Data.GetIssueTagsAsync(Id);
         allTags = issue is null ? [] : await Data.GetAllTagsAsync();
+        customFields = issue is null ? [] : await Data.GetIssueCustomFieldsAsync(Id);
         isMonitoring = issue is not null && await Data.IsMonitoringIssueAsync(Id);
     }
 

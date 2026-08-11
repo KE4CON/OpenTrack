@@ -64,3 +64,7 @@ public record UpdateIssueRequest(
     int? AffectsVersionId, int? FixVersionId, Guid RowVersion);
 
 public record AddIssueNoteRequest(string Text, bool IsPrivate = false);
+
+public record CustomFieldValueDto(int DefinitionId, string Name, CustomFieldType Type, string? EnumOptions, bool Required, int DisplayOrder, string? Value);
+
+public record SetCustomFieldValueRequest(string? Value);
