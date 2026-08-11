@@ -22,6 +22,9 @@ public class Project
     public int OwnerId { get; set; }
     public User Owner { get; set; } = null!;
 
+    /// <summary>Optimistic-concurrency token (reassigned on every update).</summary>
+    public Guid RowVersion { get; set; } = Guid.NewGuid();
+
     // Navigation
     public ICollection<ProjectMembership> Members { get; set; } = [];
     public ICollection<Category> Categories { get; set; } = [];

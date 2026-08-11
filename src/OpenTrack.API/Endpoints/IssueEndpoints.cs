@@ -71,6 +71,7 @@ public static class IssueEndpoints
                 issue.CategoryId, issue.Category?.Name, issue.IsSticky, issue.IsPrivate,
                 issue.CreatedAt, issue.UpdatedAt, issue.DueDate,
                 issue.AffectsVersionId, issue.AffectsVersion?.Name, issue.FixVersionId, issue.FixVersion?.Name,
+                issue.RowVersion,
                 issue.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
                     .OrderBy(n => n.CreatedAt)
                     .Select(n => new IssueNoteDto(n.Id, n.Author.UserName ?? "unknown", n.Text, n.IsPrivate, n.CreatedAt))
@@ -124,6 +125,9 @@ public static class IssueEndpoints
                 return Results.NotFound();
             if (!ctx.CanEditIssue()) return Results.Forbid();
 
+            db.Entry(issue).Property(i => i.RowVersion).OriginalValue = req.RowVersion;
+            issue.RowVersion = Guid.NewGuid();
+
             var originalStatus = issue.Status;
             var originalAssigneeId = issue.AssigneeId;
 
@@ -166,7 +170,8 @@ public static class IssueEndpoints
                     OldValue = originalAssigneeId?.ToString(), NewValue = issue.AssigneeId?.ToString(), ChangedAt = DateTime.UtcNow
                 });
 
-            await db.SaveChangesAsync(ct);
+            try { await db.SaveChangesAsync(ct); }
+            catch (DbUpdateConcurrencyException) { return Results.Conflict(OpenTrack.Core.ConcurrencyConflictException.DefaultMessage); }
             return Results.NoContent();
         });
 

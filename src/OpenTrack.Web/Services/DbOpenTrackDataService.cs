@@ -11,6 +11,7 @@
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
+using OpenTrack.Core;
 using OpenTrack.Core.Authorization;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
@@ -72,7 +73,7 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
         var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (p is null || !access.For(p.Id).CanViewProject(p.IsPublic))
             return null;
-        return new ProjectDetail(p.Id, p.Name, p.Description, p.IsPublic, p.OwnerId, p.CreatedAt);
+        return new ProjectDetail(p.Id, p.Name, p.Description, p.IsPublic, p.OwnerId, p.CreatedAt, p.RowVersion);
     }
 
     public async Task<int> CreateProjectAsync(CreateProjectInput input, CancellationToken ct = default)
@@ -103,10 +104,25 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
         if (!access.For(project.Id).CanEditProject())
             throw new UnauthorizedAccessException("Editing this project requires the Manager role on it.");
 
+        db.Entry(project).Property(p => p.RowVersion).OriginalValue = input.RowVersion;
         project.Name = input.Name;
         project.Description = input.Description;
         project.IsPublic = input.IsPublic;
-        await db.SaveChangesAsync(ct);
+        project.RowVersion = Guid.NewGuid();
+        await SaveDetectingConflictAsync(db, ct);
+    }
+
+    /// <summary>Saves, translating an EF optimistic-concurrency failure into our domain exception.</summary>
+    private static async Task SaveDetectingConflictAsync(AppDbContext db, CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConcurrencyConflictException(ConcurrencyConflictException.DefaultMessage);
+        }
     }
 
     // ---- Issues ----
@@ -147,7 +163,7 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
             i.Status, i.Severity, i.Priority, i.Reproducibility, i.Resolution,
             i.ReporterId, i.Reporter.UserName ?? "unknown", i.AssigneeId, i.Assignee?.UserName,
             i.CategoryId, i.Category?.Name, i.IsSticky, i.IsPrivate, i.CreatedAt, i.UpdatedAt, i.DueDate,
-            i.AffectsVersionId, i.AffectsVersion?.Name, i.FixVersionId, i.FixVersion?.Name,
+            i.AffectsVersionId, i.AffectsVersion?.Name, i.FixVersionId, i.FixVersion?.Name, i.RowVersion,
             i.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
                 .OrderBy(n => n.CreatedAt)
                 .Select(n => new IssueNoteView(n.Id, n.Author.UserName ?? "unknown", n.Text, n.IsPrivate, n.CreatedAt))
@@ -202,6 +218,9 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
         if (!ctx.CanEditIssue())
             throw new UnauthorizedAccessException("Editing this issue requires the Updater role on its project.");
 
+        db.Entry(issue).Property(i => i.RowVersion).OriginalValue = input.RowVersion;
+        issue.RowVersion = Guid.NewGuid();
+
         var originalStatus = issue.Status;
         var originalAssigneeId = issue.AssigneeId;
 
@@ -245,7 +264,7 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
                 OldValue = originalAssigneeId?.ToString(), NewValue = issue.AssigneeId?.ToString(), ChangedAt = DateTime.UtcNow
             });
 
-        await db.SaveChangesAsync(ct);
+        await SaveDetectingConflictAsync(db, ct);
     }
 
     /// <summary>An assignee must be null (unassign) or an actual member of the issue's project.</summary>

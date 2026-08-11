@@ -19,11 +19,11 @@ namespace OpenTrack.UI.Services;
 
 public record ProjectRow(int Id, string Name, string? Description, bool IsPublic, int OwnerId, int OpenIssueCount);
 
-public record ProjectDetail(int Id, string Name, string? Description, bool IsPublic, int OwnerId, DateTime CreatedAt);
+public record ProjectDetail(int Id, string Name, string? Description, bool IsPublic, int OwnerId, DateTime CreatedAt, Guid RowVersion);
 
 public record CreateProjectInput(string Name, string? Description, bool IsPublic);
 
-public record UpdateProjectInput(string Name, string? Description, bool IsPublic);
+public record UpdateProjectInput(string Name, string? Description, bool IsPublic, Guid RowVersion);
 
 public record IssueRow(
     int Id, int ProjectId, string ProjectName, string Title,
@@ -44,6 +44,7 @@ public record IssueDetail(
     DateTime CreatedAt, DateTime UpdatedAt, DateTime? DueDate,
     int? AffectsVersionId, string? AffectsVersionName,
     int? FixVersionId, string? FixVersionName,
+    Guid RowVersion,
     IReadOnlyList<IssueNoteView> Notes);
 
 public record CreateIssueInput(
@@ -58,7 +59,7 @@ public record UpdateIssueInput(
     IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
     IssueReproducibility Reproducibility, IssueResolution Resolution,
     int? AssigneeId, int? CategoryId, bool IsSticky, bool IsPrivate, DateTime? DueDate,
-    int? AffectsVersionId, int? FixVersionId);
+    int? AffectsVersionId, int? FixVersionId, Guid RowVersion);
 
 public record CategoryView(int Id, string Name);
 

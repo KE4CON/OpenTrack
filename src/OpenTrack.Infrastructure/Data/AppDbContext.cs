@@ -44,6 +44,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         {
             e.Property(p => p.Name).HasMaxLength(FieldLimits.ProjectName).IsRequired();
             e.Property(p => p.Description).HasMaxLength(FieldLimits.Description);
+            e.Property(p => p.RowVersion).IsConcurrencyToken();
             e.HasOne(p => p.Owner)
                 .WithMany()
                 .HasForeignKey(p => p.OwnerId)
@@ -92,6 +93,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         {
             e.Property(i => i.Title).HasMaxLength(FieldLimits.IssueTitle).IsRequired();
             e.Property(i => i.Description).IsRequired();
+            e.Property(i => i.RowVersion).IsConcurrencyToken();
 
             e.HasOne(i => i.Project)
                 .WithMany(p => p.Issues)
