@@ -20,6 +20,7 @@ using OpenTrack.Infrastructure.Bulk;
 using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
+using OpenTrack.Infrastructure.Automation;
 using OpenTrack.Infrastructure.Checklist;
 using OpenTrack.Infrastructure.CustomFields;
 using OpenTrack.Infrastructure.Dashboard;
@@ -181,6 +182,41 @@ public class DbOpenTrackDataService(
         await using var _ = db;
         await WorkflowOperations.DeleteAsync(db, access, projectId, id, ct);
     }
+
+    public async Task<IReadOnlyList<AutomationRuleView>> GetAutomationRulesAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var rules = await AutomationRuleOperations.ListForProjectAsync(db, access, projectId, ct);
+        return rules.Select(ToAutomationView).ToList();
+    }
+
+    public async Task<string?> SaveAutomationRuleAsync(int projectId, AutomationRuleView rule, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var input = ToAutomationInput(rule);
+        return rule.Id == 0
+            ? await AutomationRuleOperations.CreateAsync(db, access, projectId, input, ct)
+            : await AutomationRuleOperations.UpdateAsync(db, access, rule.Id, input, ct);
+    }
+
+    public async Task DeleteAutomationRuleAsync(int ruleId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        await AutomationRuleOperations.DeleteAsync(db, access, ruleId, ct);
+    }
+
+    private static AutomationRuleView ToAutomationView(OpenTrack.Core.Entities.AutomationRule r) => new(
+        r.Id, r.Name, r.IsEnabled, r.SortOrder,
+        r.WhenTextContains, r.WhenSeverity, r.WhenPriority, r.WhenCategoryId,
+        r.SetSeverity, r.SetPriority, r.SetStatus, r.AssignToUserId, r.AddTag);
+
+    private static AutomationRuleInput ToAutomationInput(AutomationRuleView r) => new(
+        r.Name, r.IsEnabled, r.SortOrder,
+        r.WhenTextContains, r.WhenSeverity, r.WhenPriority, r.WhenCategoryId,
+        r.SetSeverity, r.SetPriority, r.SetStatus, r.AssignToUserId, r.AddTag);
 
     public async Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default)
     {
@@ -359,6 +395,8 @@ public class DbOpenTrackDataService(
         });
         db.Issues.Add(issue);
         await db.SaveChangesAsync(ct);
+        // Apply any project automation rules to the just-created issue (auto-tag/assign/set fields).
+        await AutomationEngine.RunOnCreateAsync(db, issue, ct);
         // Notify the assignee/monitors and fire any project webhooks for the new issue (best-effort).
         await notifications.NotifyIssueChangedAsync(db, access.UserId, issue.Id, "a new issue was created", ct);
         return issue.Id;

@@ -16,6 +16,7 @@ using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
 using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Authorization;
+using OpenTrack.Infrastructure.Automation;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Core.Bulk;
 using OpenTrack.Infrastructure.Bulk;
@@ -131,6 +132,8 @@ public static class IssueEndpoints
             });
             db.Issues.Add(issue);
             await db.SaveChangesAsync(ct);
+            // Apply any project automation rules to the just-created issue (auto-tag/assign/set fields).
+            await AutomationEngine.RunOnCreateAsync(db, issue, ct);
             await notifications.NotifyIssueChangedAsync(db, access.UserId, issue.Id, "a new issue was created", ct);
 
             return Results.Created($"/api/issues/{issue.Id}", issue.Id);

@@ -1,0 +1,276 @@
+@page "/projects/{Id:int}/automation"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+@inject NavigationManager Nav
+
+<PageTitle>Automation — @(projectName ?? "Project")</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Automation rules@(projectName is null ? "" : $" — {projectName}")</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="projects/@Id/settings">Back to settings</a>
+</div>
+
+@if (!canManage)
+{
+    <div class="alert alert-warning">You need the Manager role on this project to manage automation rules.</div>
+}
+else
+{
+    <p class="text-muted">
+        A rule runs when a <strong>new issue</strong> is created in this project. If the issue matches
+        <em>all</em> of the rule's conditions, its actions are applied automatically. Leave a condition on
+        "Any" to ignore it; leave an action blank to skip it. Rules run in order (lowest number first) and a
+        later matching rule can override an earlier one.
+    </p>
+
+    @if (message is not null)
+    {
+        <div class="alert @(messageIsError ? "alert-danger" : "alert-success") py-2">@message</div>
+    }
+
+    <h2 class="h5">Existing rules</h2>
+    @if (rules.Count == 0)
+    {
+        <p class="text-muted">No rules yet. Add one below.</p>
+    }
+    else
+    {
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr><th>#</th><th>Name</th><th>When</th><th>Then</th><th>Enabled</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var r in rules)
+                {
+                    <tr>
+                        <td>@r.SortOrder</td>
+                        <td>@r.Name</td>
+                        <td class="small">@DescribeConditions(r)</td>
+                        <td class="small">@DescribeActions(r)</td>
+                        <td>@(r.IsEnabled ? "Yes" : "No")</td>
+                        <td class="text-nowrap">
+                            <a class="btn btn-sm btn-outline-primary" href="projects/@Id/automation?edit=@r.Id">Edit</a>
+                            <EditForm Model="deleteModel" OnValidSubmit="() => DeleteRule(r.Id)" FormName="@($"del{r.Id}")" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </EditForm>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h2 class="h5 mt-4">@(saveModel!.Id == 0 ? "Add a rule" : $"Edit rule #{saveModel.Id}")</h2>
+    <EditForm Model="saveModel" OnValidSubmit="SaveRule" FormName="saveRule" class="col-lg-9">
+        <div class="row g-2 mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Rule name</label>
+                <InputText @bind-Value="saveModel.Name" class="form-control" placeholder="e.g. Auto-tag crashes" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Run order</label>
+                <InputNumber @bind-Value="saveModel.SortOrder" class="form-control" />
+                <div class="form-text">Lower runs first.</div>
+            </div>
+            <div class="col-md-3 d-flex align-items-center">
+                <div class="form-check mt-4">
+                    <InputCheckbox @bind-Value="saveModel.IsEnabled" class="form-check-input" id="ruleEnabled" />
+                    <label class="form-check-label" for="ruleEnabled">Enabled</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header py-1">When a new issue matches <span class="text-muted">(all of these; "Any" = ignore)</span></div>
+            <div class="card-body row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">Title or description contains</label>
+                    <InputText @bind-Value="saveModel.WhenTextContains" class="form-control" placeholder="(any text)" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Category is</label>
+                    <InputSelect @bind-Value="saveModel.WhenCategoryId" class="form-select">
+                        <option value="">Any</option>
+                        @foreach (var c in categories) { <option value="@c.Id">@c.Name</option> }
+                    </InputSelect>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Severity is</label>
+                    <InputSelect @bind-Value="saveModel.WhenSeverity" class="form-select">
+                        <option value="">Any</option>
+                        @foreach (var s in Enum.GetValues<IssueSeverity>()) { <option value="@s">@s</option> }
+                    </InputSelect>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Priority is</label>
+                    <InputSelect @bind-Value="saveModel.WhenPriority" class="form-select">
+                        <option value="">Any</option>
+                        @foreach (var p in Enum.GetValues<IssuePriority>()) { <option value="@p">@p</option> }
+                    </InputSelect>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header py-1">Then do <span class="text-muted">(blank = leave unchanged)</span></div>
+            <div class="card-body row g-2">
+                <div class="col-md-4">
+                    <label class="form-label">Set severity</label>
+                    <InputSelect @bind-Value="saveModel.SetSeverity" class="form-select">
+                        <option value="">— leave —</option>
+                        @foreach (var s in Enum.GetValues<IssueSeverity>()) { <option value="@s">@s</option> }
+                    </InputSelect>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Set priority</label>
+                    <InputSelect @bind-Value="saveModel.SetPriority" class="form-select">
+                        <option value="">— leave —</option>
+                        @foreach (var p in Enum.GetValues<IssuePriority>()) { <option value="@p">@p</option> }
+                    </InputSelect>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Set status</label>
+                    <InputSelect @bind-Value="saveModel.SetStatus" class="form-select">
+                        <option value="">— leave —</option>
+                        @foreach (var s in Enum.GetValues<IssueStatus>()) { <option value="@s">@s</option> }
+                    </InputSelect>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Assign to</label>
+                    <InputSelect @bind-Value="saveModel.AssignToUserId" class="form-select">
+                        <option value="">— leave unassigned —</option>
+                        @foreach (var m in members) { <option value="@m.Id">@m.UserName</option> }
+                    </InputSelect>
+                    <div class="form-text">Only applied if they're still a member of this project.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Add tag</label>
+                    <InputText @bind-Value="saveModel.AddTag" class="form-control" placeholder="(no tag)" />
+                    <div class="form-text">Created if it doesn't exist yet.</div>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">@(saveModel.Id == 0 ? "Add rule" : "Save changes")</button>
+        @if (saveModel.Id != 0)
+        {
+            <a class="btn btn-link" href="projects/@Id/automation">Cancel edit</a>
+        }
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery] public int? Edit { get; set; }
+
+    private string? projectName;
+    private bool canManage;
+    private IReadOnlyList<AutomationRuleView> rules = [];
+    private IReadOnlyList<CategoryView> categories = [];
+    private IReadOnlyList<ProjectMemberView> members = [];
+    private string? message;
+    private bool messageIsError;
+
+    // Null on a GET (or a different form's post) — populated only when THIS form was submitted. That lets
+    // us safely prefill from the ?edit query on GET without clobbering a real submission.
+    [SupplyParameterFromForm(FormName = "saveRule")] private RuleModel? saveModel { get; set; }
+    [SupplyParameterFromForm(FormName = "delete")] private Empty deleteModel { get; set; } = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var project = await Data.GetProjectAsync(Id);
+        projectName = project?.Name;
+        canManage = (await Data.GetProjectMemberDetailsAsync(Id)).Count > 0;
+        if (canManage)
+        {
+            rules = await Data.GetAutomationRulesAsync(Id);
+            categories = await Data.GetProjectCategoriesAsync(Id);
+            members = await Data.GetProjectMembersAsync(Id);
+        }
+
+        // GET (form not posted): start a fresh model, prefilling from ?edit when present.
+        if (saveModel is null)
+        {
+            saveModel = new RuleModel();
+            if (Edit is { } eid && rules.FirstOrDefault(r => r.Id == eid) is { } r)
+                saveModel = RuleModel.From(r);
+        }
+    }
+
+    private async Task SaveRule()
+    {
+        message = null;
+        var view = new AutomationRuleView(
+            saveModel!.Id, saveModel.Name ?? "", saveModel.IsEnabled, saveModel.SortOrder,
+            saveModel.WhenTextContains, saveModel.WhenSeverity, saveModel.WhenPriority, saveModel.WhenCategoryId,
+            saveModel.SetSeverity, saveModel.SetPriority, saveModel.SetStatus, saveModel.AssignToUserId, saveModel.AddTag);
+        try
+        {
+            var error = await Data.SaveAutomationRuleAsync(Id, view);
+            if (error is null)
+                Nav.NavigateTo($"projects/{Id}/automation"); // clean URL: clears ?edit and resets the form
+            else { message = error; messageIsError = true; }
+        }
+        catch (UnauthorizedAccessException ex) { message = ex.Message; messageIsError = true; }
+    }
+
+    private async Task DeleteRule(int ruleId)
+    {
+        message = null;
+        try
+        {
+            await Data.DeleteAutomationRuleAsync(ruleId);
+            Nav.NavigateTo($"projects/{Id}/automation");
+        }
+        catch (UnauthorizedAccessException ex) { message = ex.Message; messageIsError = true; }
+    }
+
+    private string DescribeConditions(AutomationRuleView r)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(r.WhenTextContains)) parts.Add($"text contains \"{r.WhenTextContains}\"");
+        if (r.WhenSeverity is { } s) parts.Add($"severity = {s}");
+        if (r.WhenPriority is { } p) parts.Add($"priority = {p}");
+        if (r.WhenCategoryId is { } c) parts.Add($"category = {categories.FirstOrDefault(x => x.Id == c)?.Name ?? "?"}");
+        return parts.Count == 0 ? "any new issue" : string.Join(", ", parts);
+    }
+
+    private string DescribeActions(AutomationRuleView r)
+    {
+        var parts = new List<string>();
+        if (r.SetSeverity is { } s) parts.Add($"severity → {s}");
+        if (r.SetPriority is { } p) parts.Add($"priority → {p}");
+        if (r.SetStatus is { } st) parts.Add($"status → {st}");
+        if (r.AssignToUserId is { } u) parts.Add($"assign → {members.FirstOrDefault(x => x.Id == u)?.UserName ?? "?"}");
+        if (!string.IsNullOrWhiteSpace(r.AddTag)) parts.Add($"tag → {r.AddTag}");
+        return parts.Count == 0 ? "(nothing)" : string.Join(", ", parts);
+    }
+
+    private sealed class Empty { }
+
+    private sealed class RuleModel
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+        public bool IsEnabled { get; set; } = true;
+        public int SortOrder { get; set; }
+        public string? WhenTextContains { get; set; }
+        public IssueSeverity? WhenSeverity { get; set; }
+        public IssuePriority? WhenPriority { get; set; }
+        public int? WhenCategoryId { get; set; }
+        public IssueSeverity? SetSeverity { get; set; }
+        public IssuePriority? SetPriority { get; set; }
+        public IssueStatus? SetStatus { get; set; }
+        public int? AssignToUserId { get; set; }
+        public string? AddTag { get; set; }
+
+        public static RuleModel From(AutomationRuleView r) => new()
+        {
+            Id = r.Id, Name = r.Name, IsEnabled = r.IsEnabled, SortOrder = r.SortOrder,
+            WhenTextContains = r.WhenTextContains, WhenSeverity = r.WhenSeverity,
+            WhenPriority = r.WhenPriority, WhenCategoryId = r.WhenCategoryId,
+            SetSeverity = r.SetSeverity, SetPriority = r.SetPriority, SetStatus = r.SetStatus,
+            AssignToUserId = r.AssignToUserId, AddTag = r.AddTag,
+        };
+    }
+}
