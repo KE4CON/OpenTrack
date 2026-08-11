@@ -72,6 +72,7 @@ builder.Services.AddScoped<OpenTrack.Web.Services.AdminService>();
 builder.Services.AddScoped<OpenTrack.UI.Services.IAttachmentTransfer, OpenTrack.Web.Services.WebAttachmentTransfer>();
 
 builder.Services.AddOpenTrackEmailAndNotifications();
+builder.Services.AddOpenTrackAi(builder.Configuration);
 
 // Rate-limit the public trouble-ticket endpoints, per client IP, to blunt spam/abuse.
 builder.Services.AddRateLimiter(options =>

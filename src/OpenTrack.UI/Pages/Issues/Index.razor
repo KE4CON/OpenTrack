@@ -1,10 +1,30 @@
 @page "/issues"
 @attribute [Authorize]
 @inject IOpenTrackDataService Data
+@inject NavigationManager Nav
 
 <PageTitle>Issues</PageTitle>
 
 <h1>Issues</h1>
+
+@if (aiEnabled)
+{
+    <EditForm Model="aiSearch" OnValidSubmit="HandleAiSearch" FormName="aiSearch" class="mb-3">
+        <label class="form-label">✨ Ask in plain English</label>
+        <div class="input-group">
+            <InputText @bind-Value="aiSearch.Query" class="form-control"
+                       placeholder="e.g. high-priority crashes nobody has touched in a month" />
+            <button type="submit" class="btn btn-outline-primary">Search with AI</button>
+        </div>
+        <div class="form-text">Turns your request into the filters below (status, severity, priority,
+            keywords, stale, project). You can then tweak them by hand and search again. Uses your
+            configured AI provider.</div>
+    </EditForm>
+    @if (aiSearchMessage is not null)
+    {
+        <div class="alert alert-warning py-1">@aiSearchMessage</div>
+    }
+}
 
 @* Form GET (not interactive @bind) so the filter works in the static-SSR web host as well as the
    interactive desktop host — a shared page can't declare an interactive @rendermode. Every field is
@@ -195,19 +215,59 @@ else
     [SupplyParameterFromForm(FormName = "deleteFilter")] private IdOnly deleteFilter { get; set; } = default!;
     private string? savedFilterMessage;
 
+    private bool aiEnabled;
+    [SupplyParameterFromForm(FormName = "aiSearch")] private AiQuery aiSearch { get; set; } = default!;
+    private string? aiSearchMessage;
+
     protected override async Task OnParametersSetAsync()
     {
         bulk ??= new();
         saveFilter ??= new();
         deleteFilter ??= new();
+        aiSearch ??= new();
         projectOptions = (await Data.GetProjectsAsync())
             .Select(p => (p.Id, p.Name))
             .ToList();
         tagOptions = await Data.GetAllTagsAsync();
         savedFilters = await Data.GetSavedFiltersAsync();
         prefDefaultSort = (await Data.GetPreferencesAsync()).DefaultSort;
+        aiEnabled = await Data.IsAiEnabledAsync();
         await LoadIssues();
     }
+
+    // Ask the AI to turn plain English into filter fields, then navigate to the same GET-filtered issue
+    // list. It can only ever produce a filter the user could have built by hand (project match is limited
+    // server-side to visible projects), so this adds no query power and can't bypass the ACL.
+    private async Task HandleAiSearch()
+    {
+        aiSearchMessage = null;
+        if (string.IsNullOrWhiteSpace(aiSearch.Query)) return;
+
+        var v = await Data.InterpretIssueSearchAsync(aiSearch.Query);
+        if (v is null) { aiSearchMessage = "AI couldn't interpret that search right now."; return; }
+
+        var parts = new List<string>();
+        if (v.ProjectName is { } pn)
+        {
+            var match = projectOptions.FirstOrDefault(p => string.Equals(p.Name, pn, StringComparison.OrdinalIgnoreCase));
+            if (match.Id > 0) parts.Add($"ProjectId={match.Id}");
+        }
+        if (v.Status is { } s) parts.Add($"Status={s}");
+        if (v.Severity is { } sv) parts.Add($"Severity={sv}");
+        if (v.Priority is { } p) parts.Add($"Priority={p}");
+        if (!string.IsNullOrWhiteSpace(v.Text)) parts.Add($"Text={Uri.EscapeDataString(v.Text)}");
+        if (v.Sort is { } so) parts.Add($"Sort={so}");
+        if (v.Stale) parts.Add("Stale=true");
+
+        if (parts.Count == 0)
+        {
+            aiSearchMessage = "AI didn't find any filters in that request — try naming a status, severity, priority, keywords, or \"stale\".";
+            return;
+        }
+        Nav.NavigateTo($"issues?{string.Join("&", parts)}");
+    }
+
+    private sealed class AiQuery { public string? Query { get; set; } }
 
     // Rebuild the current filter as a query string, so it can be saved and re-applied (or shared).
     private string CurrentQuery()

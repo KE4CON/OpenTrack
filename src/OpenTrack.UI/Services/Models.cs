@@ -73,6 +73,16 @@ public record TagView(int Id, string Name);
 /// <summary>A user's saved issue filter — a name plus the issue-list query string to apply.</summary>
 public record SavedFilterView(int Id, string Name, string Query);
 
+/// <summary>An AI-suggested triage for a proposed issue (each field a suggestion to accept or edit).</summary>
+public record AiTriageView(IssueSeverity? Severity, IssuePriority? Priority, string? Category, IReadOnlyList<string> Tags);
+
+/// <summary>A plain-English search the AI turned into issue-list filter fields. The UI maps these onto the
+/// existing issue-list query string (project matched by name against the user's visible projects) — so it
+/// can only ever produce a filter the user could have built by hand.</summary>
+public record AiSearchView(
+    IssueStatus? Status, IssueSeverity? Severity, IssuePriority? Priority,
+    string? Text, bool Stale, IssueSort? Sort, string? ProjectName);
+
 public record ReportBarView(string Label, int Count);
 
 /// <summary>Reporting figures over the issues a user may see.</summary>
