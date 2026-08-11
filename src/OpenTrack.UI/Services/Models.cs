@@ -45,6 +45,11 @@ public record DashboardView(
     IReadOnlyList<DashboardSeverityCount> OpenBySeverity,
     IReadOnlyList<IssueRow> Recent);
 
+/// <summary>A bug-hunt checklist item for a project (display + working state).</summary>
+public record ChecklistItemView(
+    int Id, int ProjectId, string Title, string? Details, string? Area,
+    ChecklistItemStatus Status, string? Notes, int? LinkedIssueId, int DisplayOrder);
+
 public record IssueNoteView(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
 
 public record IssueHistoryEntry(int Id, string UserName, string FieldChanged, string? OldValue, string? NewValue, DateTime ChangedAt);

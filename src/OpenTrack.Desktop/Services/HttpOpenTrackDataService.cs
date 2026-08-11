@@ -206,6 +206,68 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         return null;
     }
 
+    // ---- Bug-hunt checklist (server enforces the same ACL as the shared operations) ----
+
+    public async Task<IReadOnlyList<ChecklistItemView>> GetChecklistAsync(int projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<ChecklistItemView>>($"/api/projects/{projectId}/checklist", JsonOptions, ct) ?? [];
+
+    public async Task<string?> AddChecklistItemAsync(int projectId, string title, string? details, string? area, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/projects/{projectId}/checklist", new { title, details, area }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Managing the checklist requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    private sealed record ImportResult(int Added);
+    public async Task<int> ImportChecklistAsync(int projectId, string text, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/projects/{projectId}/checklist/import", new { text }, JsonOptions, ct);
+        ThrowIfForbidden(resp, "Managing the checklist requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+        var result = await resp.Content.ReadFromJsonAsync<ImportResult>(JsonOptions, ct);
+        return result?.Added ?? 0;
+    }
+
+    public async Task<string?> UpdateChecklistItemAsync(int projectId, int itemId, string title, string? details, string? area, CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/checklist/{itemId}", new { title, details, area }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Managing the checklist requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task DeleteChecklistItemAsync(int projectId, int itemId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/projects/{projectId}/checklist/{itemId}", ct);
+        ThrowIfForbidden(resp, "Managing the checklist requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task<string?> SetChecklistItemStatusAsync(int projectId, int itemId, OpenTrack.Core.Enums.ChecklistItemStatus status, string? notes, CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/checklist/{itemId}/status", new { status, notes }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Working the checklist requires the Updater role on this project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    private sealed record ConvertResult(int? IssueId);
+    public async Task<int?> ConvertChecklistItemToIssueAsync(int projectId, int itemId, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync($"/api/projects/{projectId}/checklist/{itemId}/convert", content: null, ct);
+        ThrowIfForbidden(resp, "Working the checklist requires the Updater role on this project.");
+        resp.EnsureSuccessStatusCode();
+        var result = await resp.Content.ReadFromJsonAsync<ConvertResult>(JsonOptions, ct);
+        return result?.IssueId;
+    }
+
     private sealed record MonitorState(bool Monitoring);
 
     public async Task<bool> IsMonitoringIssueAsync(int issueId, CancellationToken ct = default)

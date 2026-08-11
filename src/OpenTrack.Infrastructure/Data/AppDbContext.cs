@@ -236,6 +236,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(d => new { d.ProjectId, d.Name }).IsUnique();
         });
+        // ---- ChecklistItem ----
+        b.Entity<ChecklistItem>(e =>
+        {
+            e.Property(c => c.Title).HasMaxLength(FieldLimits.ChecklistTitle).IsRequired();
+            e.Property(c => c.Area).HasMaxLength(FieldLimits.ChecklistArea);
+            e.Property(c => c.Details).HasMaxLength(FieldLimits.ChecklistText);
+            e.Property(c => c.Notes).HasMaxLength(FieldLimits.ChecklistText);
+            e.HasOne(c => c.Project)
+                .WithMany(p => p.ChecklistItems)
+                .HasForeignKey(c => c.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+            // The link to a spawned issue just nulls out if that issue is ever deleted (only the
+            // ProjectId FK cascades, so there's no multiple-cascade-path problem on SQL Server).
+            e.HasOne(c => c.LinkedIssue)
+                .WithMany()
+                .HasForeignKey(c => c.LinkedIssueId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(c => c.ProjectId);
+        });
+
         b.Entity<CustomFieldValue>(e =>
         {
             e.HasKey(v => new { v.IssueId, v.CustomFieldDefinitionId });
@@ -258,4 +278,5 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<CustomFieldDefinition> CustomFieldDefinitions => Set<CustomFieldDefinition>();
     public DbSet<CustomFieldValue> CustomFieldValues => Set<CustomFieldValue>();
+    public DbSet<ChecklistItem> ChecklistItems => Set<ChecklistItem>();
 }

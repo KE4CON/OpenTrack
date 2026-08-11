@@ -1,0 +1,296 @@
+@page "/projects/{Id:int}/checklist"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+@inject NavigationManager Nav
+
+<PageTitle>Bug-hunt checklist — @(projectName ?? "Project")</PageTitle>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Bug-hunt checklist@(projectName is null ? "" : $" — {projectName}")</h1>
+    <a class="btn btn-outline-secondary" href="projects/@Id">Back to project</a>
+</div>
+
+<p class="text-muted">
+    Work down the list on any device on your network — tap <strong>Pass</strong>, <strong>Fail</strong>,
+    or <strong>N/A</strong> for each item. A <strong>Fail</strong> can create a linked issue you then
+    triage like any other bug. Anything not on the list is still logged as a normal issue.
+</p>
+
+@if (message is not null)
+{
+    <div class="alert @(messageIsError ? "alert-danger" : "alert-success")">@message</div>
+}
+
+@if (items.Count == 0 && !canManage)
+{
+    <div class="alert alert-info">This project has no bug-hunt checklist yet. A project manager can add one.</div>
+}
+else
+{
+    @if (items.Count > 0)
+    {
+        var done = items.Count(i => i.Status != ChecklistItemStatus.Pending);
+        <div class="mb-3">
+            <div class="d-flex justify-content-between small text-muted">
+                <span>@done of @items.Count checked</span>
+                <span>@items.Count(i => i.Status == ChecklistItemStatus.Fail) failed · @items.Count(i => i.Status == ChecklistItemStatus.Pass) passed</span>
+            </div>
+            <div class="progress" role="progressbar" aria-label="Checklist progress" style="height: .5rem;">
+                <div class="progress-bar bg-success" style="width: @(items.Count == 0 ? 0 : done * 100 / items.Count)%"></div>
+            </div>
+        </div>
+
+        <EditForm Model="check" OnValidSubmit="RunAction" FormName="check">
+            @foreach (var group in items.GroupBy(i => i.Area))
+            {
+                @if (!string.IsNullOrEmpty(group.Key))
+                {
+                    <h2 class="h5 mt-4 border-bottom pb-1">@group.Key</h2>
+                }
+                @foreach (var item in group)
+                {
+                    <div class="card shadow-sm mb-2 @StatusBorder(item.Status)">
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                                <div class="me-auto" style="min-width: 15rem;">
+                                    <span class="badge text-bg-@StatusColor(item.Status) me-2">@StatusLabel(item.Status)</span>
+                                    <strong>@item.Title</strong>
+                                    @if (!string.IsNullOrWhiteSpace(item.Details))
+                                    {
+                                        <div class="text-muted small mt-1">@item.Details</div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(item.Notes))
+                                    {
+                                        <div class="small mt-1"><em>Notes:</em> @item.Notes</div>
+                                    }
+                                    @if (item.LinkedIssueId is { } iid)
+                                    {
+                                        <div class="small mt-1">↳ <a href="issues/@iid">Issue #@iid</a></div>
+                                    }
+                                </div>
+                                @if (canManage)
+                                {
+                                    <div class="btn-group btn-group-lg flex-wrap" role="group">
+                                        <button type="submit" name="Action" value="pass:@item.Id" class="btn @(item.Status == ChecklistItemStatus.Pass ? "btn-success" : "btn-outline-success")">Pass</button>
+                                        <button type="submit" name="Action" value="fail:@item.Id" class="btn @(item.Status == ChecklistItemStatus.Fail ? "btn-danger" : "btn-outline-danger")">Fail</button>
+                                        <button type="submit" name="Action" value="na:@item.Id" class="btn @(item.Status == ChecklistItemStatus.NotApplicable ? "btn-secondary" : "btn-outline-secondary")">N/A</button>
+                                    </div>
+                                }
+                            </div>
+                            @if (canManage)
+                            {
+                                <div class="mt-2 d-flex flex-wrap gap-2">
+                                    @if (item.Status != ChecklistItemStatus.Pending)
+                                    {
+                                        <button type="submit" name="Action" value="reset:@item.Id" class="btn btn-sm btn-link text-muted p-0 me-2">Reset</button>
+                                    }
+                                    @if (item.Status == ChecklistItemStatus.Fail && item.LinkedIssueId is null)
+                                    {
+                                        <button type="submit" name="Action" value="convert:@item.Id" class="btn btn-sm btn-danger">Create issue from this failure →</button>
+                                    }
+                                    <a class="btn btn-sm btn-outline-secondary" href="projects/@Id/checklist?item=@item.Id">Edit / note</a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </EditForm>
+    }
+
+    @if (canManage)
+    {
+        @if (editing is not null)
+        {
+            <div class="card border-primary mt-4">
+                <div class="card-body">
+                    <h2 class="h5">Edit item</h2>
+                    <EditForm Model="edit" OnValidSubmit="SaveEdit" FormName="edititem">
+                        <input type="hidden" name="Id" value="@edit.Id" />
+                        <label class="form-label">Title</label>
+                        <InputText @bind-Value="edit.Title" class="form-control mb-2" />
+                        <label class="form-label">Area (optional grouping)</label>
+                        <InputText @bind-Value="edit.Area" class="form-control mb-2" />
+                        <label class="form-label">Details — what/how to check (optional)</label>
+                        <InputTextArea @bind-Value="edit.Details" class="form-control mb-2" rows="2" />
+                        <label class="form-label">Notes — what you found (optional)</label>
+                        <InputTextArea @bind-Value="edit.Notes" class="form-control mb-3" rows="2" />
+                        <button type="submit" class="btn btn-primary">Save</button>
+                        <a class="btn btn-outline-secondary" href="projects/@Id/checklist">Cancel</a>
+                    </EditForm>
+                    <EditForm Model="del" OnValidSubmit="Delete" FormName="deleteitem" class="mt-2">
+                        <input type="hidden" name="Id" value="@edit.Id" />
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete this item</button>
+                    </EditForm>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row g-4 mt-2">
+                <div class="col-lg-6">
+                    <h2 class="h5">Import a checklist</h2>
+                    <p class="form-text">Paste a list — one item per line. Lines starting with <code>#</code> become section headings; bullets, <code>- [ ]</code> checkboxes, and numbers are all accepted.</p>
+                    <EditForm Model="import" OnValidSubmit="RunImport" FormName="import">
+                        <InputTextArea @bind-Value="import.Text" class="form-control mb-2" rows="6" placeholder="# Concurrency&#10;- [ ] Message store is thread-safe&#10;- [ ] Geofence service is locked&#10;# RF identity&#10;- TX blocked on N0CALL" />
+                        <button type="submit" class="btn btn-primary">Import items</button>
+                    </EditForm>
+                </div>
+                <div class="col-lg-6">
+                    <h2 class="h5">Add one item</h2>
+                    <EditForm Model="add" OnValidSubmit="RunAdd" FormName="additem">
+                        <InputText @bind-Value="add.Title" class="form-control mb-2" placeholder="Item title (e.g. TX blocked on N0CALL)" />
+                        <InputText @bind-Value="add.Area" class="form-control mb-2" placeholder="Area / section (optional)" />
+                        <InputTextArea @bind-Value="add.Details" class="form-control mb-2" rows="2" placeholder="How/what to check (optional)" />
+                        <button type="submit" class="btn btn-primary">Add item</button>
+                    </EditForm>
+                </div>
+            </div>
+        }
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery] public int? Item { get; set; }
+
+    private string? projectName;
+    private bool canManage;
+    private IReadOnlyList<ChecklistItemView> items = [];
+    private ChecklistItemView? editing;
+    private string? message;
+    private bool messageIsError;
+
+    [SupplyParameterFromForm(FormName = "check")] private CheckForm check { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "import")] private ImportForm import { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "additem")] private AddForm add { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "edititem")] private EditItemForm edit { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "deleteitem")] private DeleteForm del { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        check ??= new();
+        import ??= new();
+        add ??= new();
+        edit ??= new();
+        del ??= new();
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        var project = await Data.GetProjectAsync(Id);
+        projectName = project?.Name;
+        // Managers-only signal: member-details returns rows only to a manager.
+        canManage = (await Data.GetProjectMemberDetailsAsync(Id)).Count > 0;
+        items = await Data.GetChecklistAsync(Id);
+
+        editing = Item is { } it ? items.FirstOrDefault(i => i.Id == it) : null;
+        if (editing is not null && edit.Id != editing.Id)
+            edit = new EditItemForm { Id = editing.Id, Title = editing.Title, Area = editing.Area, Details = editing.Details, Notes = editing.Notes };
+    }
+
+    private async Task RunAction()
+    {
+        message = null;
+        var action = check.Action;
+        check = new();
+        if (string.IsNullOrEmpty(action)) return;
+
+        var parts = action.Split(':', 2);
+        if (parts.Length != 2 || !int.TryParse(parts[1], out var itemId)) return;
+
+        try
+        {
+            switch (parts[0])
+            {
+                case "pass": Report(await Data.SetChecklistItemStatusAsync(Id, itemId, ChecklistItemStatus.Pass, null)); break;
+                case "fail": Report(await Data.SetChecklistItemStatusAsync(Id, itemId, ChecklistItemStatus.Fail, null)); break;
+                case "na": Report(await Data.SetChecklistItemStatusAsync(Id, itemId, ChecklistItemStatus.NotApplicable, null)); break;
+                case "reset": Report(await Data.SetChecklistItemStatusAsync(Id, itemId, ChecklistItemStatus.Pending, null)); break;
+                case "convert":
+                    var issueId = await Data.ConvertChecklistItemToIssueAsync(Id, itemId);
+                    if (issueId is { } newId) { Nav.NavigateTo($"issues/{newId}"); return; }
+                    Report("Could not create an issue from that item.");
+                    break;
+            }
+        }
+        catch (UnauthorizedAccessException ex) { Report(ex.Message); }
+        await Load();
+    }
+
+    private async Task RunImport()
+    {
+        message = null;
+        try
+        {
+            var added = await Data.ImportChecklistAsync(Id, import.Text ?? "");
+            Report(added > 0 ? null : "No items found to import.");
+            if (added > 0) { messageIsError = false; message = $"Imported {added} item(s)."; }
+        }
+        catch (UnauthorizedAccessException ex) { Report(ex.Message); }
+        import = new();
+        await Load();
+    }
+
+    private async Task RunAdd()
+    {
+        message = null;
+        try { Report(await Data.AddChecklistItemAsync(Id, add.Title ?? "", add.Details, add.Area)); }
+        catch (UnauthorizedAccessException ex) { Report(ex.Message); }
+        add = new();
+        await Load();
+    }
+
+    private async Task SaveEdit()
+    {
+        message = null;
+        try
+        {
+            var error = await Data.UpdateChecklistItemAsync(Id, edit.Id, edit.Title ?? "", edit.Details, edit.Area);
+            if (error is null && editing is not null)
+                error = await Data.SetChecklistItemStatusAsync(Id, edit.Id, editing.Status, edit.Notes ?? "");
+            Report(error);
+        }
+        catch (UnauthorizedAccessException ex) { Report(ex.Message); }
+        if (!messageIsError) Nav.NavigateTo($"projects/{Id}/checklist");
+        else await Load();
+    }
+
+    private async Task Delete()
+    {
+        message = null;
+        try { await Data.DeleteChecklistItemAsync(Id, del.Id); }
+        catch (UnauthorizedAccessException ex) { Report(ex.Message); }
+        Nav.NavigateTo($"projects/{Id}/checklist");
+    }
+
+    private void Report(string? error) { messageIsError = error is not null; message = error ?? "Saved."; }
+
+    private static string StatusLabel(ChecklistItemStatus s) => s switch
+    {
+        ChecklistItemStatus.Pass => "Pass",
+        ChecklistItemStatus.Fail => "Fail",
+        ChecklistItemStatus.NotApplicable => "N/A",
+        _ => "To do"
+    };
+    private static string StatusColor(ChecklistItemStatus s) => s switch
+    {
+        ChecklistItemStatus.Pass => "success",
+        ChecklistItemStatus.Fail => "danger",
+        ChecklistItemStatus.NotApplicable => "secondary",
+        _ => "light"
+    };
+    private static string StatusBorder(ChecklistItemStatus s) => s switch
+    {
+        ChecklistItemStatus.Fail => "border-danger",
+        ChecklistItemStatus.Pass => "border-success",
+        _ => ""
+    };
+
+    private sealed class CheckForm { public string? Action { get; set; } }
+    private sealed class ImportForm { public string? Text { get; set; } }
+    private sealed class AddForm { public string? Title { get; set; } public string? Area { get; set; } public string? Details { get; set; } }
+    private sealed class EditItemForm { public int Id { get; set; } public string? Title { get; set; } public string? Area { get; set; } public string? Details { get; set; } public string? Notes { get; set; } }
+    private sealed class DeleteForm { public int Id { get; set; } }
+}
