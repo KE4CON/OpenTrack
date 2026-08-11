@@ -78,4 +78,15 @@ public interface IOpenTrackDataService
     Task<IReadOnlyList<TagView>> GetIssueTagsAsync(int issueId, CancellationToken ct = default);
     Task<string?> AddIssueTagAsync(int issueId, string tagName, CancellationToken ct = default);
     Task RemoveIssueTagAsync(int issueId, int tagId, CancellationToken ct = default);
+
+    // Monitoring: a user can monitor (subscribe to) any issue they can view; monitors are notified of
+    // changes alongside the reporter and assignee.
+    Task<bool> IsMonitoringIssueAsync(int issueId, CancellationToken ct = default);
+    Task SetIssueMonitorAsync(int issueId, bool monitor, CancellationToken ct = default);
+
+    // Notifications (the signed-in user's own).
+    Task<int> GetUnreadNotificationCountAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<NotificationView>> GetNotificationsAsync(bool unreadOnly = false, CancellationToken ct = default);
+    Task MarkNotificationReadAsync(int notificationId, CancellationToken ct = default);
+    Task MarkAllNotificationsReadAsync(CancellationToken ct = default);
 }

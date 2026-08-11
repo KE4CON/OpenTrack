@@ -1,0 +1,63 @@
+@page "/notifications"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+
+<PageTitle>Notifications</PageTitle>
+
+<h1 class="h3 mb-3">Notifications</h1>
+
+@if (items.Count == 0)
+{
+    <p class="text-muted">No notifications.</p>
+}
+else
+{
+    @* One form with multiple submit buttons (each carries an Op value) so per-row "mark read" and
+       "mark all read" both work in the static-SSR web host and the interactive desktop host. *@
+    <EditForm Model="form" OnValidSubmit="Apply" FormName="notif">
+        <div class="mb-2">
+            <button type="submit" name="Op" value="all" class="btn btn-outline-secondary btn-sm">Mark all as read</button>
+        </div>
+        <ul class="list-group">
+            @foreach (var n in items)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center @(n.IsRead ? "" : "list-group-item-primary")">
+                    <span>
+                        <a href="issues/@n.IssueId">@n.Text</a>
+                        <span class="text-muted small ms-2">@n.CreatedAt.ToString("g")</span>
+                    </span>
+                    @if (!n.IsRead)
+                    {
+                        <button type="submit" name="Op" value="read-@n.Id" class="btn btn-link btn-sm p-0">mark read</button>
+                    }
+                </li>
+            }
+        </ul>
+    </EditForm>
+}
+
+@code {
+    [SupplyParameterFromForm(FormName = "notif")] private NotifForm form { get; set; } = default!;
+    private IReadOnlyList<NotificationView> items = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        form ??= new();
+        await Load();
+    }
+
+    private async Task Load() => items = await Data.GetNotificationsAsync();
+
+    private async Task Apply()
+    {
+        var op = form.Op;
+        form = new();
+        if (op == "all")
+            await Data.MarkAllNotificationsReadAsync();
+        else if (op is not null && op.StartsWith("read-") && int.TryParse(op.AsSpan(5), out var id))
+            await Data.MarkNotificationReadAsync(id);
+        await Load();
+    }
+
+    private sealed class NotifForm { public string? Op { get; set; } }
+}

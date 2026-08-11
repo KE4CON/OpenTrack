@@ -157,6 +157,42 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
+    private sealed record MonitorState(bool Monitoring);
+
+    public async Task<bool> IsMonitoringIssueAsync(int issueId, CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync($"/api/issues/{issueId}/monitor", ct);
+        if (!resp.IsSuccessStatusCode) return false;
+        var state = await resp.Content.ReadFromJsonAsync<MonitorState>(JsonOptions, ct);
+        return state?.Monitoring ?? false;
+    }
+
+    public async Task SetIssueMonitorAsync(int issueId, bool monitor, CancellationToken ct = default)
+    {
+        var resp = monitor
+            ? await http.PostAsync($"/api/issues/{issueId}/monitor", content: null, ct)
+            : await http.DeleteAsync($"/api/issues/{issueId}/monitor", ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task<int> GetUnreadNotificationCountAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<int>("/api/notifications/unread-count", JsonOptions, ct);
+
+    public async Task<IReadOnlyList<NotificationView>> GetNotificationsAsync(bool unreadOnly = false, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<NotificationView>>($"/api/notifications?unreadOnly={unreadOnly}", JsonOptions, ct) ?? [];
+
+    public async Task MarkNotificationReadAsync(int notificationId, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync($"/api/notifications/{notificationId}/read", content: null, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task MarkAllNotificationsReadAsync(CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync("/api/notifications/read-all", content: null, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
     // Translate a 403 into the same exception the web/EF path throws, so the shared razor pages
     // handle a denied action identically on both hosts.
     private static void ThrowIfForbidden(HttpResponseMessage resp, string message)

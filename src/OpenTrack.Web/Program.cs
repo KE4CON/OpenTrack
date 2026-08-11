@@ -71,7 +71,7 @@ builder.Services.AddScoped<OpenTrack.Web.Services.AdminService>();
 // Host-specific attachment transfer (web uses forms/links to the endpoints below).
 builder.Services.AddScoped<OpenTrack.UI.Services.IAttachmentTransfer, OpenTrack.Web.Services.WebAttachmentTransfer>();
 
-builder.Services.AddSingleton<IEmailSender<OpenTrack.Core.Entities.User>, OpenTrack.Infrastructure.Email.SmtpEmailSender>();
+builder.Services.AddOpenTrackEmailAndNotifications();
 
 var app = builder.Build();
 

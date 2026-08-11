@@ -19,6 +19,7 @@ using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
 using OpenTrack.Infrastructure.Relationships;
 using OpenTrack.Infrastructure.Tags;
@@ -41,7 +42,8 @@ namespace OpenTrack.Web.Services;
 public class DbOpenTrackDataService(
     IDbContextFactory<AppDbContext> dbFactory,
     AuthenticationStateProvider authState,
-    IAttachmentStorage attachmentStorage)
+    IAttachmentStorage attachmentStorage,
+    NotificationDispatch notifications)
     : IOpenTrackDataService
 {
     private async Task<AccessIdentity> RequireIdentityAsync()
@@ -272,6 +274,15 @@ public class DbOpenTrackDataService(
             });
 
         await SaveDetectingConflictAsync(db, ct);
+        await notifications.NotifyIssueChangedAsync(db, access.UserId, id, UpdateSummary(originalStatus, issue.Status, originalAssigneeId, issue.AssigneeId), ct);
+    }
+
+    private static string UpdateSummary(IssueStatus oldStatus, IssueStatus newStatus, int? oldAssignee, int? newAssignee)
+    {
+        var parts = new List<string>();
+        if (newStatus != oldStatus) parts.Add($"status set to {newStatus}");
+        if (newAssignee != oldAssignee) parts.Add(newAssignee is null ? "unassigned" : "reassigned");
+        return parts.Count > 0 ? string.Join("; ", parts) : "updated";
     }
 
     /// <summary>An assignee must be null (unassign) or an actual member of the issue's project.</summary>
@@ -304,6 +315,9 @@ public class DbOpenTrackDataService(
             IssueId = issueId, AuthorId = access.UserId, Text = text, IsPrivate = effectivePrivate, CreatedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync(ct);
+        // Private notes only reach those who could see them anyway; NotifyIssueChangedAsync re-checks
+        // view access per recipient, so no private-note text leaks to someone who can't view the issue.
+        await notifications.NotifyIssueChangedAsync(db, access.UserId, issueId, "a note was added", ct);
     }
 
     public async Task<IReadOnlyList<IssueHistoryEntry>> GetIssueHistoryAsync(int issueId, CancellationToken ct = default)
@@ -598,5 +612,69 @@ public class DbOpenTrackDataService(
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
         await TagOperations.RemoveAsync(db, access, issueId, tagId, ct);
+    }
+
+    // ---- Monitoring & notifications ----
+
+    public async Task<bool> IsMonitoringIssueAsync(int issueId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await db.IssueMonitors.AsNoTracking().AnyAsync(m => m.IssueId == issueId && m.UserId == access.UserId, ct);
+    }
+
+    public async Task SetIssueMonitorAsync(int issueId, bool monitor, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var issue = await db.Issues.AsNoTracking().Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == issueId, ct);
+        // You can only monitor an issue you can currently see.
+        if (issue is null || !access.For(issue.ProjectId).CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+            return;
+
+        var existing = await db.IssueMonitors.FirstOrDefaultAsync(m => m.IssueId == issueId && m.UserId == access.UserId, ct);
+        if (monitor && existing is null)
+            db.IssueMonitors.Add(new IssueMonitor { IssueId = issueId, UserId = access.UserId, CreatedAt = DateTime.UtcNow });
+        else if (!monitor && existing is not null)
+            db.IssueMonitors.Remove(existing);
+        else return;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<int> GetUnreadNotificationCountAsync(CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await db.Notifications.AsNoTracking().CountAsync(n => n.UserId == access.UserId && !n.IsRead, ct);
+    }
+
+    public async Task<IReadOnlyList<NotificationView>> GetNotificationsAsync(bool unreadOnly = false, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var q = db.Notifications.AsNoTracking().Where(n => n.UserId == access.UserId);
+        if (unreadOnly) q = q.Where(n => !n.IsRead);
+        return await q.OrderByDescending(n => n.CreatedAt).Take(200)
+            .Select(n => new NotificationView(n.Id, n.IssueId, n.Text, n.IsRead, n.CreatedAt))
+            .ToListAsync(ct);
+    }
+
+    public async Task MarkNotificationReadAsync(int notificationId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        // Scoped to the caller's own notifications — can't touch anyone else's.
+        var n = await db.Notifications.FirstOrDefaultAsync(x => x.Id == notificationId && x.UserId == access.UserId, ct);
+        if (n is null || n.IsRead) return;
+        n.IsRead = true;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task MarkAllNotificationsReadAsync(CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        await db.Notifications.Where(n => n.UserId == access.UserId && !n.IsRead)
+            .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true), ct);
     }
 }

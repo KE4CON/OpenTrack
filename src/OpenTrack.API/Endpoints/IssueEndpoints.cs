@@ -17,6 +17,7 @@ using OpenTrack.Core.Enums;
 using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
 using OpenTrack.Infrastructure.Relationships;
 using OpenTrack.Infrastructure.Tags;
@@ -120,7 +121,7 @@ public static class IssueEndpoints
             return Results.Created($"/api/issues/{issue.Id}", issue.Id);
         });
 
-        group.MapPut("/issues/{id:int}", async (int id, UpdateIssueRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        group.MapPut("/issues/{id:int}", async (int id, UpdateIssueRequest req, ClaimsPrincipal user, AppDbContext db, NotificationDispatch notifications, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
@@ -180,10 +181,15 @@ public static class IssueEndpoints
 
             try { await db.SaveChangesAsync(ct); }
             catch (DbUpdateConcurrencyException) { return Results.Conflict(OpenTrack.Core.ConcurrencyConflictException.DefaultMessage); }
+
+            var parts = new List<string>();
+            if (issue.Status != originalStatus) parts.Add($"status set to {issue.Status}");
+            if (issue.AssigneeId != originalAssigneeId) parts.Add(issue.AssigneeId is null ? "unassigned" : "reassigned");
+            await notifications.NotifyIssueChangedAsync(db, access.UserId, id, parts.Count > 0 ? string.Join("; ", parts) : "updated", ct);
             return Results.NoContent();
         });
 
-        group.MapPost("/issues/{id:int}/notes", async (int id, AddIssueNoteRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        group.MapPost("/issues/{id:int}/notes", async (int id, AddIssueNoteRequest req, ClaimsPrincipal user, AppDbContext db, NotificationDispatch notifications, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
@@ -235,6 +241,38 @@ public static class IssueEndpoints
                 return removed ? Results.NoContent() : Results.NotFound();
             }
             catch (UnauthorizedAccessException) { return Results.Forbid(); }
+        });
+
+        group.MapGet("/issues/{id:int}/monitor", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var monitoring = await db.IssueMonitors.AsNoTracking().AnyAsync(m => m.IssueId == id && m.UserId == access.UserId, ct);
+            return Results.Ok(new { monitoring });
+        });
+
+        group.MapPost("/issues/{id:int}/monitor", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var issue = await db.Issues.AsNoTracking().Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == id, ct);
+            if (issue is null || !access.For(issue.ProjectId).CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+                return Results.NotFound(); // can only monitor an issue you can see
+            if (!await db.IssueMonitors.AnyAsync(m => m.IssueId == id && m.UserId == access.UserId, ct))
+            {
+                db.IssueMonitors.Add(new IssueMonitor { IssueId = id, UserId = access.UserId, CreatedAt = DateTime.UtcNow });
+                await db.SaveChangesAsync(ct);
+            }
+            return Results.NoContent();
+        });
+
+        group.MapDelete("/issues/{id:int}/monitor", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var existing = await db.IssueMonitors.FirstOrDefaultAsync(m => m.IssueId == id && m.UserId == access.UserId, ct);
+            if (existing is not null) { db.IssueMonitors.Remove(existing); await db.SaveChangesAsync(ct); }
+            return Results.NoContent();
         });
 
         group.MapGet("/tags", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>

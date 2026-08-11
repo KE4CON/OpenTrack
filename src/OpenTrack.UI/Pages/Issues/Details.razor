@@ -16,12 +16,20 @@ else
             <p class="text-muted mb-0">@issue.ProjectName / Issue #@issue.Id</p>
             <h1>@issue.Title</h1>
         </div>
-        <AuthorizeView Policy="RequireUpdater">
-            <Authorized>
-                <a class="btn btn-outline-secondary" href="issues/@Id/edit">Edit</a>
-            </Authorized>
-        </AuthorizeView>
+        <div class="d-flex gap-2">
+            <EditForm Model="monitorModel" OnValidSubmit="ToggleMonitor" FormName="monitor">
+                <button type="submit" class="btn @(isMonitoring ? "btn-secondary" : "btn-outline-secondary")">
+                    @(isMonitoring ? "Monitoring ✓" : "Monitor")
+                </button>
+            </EditForm>
+            <AuthorizeView Policy="RequireUpdater">
+                <Authorized>
+                    <a class="btn btn-outline-secondary" href="issues/@Id/edit">Edit</a>
+                </Authorized>
+            </AuthorizeView>
+        </div>
     </div>
+    <p class="text-muted small mb-2">Monitoring an issue notifies you of changes to it.</p>
 
     <div class="row mb-3">
         <div class="col-md-3"><strong>Status:</strong> @issue.Status</div>
@@ -307,7 +315,10 @@ else
     private AddTagModel addTag { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "removeTag")]
     private RemoveTagModel removeTag { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "monitor")]
+    private MonitorModel monitorModel { get; set; } = default!;
 
+    private bool isMonitoring;
     private IReadOnlyList<TagView> tags = [];
     private IReadOnlyList<TagView> allTags = [];
     private string? tagMessage;
@@ -319,8 +330,17 @@ else
         removeRelModel ??= new();
         addTag ??= new();
         removeTag ??= new();
+        monitorModel ??= new();
         await LoadIssue();
     }
+
+    private async Task ToggleMonitor()
+    {
+        await Data.SetIssueMonitorAsync(Id, !isMonitoring);
+        await LoadIssue();
+    }
+
+    private sealed class MonitorModel { }
 
     private async Task AddTag()
     {
@@ -353,6 +373,7 @@ else
         relationships = issue is null ? [] : await Data.GetIssueRelationshipsAsync(Id);
         tags = issue is null ? [] : await Data.GetIssueTagsAsync(Id);
         allTags = issue is null ? [] : await Data.GetAllTagsAsync();
+        isMonitoring = issue is not null && await Data.IsMonitoringIssueAsync(Id);
     }
 
     private async Task AddRelationship()

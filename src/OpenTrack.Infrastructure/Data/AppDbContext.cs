@@ -209,9 +209,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasOne(it => it.Issue).WithMany(i => i.IssueTags).HasForeignKey(it => it.IssueId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(it => it.Tag).WithMany(t => t.IssueTags).HasForeignKey(it => it.TagId).OnDelete(DeleteBehavior.Cascade);
         });
+
+        // ---- IssueMonitor / Notification ----
+        b.Entity<IssueMonitor>(e =>
+        {
+            e.HasKey(m => new { m.IssueId, m.UserId });
+            e.HasOne(m => m.Issue).WithMany().HasForeignKey(m => m.IssueId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+        b.Entity<Notification>(e =>
+        {
+            e.Property(n => n.Text).IsRequired();
+            e.HasOne(n => n.User).WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(n => n.Issue).WithMany().HasForeignKey(n => n.IssueId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(n => new { n.UserId, n.IsRead });
+        });
     }
 
     public DbSet<IssueRelationship> IssueRelationships => Set<IssueRelationship>();
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<IssueTag> IssueTags => Set<IssueTag>();
+    public DbSet<IssueMonitor> IssueMonitors => Set<IssueMonitor>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 }

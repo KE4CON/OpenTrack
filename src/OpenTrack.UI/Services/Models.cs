@@ -42,6 +42,8 @@ public record IssueRelationshipView(int Id, int OtherIssueId, string OtherIssueT
 
 public record TagView(int Id, string Name);
 
+public record NotificationView(int Id, int IssueId, string Text, bool IsRead, DateTime CreatedAt);
+
 public record IssueDetail(
     int Id, int ProjectId, string ProjectName, string Title, string Description,
     string? StepsToReproduce, string? ExpectedBehavior, string? ActualBehavior,

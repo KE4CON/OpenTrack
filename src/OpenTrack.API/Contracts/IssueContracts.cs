@@ -45,6 +45,8 @@ public record TagDto(int Id, string Name);
 
 public record AddTagRequest(string Name);
 
+public record NotificationDto(int Id, int IssueId, string Text, bool IsRead, DateTime CreatedAt);
+
 public record CreateIssueRequest(
     string Title, string Description, string? StepsToReproduce,
     string? ExpectedBehavior, string? ActualBehavior, int? CategoryId,
