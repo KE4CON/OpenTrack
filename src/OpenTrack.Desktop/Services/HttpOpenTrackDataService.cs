@@ -93,4 +93,29 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
 
     public async Task<IReadOnlyList<ProjectMemberView>> GetProjectMembersAsync(int projectId, CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<ProjectMemberView>>($"/api/projects/{projectId}/members", JsonOptions, ct) ?? [];
+
+    public async Task<IReadOnlyList<ProjectMemberDetail>> GetProjectMemberDetailsAsync(int projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<ProjectMemberDetail>>($"/api/projects/{projectId}/member-details", JsonOptions, ct) ?? [];
+
+    public async Task<string?> AddProjectMemberAsync(int projectId, AddProjectMemberInput input, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/projects/{projectId}/members", input, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            return await resp.Content.ReadAsStringAsync(ct);
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task SetProjectMemberRoleAsync(int projectId, int userId, OpenTrack.Core.Enums.UserRole role, CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/members/{userId}", new SetMemberRoleInput(role), JsonOptions, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task RemoveProjectMemberAsync(int projectId, int userId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/projects/{projectId}/members/{userId}", ct);
+        resp.EnsureSuccessStatusCode();
+    }
 }

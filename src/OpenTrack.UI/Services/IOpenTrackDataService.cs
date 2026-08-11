@@ -39,4 +39,12 @@ public interface IOpenTrackDataService
     // Lookups used by the issue create/edit forms
     Task<IReadOnlyList<CategoryView>> GetProjectCategoriesAsync(int projectId, CancellationToken ct = default);
     Task<IReadOnlyList<ProjectMemberView>> GetProjectMembersAsync(int projectId, CancellationToken ct = default);
+
+    // Member management (Manager+ on the project). Returns include the per-project role.
+    Task<IReadOnlyList<ProjectMemberDetail>> GetProjectMemberDetailsAsync(int projectId, CancellationToken ct = default);
+    /// <summary>Adds an existing user (looked up by email) to the project. Returns null on success,
+    /// or a human-readable reason on failure (unknown email, already a member, etc.).</summary>
+    Task<string?> AddProjectMemberAsync(int projectId, AddProjectMemberInput input, CancellationToken ct = default);
+    Task SetProjectMemberRoleAsync(int projectId, int userId, OpenTrack.Core.Enums.UserRole role, CancellationToken ct = default);
+    Task RemoveProjectMemberAsync(int projectId, int userId, CancellationToken ct = default);
 }

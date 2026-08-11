@@ -295,4 +295,82 @@ public class DbOpenTrackDataService(IDbContextFactory<AppDbContext> dbFactory, A
             .Select(u => new ProjectMemberView(u.Id, u.UserName ?? "unknown"))
             .ToListAsync(ct);
     }
+
+    // ---- Member management (Manager+ on the project) ----
+
+    public async Task<IReadOnlyList<ProjectMemberDetail>> GetProjectMemberDetailsAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        if (project is null || !access.For(projectId).CanManageProject())
+            return [];
+        return await db.ProjectMemberships.AsNoTracking()
+            .Where(m => m.ProjectId == projectId)
+            .OrderBy(m => m.User.UserName)
+            .Select(m => new ProjectMemberDetail(m.UserId, m.User.UserName ?? "unknown", m.Role, m.UserId == project.OwnerId))
+            .ToListAsync(ct);
+    }
+
+    public async Task<string?> AddProjectMemberAsync(int projectId, AddProjectMemberInput input, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        if (project is null || !access.For(projectId).CanViewProject(project.IsPublic)) return "Project not found.";
+        if (!access.For(projectId).CanManageProject())
+            throw new UnauthorizedAccessException("Managing members requires the Manager role on this project.");
+        if (!IsAssignableProjectRole(input.Role)) return "Invalid project role.";
+
+        var normalized = input.Email.Trim().ToUpperInvariant();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.NormalizedEmail == normalized, ct);
+        if (user is null) return $"No user with email '{input.Email}'. They must register first.";
+
+        var already = await db.ProjectMemberships.AnyAsync(m => m.ProjectId == projectId && m.UserId == user.Id, ct);
+        if (already) return "That user is already a member of this project.";
+
+        db.ProjectMemberships.Add(new ProjectMembership { ProjectId = projectId, UserId = user.Id, Role = input.Role });
+        await db.SaveChangesAsync(ct);
+        return null;
+    }
+
+    public async Task SetProjectMemberRoleAsync(int projectId, int userId, UserRole role, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        if (project is null) return;
+        if (!access.For(projectId).CanManageProject())
+            throw new UnauthorizedAccessException("Managing members requires the Manager role on this project.");
+        if (!IsAssignableProjectRole(role)) throw new ArgumentException("Invalid project role.", nameof(role));
+        // The owner always retains at least Manager so a project can't be left unmanageable.
+        if (userId == project.OwnerId && (int)role < (int)UserRole.Manager)
+            throw new InvalidOperationException("The project owner must remain a Manager.");
+
+        var membership = await db.ProjectMemberships.FirstOrDefaultAsync(m => m.ProjectId == projectId && m.UserId == userId, ct);
+        if (membership is null) return;
+        membership.Role = role;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task RemoveProjectMemberAsync(int projectId, int userId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        if (project is null) return;
+        if (!access.For(projectId).CanManageProject())
+            throw new UnauthorizedAccessException("Managing members requires the Manager role on this project.");
+        if (userId == project.OwnerId)
+            throw new InvalidOperationException("The project owner cannot be removed.");
+
+        var membership = await db.ProjectMemberships.FirstOrDefaultAsync(m => m.ProjectId == projectId && m.UserId == userId, ct);
+        if (membership is null) return;
+        db.ProjectMemberships.Remove(membership);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Per-project roles range from Viewer to Manager; Administrator is global-only.</summary>
+    private static bool IsAssignableProjectRole(UserRole role) =>
+        (int)role >= (int)UserRole.Viewer && (int)role <= (int)UserRole.Manager;
 }

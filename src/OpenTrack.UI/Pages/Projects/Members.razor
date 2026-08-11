@@ -1,0 +1,149 @@
+@page "/projects/{Id:int}/members"
+@attribute [Authorize]
+@using OpenTrack.Core.Enums
+@inject IOpenTrackDataService Data
+@inject NavigationManager Nav
+
+<PageTitle>Members — @(projectName ?? "Project")</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Members@(projectName is null ? "" : $" — {projectName}")</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="projects/@Id">Back to project</a>
+</div>
+
+@if (!canManage)
+{
+    <div class="alert alert-warning">You need the Manager role on this project to manage its members.</div>
+}
+else
+{
+    @if (message is not null)
+    {
+        <div class="alert @(messageIsError ? "alert-danger" : "alert-success")">@message</div>
+    }
+
+    <table class="table align-middle">
+        <thead><tr><th>Member</th><th>Role</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var m in members)
+            {
+                <tr>
+                    <td>@m.UserName @(m.IsOwner ? "(owner)" : "")</td>
+                    <td>@m.Role</td>
+                    <td></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="row g-4 mt-1">
+        <div class="col-md-4">
+            <h2 class="h6">Add a member</h2>
+            <EditForm Model="addForm" OnValidSubmit="AddMember" FormName="addMember">
+                <InputText @bind-Value="addForm.Email" class="form-control mb-2" placeholder="user's email" />
+                <InputSelect @bind-Value="addForm.Role" class="form-select mb-2">
+                    @foreach (var r in AssignableRoles) { <option value="@r">@r</option> }
+                </InputSelect>
+                <button type="submit" class="btn btn-primary btn-sm">Add</button>
+            </EditForm>
+            <div class="form-text">The user must already have an OpenTrack account.</div>
+        </div>
+
+        <div class="col-md-4">
+            <h2 class="h6">Change a role</h2>
+            <EditForm Model="roleForm" OnValidSubmit="SetRole" FormName="setRole">
+                <InputSelect @bind-Value="roleForm.UserId" class="form-select mb-2">
+                    <option value="0" disabled>Select member…</option>
+                    @foreach (var m in members) { <option value="@m.UserId">@m.UserName</option> }
+                </InputSelect>
+                <InputSelect @bind-Value="roleForm.Role" class="form-select mb-2">
+                    @foreach (var r in AssignableRoles) { <option value="@r">@r</option> }
+                </InputSelect>
+                <button type="submit" class="btn btn-secondary btn-sm">Update role</button>
+            </EditForm>
+        </div>
+
+        <div class="col-md-4">
+            <h2 class="h6">Remove a member</h2>
+            <EditForm Model="removeForm" OnValidSubmit="RemoveMember" FormName="removeMember">
+                <InputSelect @bind-Value="removeForm.UserId" class="form-select mb-2">
+                    <option value="0" disabled>Select member…</option>
+                    @foreach (var m in members.Where(x => !x.IsOwner)) { <option value="@m.UserId">@m.UserName</option> }
+                </InputSelect>
+                <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private static readonly UserRole[] AssignableRoles =
+        [UserRole.Viewer, UserRole.Reporter, UserRole.Updater, UserRole.Developer, UserRole.Manager];
+
+    private string? projectName;
+    private bool canManage;
+    private IReadOnlyList<ProjectMemberDetail> members = [];
+    private string? message;
+    private bool messageIsError;
+
+    [SupplyParameterFromForm(FormName = "addMember")] private AddForm addForm { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "setRole")] private RoleForm roleForm { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "removeMember")] private RemoveForm removeForm { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        addForm ??= new();
+        roleForm ??= new();
+        removeForm ??= new();
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        var project = await Data.GetProjectAsync(Id);
+        projectName = project?.Name;
+        members = await Data.GetProjectMemberDetailsAsync(Id);
+        // GetProjectMemberDetailsAsync returns rows only to a manager; a project with members that
+        // comes back empty for a non-owner means "not authorized". The owner is always a member,
+        // so a manager always sees at least one row.
+        canManage = members.Count > 0;
+    }
+
+    private async Task AddMember()
+    {
+        var error = await Data.AddProjectMemberAsync(Id, new AddProjectMemberInput(addForm.Email, addForm.Role));
+        SetMessage(error);
+        addForm = new();
+        await Load();
+    }
+
+    private async Task SetRole()
+    {
+        if (roleForm.UserId <= 0) { SetMessage("Select a member."); return; }
+        try { await Data.SetProjectMemberRoleAsync(Id, roleForm.UserId, roleForm.Role); SetMessage(null); }
+        catch (Exception ex) { SetMessage(ex.Message); }
+        roleForm = new();
+        await Load();
+    }
+
+    private async Task RemoveMember()
+    {
+        if (removeForm.UserId <= 0) { SetMessage("Select a member."); return; }
+        try { await Data.RemoveProjectMemberAsync(Id, removeForm.UserId); SetMessage(null); }
+        catch (Exception ex) { SetMessage(ex.Message); }
+        removeForm = new();
+        await Load();
+    }
+
+    private void SetMessage(string? error)
+    {
+        messageIsError = error is not null;
+        message = error ?? "Saved.";
+    }
+
+    private sealed class AddForm { public string Email { get; set; } = ""; public UserRole Role { get; set; } = UserRole.Reporter; }
+    private sealed class RoleForm { public int UserId { get; set; } public UserRole Role { get; set; } = UserRole.Reporter; }
+    private sealed class RemoveForm { public int UserId { get; set; } }
+}

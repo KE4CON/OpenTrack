@@ -24,3 +24,9 @@ public record UpdateProjectRequest(string Name, string? Description, bool IsPubl
 public record CategoryDto(int Id, string Name);
 
 public record ProjectMemberDto(int Id, string UserName);
+
+public record ProjectMemberDetailDto(int UserId, string UserName, UserRole Role, bool IsOwner);
+
+public record AddProjectMemberRequest(string Email, UserRole Role);
+
+public record SetMemberRoleRequest(UserRole Role);

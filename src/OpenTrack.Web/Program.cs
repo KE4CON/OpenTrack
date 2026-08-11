@@ -63,6 +63,9 @@ builder.Services.AddScoped<IUserClaimsPrincipalFactory<OpenTrack.Core.Entities.U
 // The shared UI's data seam, backed by direct EF Core access in the web app.
 builder.Services.AddScoped<OpenTrack.UI.Services.IOpenTrackDataService, OpenTrack.Web.Services.DbOpenTrackDataService>();
 
+// Web-only administrative surface (global user/role management).
+builder.Services.AddScoped<OpenTrack.Web.Services.AdminService>();
+
 builder.Services.AddSingleton<IEmailSender<OpenTrack.Core.Entities.User>, IdentityNoOpEmailSender>();
 
 var app = builder.Build();

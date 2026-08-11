@@ -53,3 +53,10 @@ public record UpdateIssueInput(
 public record CategoryView(int Id, string Name);
 
 public record ProjectMemberView(int Id, string UserName);
+
+/// <summary>A project member together with their per-project role, for the member-management UI.</summary>
+public record ProjectMemberDetail(int UserId, string UserName, UserRole Role, bool IsOwner);
+
+public record AddProjectMemberInput(string Email, UserRole Role);
+
+public record SetMemberRoleInput(UserRole Role);

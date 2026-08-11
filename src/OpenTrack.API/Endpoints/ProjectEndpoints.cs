@@ -118,7 +118,81 @@ public static class ProjectEndpoints
                 .ToListAsync(ct);
             return Results.Ok(rows);
         });
+
+        // ---- Member management (Manager+ on the project) ----
+
+        group.MapGet("/{id:int}/member-details", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
+            if (project is null || !access.For(id).CanViewProject(project.IsPublic)) return Results.NotFound();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+
+            var rows = await db.ProjectMemberships.AsNoTracking()
+                .Where(m => m.ProjectId == id).OrderBy(m => m.User.UserName)
+                .Select(m => new ProjectMemberDetailDto(m.UserId, m.User.UserName ?? "unknown", m.Role, m.UserId == project.OwnerId))
+                .ToListAsync(ct);
+            return Results.Ok(rows);
+        });
+
+        group.MapPost("/{id:int}/members", async (int id, AddProjectMemberRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
+            if (project is null || !access.For(id).CanViewProject(project.IsPublic)) return Results.NotFound();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            if (!IsAssignableProjectRole(req.Role)) return Results.BadRequest("Invalid project role.");
+
+            var normalized = req.Email.Trim().ToUpperInvariant();
+            var target = await db.Users.FirstOrDefaultAsync(u => u.NormalizedEmail == normalized, ct);
+            if (target is null) return Results.BadRequest($"No user with email '{req.Email}'.");
+            if (await db.ProjectMemberships.AnyAsync(m => m.ProjectId == id && m.UserId == target.Id, ct))
+                return Results.BadRequest("That user is already a member of this project.");
+
+            db.ProjectMemberships.Add(new ProjectMembership { ProjectId = id, UserId = target.Id, Role = req.Role });
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        });
+
+        group.MapPut("/{id:int}/members/{userId:int}", async (int id, int userId, SetMemberRoleRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
+            if (project is null) return Results.NotFound();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            if (!IsAssignableProjectRole(req.Role)) return Results.BadRequest("Invalid project role.");
+            if (userId == project.OwnerId && (int)req.Role < (int)UserRole.Manager)
+                return Results.BadRequest("The project owner must remain a Manager.");
+
+            var membership = await db.ProjectMemberships.FirstOrDefaultAsync(m => m.ProjectId == id && m.UserId == userId, ct);
+            if (membership is null) return Results.NotFound();
+            membership.Role = req.Role;
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        });
+
+        group.MapDelete("/{id:int}/members/{userId:int}", async (int id, int userId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
+            if (project is null) return Results.NotFound();
+            if (!access.For(id).CanManageProject()) return Results.Forbid();
+            if (userId == project.OwnerId) return Results.BadRequest("The project owner cannot be removed.");
+
+            var membership = await db.ProjectMemberships.FirstOrDefaultAsync(m => m.ProjectId == id && m.UserId == userId, ct);
+            if (membership is null) return Results.NotFound();
+            db.ProjectMemberships.Remove(membership);
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        });
     }
+
+    private static bool IsAssignableProjectRole(UserRole role) =>
+        (int)role >= (int)UserRole.Viewer && (int)role <= (int)UserRole.Manager;
 
     internal static int? GetUserId(ClaimsPrincipal user)
     {
