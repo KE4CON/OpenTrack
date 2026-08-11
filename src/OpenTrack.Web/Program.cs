@@ -92,11 +92,19 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
+
+// HTTPS is a deployment choice (default OFF for trusted-LAN plain HTTP). Set
+// OpenTrack:RequireHttps=true when reachable beyond the trusted network so credentials and the
+// auth cookie are never sent in the clear; only then is HSTS meaningful. Forcing a redirect with
+// no HTTPS endpoint configured would otherwise break access on a plain-HTTP LAN deployment.
+if (app.Configuration.GetValue<bool>("OpenTrack:RequireHttps"))
+{
+    if (!app.Environment.IsDevelopment())
+        app.UseHsts();
+    app.UseHttpsRedirection();
+}
 
 app.UseAntiforgery();
 

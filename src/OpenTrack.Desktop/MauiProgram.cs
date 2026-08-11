@@ -33,14 +33,12 @@ public static class MauiProgram
 
         builder.Services.AddMauiBlazorWebView();
 
-        // Where the OpenTrack.API server lives. Defaults to the local dev address; on a
-        // real deployment this points at the Beelink's LAN address (e.g. http://192.168.x.x:5xxx).
-        // TODO: make this user-configurable in a settings screen rather than hardcoded.
-        // Read the API address from the bundled wwwroot/appsettings.json so each machine
-        // can point at its own server (localhost in dev, the Beelink's LAN address in
-        // deployment) by editing that file — no recompile needed. Falls back to localhost
-        // if the file or key is missing.
-        string apiBaseUrl = "http://localhost:5003";
+        // Where the OpenTrack.API server lives. The startup default comes from the bundled
+        // wwwroot/appsettings.json (localhost in dev, the Beelink's LAN address in deployment);
+        // the user can then change it in the in-app Settings screen, which is remembered per machine
+        // via Preferences and overrides the bundled default. The chosen value lives in ApiEndpoint,
+        // which every HttpClient reads at creation time so a change takes effect without a restart.
+        string defaultApiBaseUrl = "http://localhost:5003";
         using (var stream = System.Reflection.Assembly.GetExecutingAssembly()
             .GetManifestResourceStream("OpenTrack.Desktop.wwwroot.appsettings.json"))
         {
@@ -49,29 +47,32 @@ public static class MauiProgram
                 var cfg = new ConfigurationBuilder().AddJsonStream(stream).Build();
                 var configured = cfg["ApiBaseUrl"];
                 if (!string.IsNullOrWhiteSpace(configured))
-                    apiBaseUrl = configured;
+                    defaultApiBaseUrl = configured;
             }
         }
+        var savedApiBaseUrl = Preferences.Default.Get(ApiEndpoint.PreferenceKey, defaultApiBaseUrl);
+        builder.Services.AddSingleton(new ApiEndpoint(savedApiBaseUrl));
 
         builder.Services.AddTransient<AuthTokenHandler>();
 
-        // The authenticated client (bearer token attached by AuthTokenHandler) used for
-        // all data calls once signed in.
-        builder.Services.AddHttpClient("OpenTrackApi", client =>
+        // The authenticated client (bearer token attached by AuthTokenHandler) used for all data
+        // calls once signed in. BaseAddress is read from ApiEndpoint on each client creation.
+        builder.Services.AddHttpClient("OpenTrackApi", (sp, client) =>
             {
-                client.BaseAddress = new Uri(apiBaseUrl);
+                client.BaseAddress = new Uri(sp.GetRequiredService<ApiEndpoint>().BaseUrl);
             })
             .AddHttpMessageHandler<AuthTokenHandler>();
 
         // A plain (unauthenticated) client that DesktopAuthState uses to perform login itself.
-        builder.Services.AddHttpClient("OpenTrackApiAnon", client =>
+        builder.Services.AddHttpClient("OpenTrackApiAnon", (sp, client) =>
             {
-                client.BaseAddress = new Uri(apiBaseUrl);
+                client.BaseAddress = new Uri(sp.GetRequiredService<ApiEndpoint>().BaseUrl);
             });
 
-        // Session state (holds the bearer/refresh tokens), driven by the login page.
+        // Session state (holds the bearer/refresh tokens), driven by the login page. It creates its
+        // anon client per login attempt so it always uses the currently configured server address.
         builder.Services.AddSingleton(sp =>
-            new DesktopAuthState(sp.GetRequiredService<IHttpClientFactory>().CreateClient("OpenTrackApiAnon")));
+            new DesktopAuthState(sp.GetRequiredService<IHttpClientFactory>()));
 
         // Bridge the bearer-token session into Blazor's authorization system so the shared
         // OpenTrack.UI pages' [Authorize] and <AuthorizeView> work unchanged.

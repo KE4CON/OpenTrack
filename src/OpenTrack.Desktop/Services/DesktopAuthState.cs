@@ -19,7 +19,7 @@ namespace OpenTrack.Desktop.Services;
 /// calls /api/auth/me to fetch the user's OpenTrack role, since the Identity login token
 /// is opaque and can't be decoded client-side. Tokens are in-memory only.
 /// </summary>
-public class DesktopAuthState(HttpClient http)
+public class DesktopAuthState(IHttpClientFactory httpFactory)
 {
     public string? AccessToken { get; private set; }
     public string? RefreshToken { get; private set; }
@@ -35,6 +35,9 @@ public class DesktopAuthState(HttpClient http)
 
     public async Task<string?> LoginAsync(string email, string password, CancellationToken ct = default)
     {
+        // Create the anonymous client per attempt so it always uses the CURRENT server address
+        // (the user may have just changed it on the Settings page before signing in).
+        var http = httpFactory.CreateClient("OpenTrackApiAnon");
         try
         {
             var resp = await http.PostAsJsonAsync("/api/auth/login", new { email, password }, ct);

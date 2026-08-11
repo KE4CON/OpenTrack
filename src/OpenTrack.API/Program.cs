@@ -78,7 +78,13 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-// app.UseHttpsRedirection(); // Disabled: OpenTrack.API is accessed over plain HTTP on the LAN
+// HTTPS is a deployment choice. Default OFF: OpenTrack is designed to run on a trusted LAN
+// (e.g. the Beelink) over plain HTTP, and forcing a redirect with no HTTPS endpoint would break
+// access. Set OpenTrack:RequireHttps=true (config/env) when the server is reachable beyond the
+// trusted network so that login passwords and bearer tokens are never sent in the clear. When
+// enabled, also point the desktop client's ApiBaseUrl at the https:// address.
+if (app.Configuration.GetValue<bool>("OpenTrack:RequireHttps"))
+    app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
