@@ -1,0 +1,15 @@
+{
+  "name": "OpenTrack — Bug & Issue Tracker",
+  "short_name": "OpenTrack",
+  "description": "Self-hosted bug and issue tracker. Track problems across your projects, run bug-hunt checklists, and more.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#0d6efd",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
