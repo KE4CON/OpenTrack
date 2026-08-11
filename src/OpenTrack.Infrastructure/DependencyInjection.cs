@@ -83,7 +83,7 @@ public static class DependencyInjection
                 options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
             })
             .AddEntityFrameworkStores<AppDbContext>()
-            .AddSignInManager()
+            .AddSignInManager<Identity.ActiveUserSignInManager>()
             .AddDefaultTokenProviders();
 
         return services;

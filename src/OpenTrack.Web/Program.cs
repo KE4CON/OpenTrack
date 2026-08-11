@@ -73,6 +73,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
+    await OpenTrackSeeder.EnsureBootstrapAdminAsync(scope.ServiceProvider, app.Configuration);
 }
 
 // Configure the HTTP request pipeline.
