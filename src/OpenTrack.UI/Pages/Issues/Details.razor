@@ -167,24 +167,24 @@ else
     }
 
     <h2 class="h5">Description</h2>
-    <p style="white-space: pre-wrap">@issue.Description</p>
+    <div class="ot-markdown">@((MarkupString)SafeMarkdown.ToHtml(issue.Description))</div>
 
     @if (!string.IsNullOrWhiteSpace(issue.StepsToReproduce))
     {
         <h2 class="h5">Steps to Reproduce</h2>
-        <p style="white-space: pre-wrap">@issue.StepsToReproduce</p>
+        <div class="ot-markdown">@((MarkupString)SafeMarkdown.ToHtml(issue.StepsToReproduce))</div>
     }
 
     @if (!string.IsNullOrWhiteSpace(issue.ExpectedBehavior))
     {
         <h2 class="h5">Expected Behavior</h2>
-        <p style="white-space: pre-wrap">@issue.ExpectedBehavior</p>
+        <div class="ot-markdown">@((MarkupString)SafeMarkdown.ToHtml(issue.ExpectedBehavior))</div>
     }
 
     @if (!string.IsNullOrWhiteSpace(issue.ActualBehavior))
     {
         <h2 class="h5">Actual Behavior</h2>
-        <p style="white-space: pre-wrap">@issue.ActualBehavior</p>
+        <div class="ot-markdown">@((MarkupString)SafeMarkdown.ToHtml(issue.ActualBehavior))</div>
     }
 
     <h2 class="h5 mt-4">Attachments</h2>
@@ -258,7 +258,7 @@ else
                     @note.AuthorName &mdash; @note.CreatedAt.ToString("g")
                     @if (note.IsPrivate) { <span class="badge text-bg-warning ms-1">Private</span> }
                 </div>
-                <div style="white-space: pre-wrap">@note.Text</div>
+                <div class="ot-markdown">@((MarkupString)SafeMarkdown.ToHtml(note.Text))</div>
             </div>
         }
     }

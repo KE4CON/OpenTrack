@@ -58,3 +58,17 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+/* Rendered Markdown (issue descriptions, notes). Safe HTML only — see SafeMarkdown. */
+.ot-markdown > :last-child { margin-bottom: 0; }
+.ot-markdown pre {
+    background: rgba(0,0,0,.05);
+    padding: .6rem .8rem;
+    border-radius: .375rem;
+    overflow-x: auto;
+}
+.ot-markdown code {
+    background: rgba(0,0,0,.06);
+    padding: .1rem .3rem;
+    border-radius: .25rem;
+}
+.ot-markdown pre code { background: none; padding: 0; }
