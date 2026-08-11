@@ -150,8 +150,19 @@ GPU/NPU acceleration** for speed. Of the two, memory matters most.
 **What actually helps speed:**
 
 - **Apple Silicon (Mac mini M-series)** — its unified memory doubles as fast GPU
-  memory and Ollama uses it out of the box. The easiest strong option; a 16–24 GB
-  M-series Mac mini runs a 7–8B model quickly and sips power as an always-on box.
+  memory and Ollama uses it out of the box, so even a small Mac mini feels snappy
+  where a CPU-only box merely works. The easiest strong option, and a quiet,
+  low-power always-on box. **Which one:**
+    - **New: a current M4 Mac mini** — fastest and most efficient, and its base
+      model now includes 16 GB. ~$599 (16 GB) or ~$799 (24 GB, the comfortable
+      pick). The pricier M4 **Pro** has much higher memory bandwidth (faster
+      generation) but is overkill for occasional triage/summaries.
+    - **Budget: a used/refurbished M1 (2020) or M2 (2023) mini with 16 GB** — both
+      run a 7–8B model well.
+    - **Avoid any Intel Mac mini** (2018 and earlier): no Apple Silicon, so none of
+      the unified-memory/Metal advantage — it's just a CPU x86 box.
+    - Buy enough RAM up front: on Apple Silicon the memory is soldered and can't be
+      upgraded later, and RAM doubles as the model's working memory.
 - **An NVIDIA GPU** (even a modest one) — CUDA acceleration that Ollama/llama.cpp
   love. Fastest, but pricier and more setup.
 - **A CPU-only mini PC** (e.g. an Intel/AMD box like a Beelink) — runs local
