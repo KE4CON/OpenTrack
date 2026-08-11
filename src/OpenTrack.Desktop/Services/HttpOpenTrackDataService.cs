@@ -52,6 +52,7 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
     public async Task UpdateProjectAsync(int id, UpdateProjectInput input, CancellationToken ct = default)
     {
         var resp = await http.PutAsJsonAsync($"/api/projects/{id}", input, JsonOptions, ct);
+        await ThrowIfConflictAsync(resp, ct);
         resp.EnsureSuccessStatusCode();
     }
 
@@ -79,7 +80,18 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
     public async Task UpdateIssueAsync(int id, UpdateIssueInput input, CancellationToken ct = default)
     {
         var resp = await http.PutAsJsonAsync($"/api/issues/{id}", input, JsonOptions, ct);
+        await ThrowIfConflictAsync(resp, ct);
         resp.EnsureSuccessStatusCode();
+    }
+
+    private static async Task ThrowIfConflictAsync(HttpResponseMessage resp, CancellationToken ct)
+    {
+        if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            var msg = await resp.Content.ReadAsStringAsync(ct);
+            throw new OpenTrack.Core.ConcurrencyConflictException(
+                string.IsNullOrWhiteSpace(msg) ? OpenTrack.Core.ConcurrencyConflictException.DefaultMessage : msg);
+        }
     }
 
     public async Task AddIssueNoteAsync(int issueId, string text, bool isPrivate = false, CancellationToken ct = default)

@@ -18,6 +18,12 @@ else
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" />
         <input type="hidden" name="model.Loaded" value="true" />
+        <input type="hidden" name="model.RowVersion" value="@model.RowVersion" />
+
+        @if (error is not null)
+        {
+            <div class="alert alert-danger">@error</div>
+        }
 
         <div class="mb-3">
             <label class="form-label">Title</label>
@@ -162,6 +168,7 @@ else
     private IssueEditModel model { get; set; } = default!;
 
     private bool found;
+    private string? error;
     private string projectName = string.Empty;
     private IReadOnlyList<CategoryView> categories = [];
     private IReadOnlyList<ProjectMemberView> projectMembers = [];
@@ -198,6 +205,7 @@ else
             model.DueDate = issue.DueDate;
             model.AffectsVersionId = issue.AffectsVersionId;
             model.FixVersionId = issue.FixVersionId;
+            model.RowVersion = issue.RowVersion;
             model.Loaded = true;
         }
     }
@@ -206,13 +214,24 @@ else
     {
         // Change-tracking for IssueHistory (status/assignee) is handled inside the
         // data service, so the page just submits the new values.
-        await Data.UpdateIssueAsync(Id, new UpdateIssueInput(
-            model.Title, model.Description, model.StepsToReproduce,
-            model.ExpectedBehavior, model.ActualBehavior,
-            model.Status, model.Severity, model.Priority, model.Reproducibility,
-            model.Resolution, model.AssigneeId, model.CategoryId, model.IsSticky, model.IsPrivate, model.DueDate,
-            model.AffectsVersionId, model.FixVersionId));
-        Nav.NavigateTo($"issues/{Id}");
+        try
+        {
+            await Data.UpdateIssueAsync(Id, new UpdateIssueInput(
+                model.Title, model.Description, model.StepsToReproduce,
+                model.ExpectedBehavior, model.ActualBehavior,
+                model.Status, model.Severity, model.Priority, model.Reproducibility,
+                model.Resolution, model.AssigneeId, model.CategoryId, model.IsSticky, model.IsPrivate, model.DueDate,
+                model.AffectsVersionId, model.FixVersionId, model.RowVersion));
+            Nav.NavigateTo($"issues/{Id}");
+        }
+        catch (OpenTrack.Core.ConcurrencyConflictException ex)
+        {
+            error = ex.Message;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            error = ex.Message;
+        }
     }
 
     private sealed class IssueEditModel
@@ -240,5 +259,6 @@ else
         public DateTime? DueDate { get; set; }
         public int? AffectsVersionId { get; set; }
         public int? FixVersionId { get; set; }
+        public Guid RowVersion { get; set; }
     }
 }

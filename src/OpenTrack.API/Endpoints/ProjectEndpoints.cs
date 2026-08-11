@@ -51,7 +51,7 @@ public static class ProjectEndpoints
                 return Results.NotFound();
 
             return Results.Ok(new ProjectDetailDto(project.Id, project.Name, project.Description,
-                project.IsPublic, project.OwnerId, project.CreatedAt));
+                project.IsPublic, project.OwnerId, project.CreatedAt, project.RowVersion));
         });
 
         // Creating a project is not scoped to an existing project: require global Manager+.
@@ -68,7 +68,7 @@ public static class ProjectEndpoints
             await db.SaveChangesAsync(ct);
 
             return Results.Created($"/api/projects/{project.Id}",
-                new ProjectDetailDto(project.Id, project.Name, project.Description, project.IsPublic, project.OwnerId, project.CreatedAt));
+                new ProjectDetailDto(project.Id, project.Name, project.Description, project.IsPublic, project.OwnerId, project.CreatedAt, project.RowVersion));
         }).RequireAuthorization(AuthorizationPolicies.RequireManager);
 
         group.MapPut("/{id:int}", async (int id, UpdateProjectRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
@@ -81,10 +81,13 @@ public static class ProjectEndpoints
                 return Results.NotFound();
             if (!access.For(project.Id).CanEditProject()) return Results.Forbid();
 
+            db.Entry(project).Property(p => p.RowVersion).OriginalValue = req.RowVersion;
             project.Name = req.Name;
             project.Description = req.Description;
             project.IsPublic = req.IsPublic;
-            await db.SaveChangesAsync(ct);
+            project.RowVersion = Guid.NewGuid();
+            try { await db.SaveChangesAsync(ct); }
+            catch (DbUpdateConcurrencyException) { return Results.Conflict(OpenTrack.Core.ConcurrencyConflictException.DefaultMessage); }
             return Results.NoContent();
         });
 

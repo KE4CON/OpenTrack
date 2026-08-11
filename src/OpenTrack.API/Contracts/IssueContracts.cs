@@ -28,6 +28,7 @@ public record IssueDetailDto(
     DateTime CreatedAt, DateTime UpdatedAt, DateTime? DueDate,
     int? AffectsVersionId, string? AffectsVersionName,
     int? FixVersionId, string? FixVersionName,
+    Guid RowVersion,
     IReadOnlyList<IssueNoteDto> Notes);
 
 public record IssueNoteDto(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
@@ -46,6 +47,6 @@ public record UpdateIssueRequest(
     IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
     IssueReproducibility Reproducibility, IssueResolution Resolution,
     int? AssigneeId, int? CategoryId, bool IsSticky, bool IsPrivate, DateTime? DueDate,
-    int? AffectsVersionId, int? FixVersionId);
+    int? AffectsVersionId, int? FixVersionId, Guid RowVersion);
 
 public record AddIssueNoteRequest(string Text, bool IsPrivate = false);

@@ -17,6 +17,12 @@ else
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" />
         <input type="hidden" name="model.Loaded" value="true" />
+        <input type="hidden" name="model.RowVersion" value="@model.RowVersion" />
+
+        @if (error is not null)
+        {
+            <div class="alert alert-danger">@error</div>
+        }
 
         <div class="mb-3">
             <label class="form-label">Name</label>
@@ -49,6 +55,7 @@ else
     private ProjectEditModel model { get; set; } = new();
 
     private bool found;
+    private string? error;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -64,14 +71,26 @@ else
             model.Name = project.Name;
             model.Description = project.Description;
             model.IsPublic = project.IsPublic;
+            model.RowVersion = project.RowVersion;
             model.Loaded = true;
         }
     }
 
     private async Task HandleSubmit()
     {
-        await Data.UpdateProjectAsync(Id, new UpdateProjectInput(model.Name, model.Description, model.IsPublic));
-        Nav.NavigateTo($"projects/{Id}");
+        try
+        {
+            await Data.UpdateProjectAsync(Id, new UpdateProjectInput(model.Name, model.Description, model.IsPublic, model.RowVersion));
+            Nav.NavigateTo($"projects/{Id}");
+        }
+        catch (OpenTrack.Core.ConcurrencyConflictException ex)
+        {
+            error = ex.Message;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            error = ex.Message;
+        }
     }
 
     private sealed class ProjectEditModel
@@ -87,5 +106,6 @@ else
         public string? Description { get; set; }
 
         public bool IsPublic { get; set; }
+        public Guid RowVersion { get; set; }
     }
 }

@@ -55,6 +55,11 @@ public class Issue
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DueDate { get; set; }
 
+    /// <summary>Optimistic-concurrency token. Reassigned on every update; if the value a client
+    /// loaded no longer matches on save, EF raises DbUpdateConcurrencyException instead of silently
+    /// overwriting a concurrent edit (lost update).</summary>
+    public Guid RowVersion { get; set; } = Guid.NewGuid();
+
     // Navigation
     public ICollection<IssueNote> Notes { get; set; } = [];
     public ICollection<IssueAttachment> Attachments { get; set; } = [];

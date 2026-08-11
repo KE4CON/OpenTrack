@@ -15,11 +15,11 @@ namespace OpenTrack.API.Contracts;
 
 public record ProjectDto(int Id, string Name, string? Description, bool IsPublic, int OwnerId, int OpenIssueCount);
 
-public record ProjectDetailDto(int Id, string Name, string? Description, bool IsPublic, int OwnerId, DateTime CreatedAt);
+public record ProjectDetailDto(int Id, string Name, string? Description, bool IsPublic, int OwnerId, DateTime CreatedAt, Guid RowVersion);
 
 public record CreateProjectRequest(string Name, string? Description, bool IsPublic);
 
-public record UpdateProjectRequest(string Name, string? Description, bool IsPublic);
+public record UpdateProjectRequest(string Name, string? Description, bool IsPublic, Guid RowVersion);
 
 public record CategoryDto(int Id, string Name);
 
