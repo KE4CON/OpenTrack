@@ -28,13 +28,24 @@ namespace OpenTrack.Infrastructure.Bulk;
 /// </summary>
 public static class BulkOperations
 {
+    /// <summary>Upper bound on how many issues one bulk call will touch, so a crafted API request
+    /// can't submit an unbounded id list. Any ids beyond this are counted as skipped.</summary>
+    public const int MaxBatch = 1000;
+
     public static async Task<BulkResult> ApplyAsync(
         AppDbContext db, AccessSnapshot access, IReadOnlyCollection<int> issueIds, BulkAction action,
         NotificationDispatch notifications, CancellationToken ct = default)
     {
         int updated = 0, skipped = 0;
 
-        foreach (var id in issueIds.Distinct())
+        var distinct = issueIds.Distinct().ToList();
+        if (distinct.Count > MaxBatch)
+        {
+            skipped += distinct.Count - MaxBatch;
+            distinct = distinct.Take(MaxBatch).ToList();
+        }
+
+        foreach (var id in distinct)
         {
             var issue = await db.Issues.Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == id, ct);
             if (issue is null) { skipped++; continue; }
