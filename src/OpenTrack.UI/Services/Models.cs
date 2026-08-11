@@ -52,6 +52,9 @@ public record ChecklistItemView(
     int Id, int ProjectId, string Title, string? Details, string? Area,
     ChecklistItemStatus Status, string? Notes, int? LinkedIssueId, int DisplayOrder);
 
+/// <summary>A possible-duplicate match for a proposed issue title.</summary>
+public record SimilarIssueView(int Id, int ProjectId, string ProjectName, string Title, IssueStatus Status);
+
 public record IssueNoteView(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
 
 public record IssueHistoryEntry(int Id, string UserName, string FieldChanged, string? OldValue, string? NewValue, DateTime ChangedAt);

@@ -55,6 +55,10 @@ public class Issue
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DueDate { get; set; }
 
+    /// <summary>The MantisBT issue id this was imported from, if any. Lets a re-import of the same
+    /// export skip issues already brought in, instead of duplicating them.</summary>
+    public int? ImportedMantisId { get; set; }
+
     /// <summary>Optimistic-concurrency token. Reassigned on every update; if the value a client
     /// loaded no longer matches on save, EF raises DbUpdateConcurrencyException instead of silently
     /// overwriting a concurrent edit (lost update).</summary>

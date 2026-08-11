@@ -57,6 +57,14 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task<IReadOnlyList<SimilarIssueView>> FindSimilarIssuesAsync(int? projectId, string title, int? excludeIssueId = null, CancellationToken ct = default)
+    {
+        var q = new List<string> { $"title={Uri.EscapeDataString(title ?? "")}" };
+        if (projectId is { } p) q.Add($"projectId={p}");
+        if (excludeIssueId is { } e) q.Add($"exclude={e}");
+        return await http.GetFromJsonAsync<List<SimilarIssueView>>("/api/issues/similar?" + string.Join("&", q), JsonOptions, ct) ?? [];
+    }
+
     public async Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default)
     {
         var q = new List<string>();

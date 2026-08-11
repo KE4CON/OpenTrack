@@ -57,6 +57,14 @@ public static class IssueEndpoints
             return Results.Ok(rows);
         });
 
+        group.MapGet("/issues/similar", async (int? projectId, string? title, int? exclude, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var rows = await SimilarIssueQuery.FindAsync(db, access, projectId, title, exclude, ct: ct);
+            return Results.Ok(rows.Select(r => new { r.Id, r.ProjectId, r.ProjectName, r.Title, r.Status }));
+        });
+
         group.MapGet("/issues/{id:int}", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);

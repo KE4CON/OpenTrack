@@ -46,6 +46,10 @@ public interface IOpenTrackDataService
     Task<PreferencesView> GetPreferencesAsync(CancellationToken ct = default);
     Task SavePreferencesAsync(int? defaultProjectId, IssueSort? defaultSort, CancellationToken ct = default);
 
+    // Possible-duplicate suggestions for a proposed title (ACL-filtered). Optionally scoped to a project
+    // and excluding a specific issue (when checking from an existing one).
+    Task<IReadOnlyList<SimilarIssueView>> FindSimilarIssuesAsync(int? projectId, string title, int? excludeIssueId = null, CancellationToken ct = default);
+
     // Issues
     Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default);
     Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default);

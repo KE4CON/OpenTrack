@@ -126,6 +126,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
             e.HasIndex(i => i.Status);
             e.HasIndex(i => i.ProjectId);
+            e.HasIndex(i => new { i.ProjectId, i.ImportedMantisId }); // dedup lookup on re-import
         });
 
         // ---- IssueNote ----

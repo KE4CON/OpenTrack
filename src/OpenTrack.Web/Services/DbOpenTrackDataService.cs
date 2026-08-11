@@ -181,6 +181,14 @@ public class DbOpenTrackDataService(
         await UserPreferenceOperations.SaveAsync(db, access.UserId, defaultProjectId, defaultSort, ct);
     }
 
+    public async Task<IReadOnlyList<SimilarIssueView>> FindSimilarIssuesAsync(int? projectId, string title, int? excludeIssueId = null, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var rows = await SimilarIssueQuery.FindAsync(db, access, projectId, title, excludeIssueId, ct: ct);
+        return rows.Select(r => new SimilarIssueView(r.Id, r.ProjectId, r.ProjectName, r.Title, r.Status)).ToList();
+    }
+
     public async Task<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default)
     {
         var (db, access) = await OpenAsync(ct);
