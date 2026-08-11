@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OpenTrack.Infrastructure.Data;
 
@@ -10,9 +11,11 @@ using OpenTrack.Infrastructure.Data;
 namespace OpenTrack.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260811140739_AddTags")]
+    partial class AddTags
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
@@ -293,24 +296,6 @@ namespace OpenTrack.Infrastructure.Migrations
                     b.ToTable("IssueHistories");
                 });
 
-            modelBuilder.Entity("OpenTrack.Core.Entities.IssueMonitor", b =>
-                {
-                    b.Property<int>("IssueId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("IssueId", "UserId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("IssueMonitors");
-                });
-
             modelBuilder.Entity("OpenTrack.Core.Entities.IssueNote", b =>
                 {
                     b.Property<int>("Id")
@@ -388,37 +373,6 @@ namespace OpenTrack.Infrastructure.Migrations
                     b.HasIndex("TagId");
 
                     b.ToTable("IssueTags");
-                });
-
-            modelBuilder.Entity("OpenTrack.Core.Entities.Notification", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("IssueId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Text")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IssueId");
-
-                    b.HasIndex("UserId", "IsRead");
-
-                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("OpenTrack.Core.Entities.Project", b =>
@@ -780,25 +734,6 @@ namespace OpenTrack.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("OpenTrack.Core.Entities.IssueMonitor", b =>
-                {
-                    b.HasOne("OpenTrack.Core.Entities.Issue", "Issue")
-                        .WithMany()
-                        .HasForeignKey("IssueId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("OpenTrack.Core.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Issue");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("OpenTrack.Core.Entities.IssueNote", b =>
                 {
                     b.HasOne("OpenTrack.Core.Entities.User", "Author")
@@ -848,7 +783,7 @@ namespace OpenTrack.Infrastructure.Migrations
             modelBuilder.Entity("OpenTrack.Core.Entities.IssueTag", b =>
                 {
                     b.HasOne("OpenTrack.Core.Entities.Issue", "Issue")
-                        .WithMany("IssueTags")
+                        .WithMany()
                         .HasForeignKey("IssueId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -862,25 +797,6 @@ namespace OpenTrack.Infrastructure.Migrations
                     b.Navigation("Issue");
 
                     b.Navigation("Tag");
-                });
-
-            modelBuilder.Entity("OpenTrack.Core.Entities.Notification", b =>
-                {
-                    b.HasOne("OpenTrack.Core.Entities.Issue", "Issue")
-                        .WithMany()
-                        .HasForeignKey("IssueId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("OpenTrack.Core.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Issue");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("OpenTrack.Core.Entities.Project", b =>
@@ -934,8 +850,6 @@ namespace OpenTrack.Infrastructure.Migrations
                     b.Navigation("Attachments");
 
                     b.Navigation("History");
-
-                    b.Navigation("IssueTags");
 
                     b.Navigation("Notes");
                 });

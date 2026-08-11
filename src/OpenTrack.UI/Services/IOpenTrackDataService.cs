@@ -9,6 +9,7 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
+using OpenTrack.Core.Bulk;
 using OpenTrack.Core.Enums;
 using OpenTrack.Core.Querying;
 
@@ -71,4 +72,26 @@ public interface IOpenTrackDataService
     Task<IReadOnlyList<IssueRelationshipView>> GetIssueRelationshipsAsync(int issueId, CancellationToken ct = default);
     Task<string?> AddIssueRelationshipAsync(int sourceIssueId, int targetIssueId, IssueRelationshipType type, CancellationToken ct = default);
     Task RemoveIssueRelationshipAsync(int relationshipId, CancellationToken ct = default);
+
+    // Tags. All tag names (for the filter/autocomplete) are visible to any signed-in user; an issue's
+    // tags require view access to that issue, and adding/removing a tag requires edit access.
+    Task<IReadOnlyList<TagView>> GetAllTagsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<TagView>> GetIssueTagsAsync(int issueId, CancellationToken ct = default);
+    Task<string?> AddIssueTagAsync(int issueId, string tagName, CancellationToken ct = default);
+    Task RemoveIssueTagAsync(int issueId, int tagId, CancellationToken ct = default);
+
+    // Monitoring: a user can monitor (subscribe to) any issue they can view; monitors are notified of
+    // changes alongside the reporter and assignee.
+    Task<bool> IsMonitoringIssueAsync(int issueId, CancellationToken ct = default);
+    Task SetIssueMonitorAsync(int issueId, bool monitor, CancellationToken ct = default);
+
+    // Notifications (the signed-in user's own).
+    Task<int> GetUnreadNotificationCountAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<NotificationView>> GetNotificationsAsync(bool unreadOnly = false, CancellationToken ct = default);
+    Task MarkNotificationReadAsync(int notificationId, CancellationToken ct = default);
+    Task MarkAllNotificationsReadAsync(CancellationToken ct = default);
+
+    // Bulk actions: applied only to the issues the caller may act on; others are skipped (the result
+    // reports how many were updated vs skipped).
+    Task<BulkResult> BulkUpdateIssuesAsync(IReadOnlyCollection<int> issueIds, BulkAction action, CancellationToken ct = default);
 }

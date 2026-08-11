@@ -17,8 +17,12 @@ using OpenTrack.Core.Enums;
 using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Core.Bulk;
+using OpenTrack.Infrastructure.Bulk;
+using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
 using OpenTrack.Infrastructure.Relationships;
+using OpenTrack.Infrastructure.Tags;
 using OpenTrack.API;
 
 namespace OpenTrack.API.Endpoints;
@@ -32,14 +36,14 @@ public static class IssueEndpoints
         // Global list, optionally filtered by project. Row-level filtered to what the caller may see.
         group.MapGet("/issues", async (
             int? projectId, IssueStatus? status, IssueSeverity? severity, IssuePriority? priority,
-            int? assigneeId, int? categoryId, string? text, IssueSort? sort,
+            int? assigneeId, int? categoryId, string? text, int? tagId, IssueSort? sort,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
 
             var filter = new IssueFilter(projectId, status, severity, priority, assigneeId, categoryId, text,
-                sort ?? IssueSort.UpdatedDesc);
+                tagId, sort ?? IssueSort.UpdatedDesc);
 
             var rows = await db.Issues.AsNoTracking()
                 .WhereVisibleTo(access)   // ACL first — filtering can only narrow the visible set
@@ -119,7 +123,7 @@ public static class IssueEndpoints
             return Results.Created($"/api/issues/{issue.Id}", issue.Id);
         });
 
-        group.MapPut("/issues/{id:int}", async (int id, UpdateIssueRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        group.MapPut("/issues/{id:int}", async (int id, UpdateIssueRequest req, ClaimsPrincipal user, AppDbContext db, NotificationDispatch notifications, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
@@ -179,10 +183,16 @@ public static class IssueEndpoints
 
             try { await db.SaveChangesAsync(ct); }
             catch (DbUpdateConcurrencyException) { return Results.Conflict(OpenTrack.Core.ConcurrencyConflictException.DefaultMessage); }
+
+            var parts = new List<string>();
+            if (issue.Status != originalStatus) parts.Add($"status set to {issue.Status}");
+            if (issue.AssigneeId != originalAssigneeId) parts.Add(issue.AssigneeId is null ? "unassigned" : "reassigned");
+            if (parts.Count > 0) // only notify on a meaningful change, not every edit — avoids mail floods
+                await notifications.NotifyIssueChangedAsync(db, access.UserId, id, string.Join("; ", parts), ct);
             return Results.NoContent();
         });
 
-        group.MapPost("/issues/{id:int}/notes", async (int id, AddIssueNoteRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        group.MapPost("/issues/{id:int}/notes", async (int id, AddIssueNoteRequest req, ClaimsPrincipal user, AppDbContext db, NotificationDispatch notifications, CancellationToken ct) =>
         {
             var access = await ApiAccess.LoadAsync(user, db, ct);
             if (access is null) return Results.Unauthorized();
@@ -201,6 +211,7 @@ public static class IssueEndpoints
             var note = new IssueNote { IssueId = id, AuthorId = access.UserId, Text = req.Text, IsPrivate = effectivePrivate, CreatedAt = DateTime.UtcNow };
             db.IssueNotes.Add(note);
             await db.SaveChangesAsync(ct);
+            await notifications.NotifyIssueChangedAsync(db, access.UserId, id, "a note was added", ct);
             return Results.Created($"/api/issues/{id}", note.Id);
         });
 
@@ -231,6 +242,87 @@ public static class IssueEndpoints
             try
             {
                 var removed = await RelationshipOperations.RemoveAsync(db, access, relationshipId, ct);
+                return removed ? Results.NoContent() : Results.NotFound();
+            }
+            catch (UnauthorizedAccessException) { return Results.Forbid(); }
+        });
+
+        group.MapPost("/issues/bulk", async (BulkUpdateRequest req, ClaimsPrincipal user, AppDbContext db, NotificationDispatch notifications, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var action = new BulkAction(req.Type, req.Status, req.AssigneeId, req.Tag);
+            var result = await BulkOperations.ApplyAsync(db, access, req.IssueIds, action, notifications, ct);
+            return Results.Ok(result);
+        });
+
+        group.MapGet("/issues/{id:int}/monitor", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var monitoring = await db.IssueMonitors.AsNoTracking().AnyAsync(m => m.IssueId == id && m.UserId == access.UserId, ct);
+            return Results.Ok(new { monitoring });
+        });
+
+        group.MapPost("/issues/{id:int}/monitor", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var issue = await db.Issues.AsNoTracking().Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == id, ct);
+            if (issue is null || !access.For(issue.ProjectId).CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+                return Results.NotFound(); // can only monitor an issue you can see
+            if (!await db.IssueMonitors.AnyAsync(m => m.IssueId == id && m.UserId == access.UserId, ct))
+            {
+                db.IssueMonitors.Add(new IssueMonitor { IssueId = id, UserId = access.UserId, CreatedAt = DateTime.UtcNow });
+                await db.SaveChangesAsync(ct);
+            }
+            return Results.NoContent();
+        });
+
+        group.MapDelete("/issues/{id:int}/monitor", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var existing = await db.IssueMonitors.FirstOrDefaultAsync(m => m.IssueId == id && m.UserId == access.UserId, ct);
+            if (existing is not null) { db.IssueMonitors.Remove(existing); await db.SaveChangesAsync(ct); }
+            return Results.NoContent();
+        });
+
+        group.MapGet("/tags", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var items = await TagOperations.ListAllAsync(db, ct);
+            return Results.Ok(items.Select(t => new TagDto(t.Id, t.Name)));
+        });
+
+        group.MapGet("/issues/{id:int}/tags", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var items = await TagOperations.ListForIssueAsync(db, access, id, ct);
+            return Results.Ok(items.Select(t => new TagDto(t.Id, t.Name)));
+        });
+
+        group.MapPost("/issues/{id:int}/tags", async (int id, AddTagRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            try
+            {
+                var error = await TagOperations.AddAsync(db, access, id, req.Name, ct);
+                return error is null ? Results.NoContent() : Results.BadRequest(error);
+            }
+            catch (UnauthorizedAccessException) { return Results.Forbid(); }
+        });
+
+        group.MapDelete("/issues/{id:int}/tags/{tagId:int}", async (int id, int tagId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            try
+            {
+                var removed = await TagOperations.RemoveAsync(db, access, id, tagId, ct);
                 return removed ? Results.NoContent() : Results.NotFound();
             }
             catch (UnauthorizedAccessException) { return Results.Forbid(); }

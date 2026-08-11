@@ -41,6 +41,14 @@ public record IssueRelationshipDto(int Id, int OtherIssueId, string OtherIssueTi
 
 public record AddRelationshipRequest(int TargetIssueId, IssueRelationshipType Type);
 
+public record TagDto(int Id, string Name);
+
+public record AddTagRequest(string Name);
+
+public record NotificationDto(int Id, int IssueId, string Text, bool IsRead, DateTime CreatedAt);
+
+public record BulkUpdateRequest(int[] IssueIds, OpenTrack.Core.Bulk.BulkActionType Type, IssueStatus? Status, int? AssigneeId, string? Tag);
+
 public record CreateIssueRequest(
     string Title, string Description, string? StepsToReproduce,
     string? ExpectedBehavior, string? ActualBehavior, int? CategoryId,

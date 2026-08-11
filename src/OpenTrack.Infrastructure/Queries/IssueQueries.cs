@@ -30,6 +30,7 @@ public static class IssueQueries
         if (filter.Priority is { } priority) query = query.Where(i => i.Priority == priority);
         if (filter.AssigneeId is { } assigneeId) query = query.Where(i => i.AssigneeId == assigneeId);
         if (filter.CategoryId is { } categoryId) query = query.Where(i => i.CategoryId == categoryId);
+        if (filter.TagId is { } tagId) query = query.Where(i => i.IssueTags.Any(it => it.TagId == tagId));
 
         if (!string.IsNullOrWhiteSpace(filter.Text))
         {

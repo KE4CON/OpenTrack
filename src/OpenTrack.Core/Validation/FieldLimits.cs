@@ -24,4 +24,5 @@ public static class FieldLimits
     public const int Description = 2000;
     public const int CategoryName = 100;
     public const int VersionName = 50;
+    public const int TagName = 50;
 }

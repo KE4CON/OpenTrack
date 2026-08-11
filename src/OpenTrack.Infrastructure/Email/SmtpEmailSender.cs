@@ -30,7 +30,7 @@ namespace OpenTrack.Infrastructure.Email;
 ///   OpenTrack:Email:{ Enabled, Host, Port, User, Password, From, UseSsl }
 /// </summary>
 public sealed class SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEmailSender> logger)
-    : IEmailSender<User>
+    : IEmailSender<User>, IEmailService
 {
     private readonly string? _host = configuration["OpenTrack:Email:Host"];
     private readonly int _port = int.TryParse(configuration["OpenTrack:Email:Port"], out var p) ? p : 587;
@@ -56,12 +56,12 @@ public sealed class SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEm
         SendAsync(email, "Reset your OpenTrack password",
             $"Your password reset code is: <strong>{resetCode}</strong>");
 
-    private async Task SendAsync(string toEmail, string subject, string htmlBody)
+    public async Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct = default)
     {
         if (!IsConfigured)
         {
             // No mail server configured. Log that we skipped it at Information, but keep the BODY —
-            // which carries the confirmation/reset link (a bearer token) — at Debug only, so sensitive
+            // which may carry a confirmation/reset link (a bearer token) — at Debug only, so sensitive
             // links don't land in normal logs. (The register page also shows the link on screen.)
             logger.LogInformation("Email not configured; not sending to {Email} (subject: {Subject}).", toEmail, subject);
             logger.LogDebug("Unsent email body for {Email}: {Body}", toEmail, htmlBody);
@@ -76,11 +76,11 @@ public sealed class SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEm
                 EnableSsl = _useSsl,
                 Credentials = string.IsNullOrEmpty(_user) ? null : new NetworkCredential(_user, _password),
             };
-            await client.SendMailAsync(message);
+            await client.SendMailAsync(message, ct);
         }
         catch (Exception ex)
         {
-            // Don't let a mail failure break registration/reset; surface it in the log.
+            // Don't let a mail failure break registration/reset/notification; surface it in the log.
             logger.LogError(ex, "Failed to send email to {Email} (subject: {Subject}).", toEmail, subject);
         }
     }

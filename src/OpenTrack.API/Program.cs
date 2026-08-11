@@ -50,8 +50,8 @@ builder.Services.AddIdentityApiEndpoints<User>(options =>
     .AddEntityFrameworkStores<AppDbContext>();
 
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, RoleClaimsPrincipalFactory>();
-// Transactional email (confirmation / password reset) for the Identity API endpoints.
-builder.Services.AddSingleton<IEmailSender<User>, OpenTrack.Infrastructure.Email.SmtpEmailSender>();
+// Transactional email (Identity confirmation/reset + notifications) and the notification dispatcher.
+builder.Services.AddOpenTrackEmailAndNotifications();
 // Enforce User.IsActive at the sign-in/refresh gate (replaces the default SignInManager<User>
 // that AddIdentityApiEndpoints registered). Closes audit finding M7 on the bearer/API path too.
 builder.Services.AddScoped<SignInManager<User>, ActiveUserSignInManager>();
@@ -108,5 +108,6 @@ app.MapProjectEndpoints();
 app.MapProjectSettingsEndpoints();
 app.MapIssueEndpoints();
 app.MapAttachmentEndpoints();
+app.MapNotificationEndpoints();
 
 app.Run();

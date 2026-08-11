@@ -40,6 +40,10 @@ public record AttachmentView(int Id, string FileName, long FileSize, string Cont
 /// label plus the OTHER issue (already filtered to ones the viewer may see).</summary>
 public record IssueRelationshipView(int Id, int OtherIssueId, string OtherIssueTitle, string OtherProjectName, string Label);
 
+public record TagView(int Id, string Name);
+
+public record NotificationView(int Id, int IssueId, string Text, bool IsRead, DateTime CreatedAt);
+
 public record IssueDetail(
     int Id, int ProjectId, string ProjectName, string Title, string Description,
     string? StepsToReproduce, string? ExpectedBehavior, string? ActualBehavior,

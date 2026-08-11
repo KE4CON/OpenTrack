@@ -20,6 +20,17 @@ namespace OpenTrack.Infrastructure;
 
 public static class DependencyInjection
 {
+    /// <summary>Registers the SMTP email sender (as both the Identity IEmailSender and the general
+    /// IEmailService, sharing one instance) plus the notification dispatcher. Used by both hosts.</summary>
+    public static IServiceCollection AddOpenTrackEmailAndNotifications(this IServiceCollection services)
+    {
+        services.AddSingleton<Email.SmtpEmailSender>();
+        services.AddSingleton<IEmailSender<User>>(sp => sp.GetRequiredService<Email.SmtpEmailSender>());
+        services.AddSingleton<Email.IEmailService>(sp => sp.GetRequiredService<Email.SmtpEmailSender>());
+        services.AddScoped<Notifications.NotificationDispatch>();
+        return services;
+    }
+
     /// <summary>
     /// Registers OpenTrack's data layer (EF Core + SQLite).
     /// Registers an <see cref="IDbContextFactory{TContext}"/> so the Blazor Server data service can

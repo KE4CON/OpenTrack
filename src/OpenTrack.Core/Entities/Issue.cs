@@ -64,4 +64,5 @@ public class Issue
     public ICollection<IssueNote> Notes { get; set; } = [];
     public ICollection<IssueAttachment> Attachments { get; set; } = [];
     public ICollection<IssueHistory> History { get; set; } = [];
+    public ICollection<IssueTag> IssueTags { get; set; } = [];
 }
