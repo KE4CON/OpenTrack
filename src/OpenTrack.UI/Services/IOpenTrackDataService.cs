@@ -135,6 +135,12 @@ public interface IOpenTrackDataService
     Task<string?> UpdateCustomFieldAsync(int projectId, int fieldId, string name, string? enumOptions, bool required, int displayOrder, CancellationToken ct = default);
     Task DeleteCustomFieldAsync(int projectId, int fieldId, CancellationToken ct = default);
 
+    // Time logging on an issue. Viewing follows the issue's view ACL; logging needs edit access;
+    // deleting an entry is allowed to its author or an Updater+. Add returns null or a reason.
+    Task<IReadOnlyList<TimeLogView>> GetTimeLogsAsync(int issueId, CancellationToken ct = default);
+    Task<string?> AddTimeLogAsync(int issueId, int minutes, string? note, DateTime? workedOn, CancellationToken ct = default);
+    Task DeleteTimeLogAsync(int logId, CancellationToken ct = default);
+
     // Custom field values on an issue. Reading follows the issue's view ACL; setting a value (blank
     // clears it) requires edit access. Returns null on success or a reason on failure.
     Task<IReadOnlyList<CustomFieldValueView>> GetIssueCustomFieldsAsync(int issueId, CancellationToken ct = default);

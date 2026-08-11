@@ -36,4 +36,5 @@ public static class FieldLimits
     public const int WebhookUrl = 500;
     public const int IntakeName = 100;
     public const int IntakeEmail = 200;
+    public const int TimeLogNote = 500;
 }

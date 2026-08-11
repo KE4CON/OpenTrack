@@ -24,6 +24,7 @@ using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
 using OpenTrack.Infrastructure.Relationships;
 using OpenTrack.Infrastructure.Tags;
+using OpenTrack.Infrastructure.TimeLogs;
 using OpenTrack.API;
 
 namespace OpenTrack.API.Endpoints;
@@ -334,6 +335,38 @@ public static class IssueEndpoints
             try
             {
                 var removed = await TagOperations.RemoveAsync(db, access, id, tagId, ct);
+                return removed ? Results.NoContent() : Results.NotFound();
+            }
+            catch (UnauthorizedAccessException) { return Results.Forbid(); }
+        });
+
+        group.MapGet("/issues/{id:int}/time", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var items = await TimeLogOperations.ListForIssueAsync(db, access, id, ct);
+            return Results.Ok(items.Select(t => new { t.Id, t.Minutes, t.Note, t.WorkedOn, t.AuthorName, t.AuthorId }));
+        });
+
+        group.MapPost("/issues/{id:int}/time", async (int id, AddTimeLogRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            try
+            {
+                var error = await TimeLogOperations.AddAsync(db, access, id, req.Minutes, req.Note, req.WorkedOn, ct);
+                return error is null ? Results.NoContent() : Results.BadRequest(error);
+            }
+            catch (UnauthorizedAccessException) { return Results.Forbid(); }
+        });
+
+        group.MapDelete("/time/{logId:int}", async (int logId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            try
+            {
+                var removed = await TimeLogOperations.DeleteAsync(db, access, logId, ct);
                 return removed ? Results.NoContent() : Results.NotFound();
             }
             catch (UnauthorizedAccessException) { return Results.Forbid(); }

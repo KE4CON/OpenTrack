@@ -277,6 +277,28 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         return null;
     }
 
+    // ---- Time logging (server enforces the same ACL as the shared operations) ----
+
+    public async Task<IReadOnlyList<TimeLogView>> GetTimeLogsAsync(int issueId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<TimeLogView>>($"/api/issues/{issueId}/time", JsonOptions, ct) ?? [];
+
+    public async Task<string?> AddTimeLogAsync(int issueId, int minutes, string? note, DateTime? workedOn, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/issues/{issueId}/time", new { minutes, note, workedOn }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        ThrowIfForbidden(resp, "Logging time requires the Updater role on this project.");
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task DeleteTimeLogAsync(int logId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/time/{logId}", ct);
+        ThrowIfForbidden(resp, "You can only remove your own time entries.");
+        resp.EnsureSuccessStatusCode();
+    }
+
     // ---- Bug-hunt checklist (server enforces the same ACL as the shared operations) ----
 
     public async Task<IReadOnlyList<ChecklistItemView>> GetChecklistAsync(int projectId, CancellationToken ct = default) =>

@@ -26,6 +26,7 @@ using OpenTrack.Infrastructure.Dashboard;
 using OpenTrack.Infrastructure.Filters;
 using OpenTrack.Infrastructure.Preferences;
 using OpenTrack.Infrastructure.Reporting;
+using OpenTrack.Infrastructure.TimeLogs;
 using OpenTrack.Infrastructure.Webhooks;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Notifications;
@@ -786,6 +787,30 @@ public class DbOpenTrackDataService(
         var (db, access) = await OpenAsync(ct);
         await using var _ = db;
         return await CustomFieldOperations.SetValueAsync(db, access, issueId, fieldId, value, ct);
+    }
+
+    // ---- Time logging (ACL logic shared with the API via TimeLogOperations) ----
+
+    public async Task<IReadOnlyList<TimeLogView>> GetTimeLogsAsync(int issueId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var items = await TimeLogOperations.ListForIssueAsync(db, access, issueId, ct);
+        return items.Select(t => new TimeLogView(t.Id, t.Minutes, t.Note, t.WorkedOn, t.AuthorName, t.AuthorId)).ToList();
+    }
+
+    public async Task<string?> AddTimeLogAsync(int issueId, int minutes, string? note, DateTime? workedOn, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await TimeLogOperations.AddAsync(db, access, issueId, minutes, note, workedOn, ct);
+    }
+
+    public async Task DeleteTimeLogAsync(int logId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        await TimeLogOperations.DeleteAsync(db, access, logId, ct);
     }
 
     // ---- Bug-hunt checklist (ACL logic shared with the API via ChecklistOperations) ----

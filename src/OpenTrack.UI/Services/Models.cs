@@ -55,6 +55,9 @@ public record ChecklistItemView(
 /// <summary>A possible-duplicate match for a proposed issue title.</summary>
 public record SimilarIssueView(int Id, int ProjectId, string ProjectName, string Title, IssueStatus Status);
 
+/// <summary>One time/work-log entry on an issue.</summary>
+public record TimeLogView(int Id, int Minutes, string? Note, DateTime WorkedOn, string AuthorName, int AuthorId);
+
 public record IssueNoteView(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
 
 public record IssueHistoryEntry(int Id, string UserName, string FieldChanged, string? OldValue, string? NewValue, DateTime ChangedAt);
