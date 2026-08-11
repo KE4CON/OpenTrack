@@ -37,6 +37,10 @@ public record IssueHistoryDto(int Id, string UserName, string FieldChanged, stri
 
 public record AttachmentDto(int Id, string FileName, long FileSize, string ContentType, string UploadedByName, DateTime UploadedAt);
 
+public record IssueRelationshipDto(int Id, int OtherIssueId, string OtherIssueTitle, string OtherProjectName, string Label);
+
+public record AddRelationshipRequest(int TargetIssueId, IssueRelationshipType Type);
+
 public record CreateIssueRequest(
     string Title, string Description, string? StepsToReproduce,
     string? ExpectedBehavior, string? ActualBehavior, int? CategoryId,

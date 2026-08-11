@@ -36,6 +36,10 @@ public record IssueHistoryEntry(int Id, string UserName, string FieldChanged, st
 
 public record AttachmentView(int Id, string FileName, long FileSize, string ContentType, string UploadedByName, DateTime UploadedAt);
 
+/// <summary>A relationship as seen from the issue currently being viewed: the resolved reciprocal
+/// label plus the OTHER issue (already filtered to ones the viewer may see).</summary>
+public record IssueRelationshipView(int Id, int OtherIssueId, string OtherIssueTitle, string OtherProjectName, string Label);
+
 public record IssueDetail(
     int Id, int ProjectId, string ProjectName, string Title, string Description,
     string? StepsToReproduce, string? ExpectedBehavior, string? ActualBehavior,

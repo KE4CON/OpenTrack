@@ -113,6 +113,24 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
     public async Task<IReadOnlyList<IssueHistoryEntry>> GetIssueHistoryAsync(int issueId, CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<IssueHistoryEntry>>($"/api/issues/{issueId}/history", JsonOptions, ct) ?? [];
 
+    public async Task<IReadOnlyList<IssueRelationshipView>> GetIssueRelationshipsAsync(int issueId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<IssueRelationshipView>>($"/api/issues/{issueId}/relationships", JsonOptions, ct) ?? [];
+
+    public async Task<string?> AddIssueRelationshipAsync(int sourceIssueId, int targetIssueId, OpenTrack.Core.Enums.IssueRelationshipType type, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/issues/{sourceIssueId}/relationships", new { targetIssueId, type }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task RemoveIssueRelationshipAsync(int relationshipId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/relationships/{relationshipId}", ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
     public async Task<IReadOnlyList<AttachmentView>> GetIssueAttachmentsAsync(int issueId, CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<AttachmentView>>($"/api/issues/{issueId}/attachments", JsonOptions, ct) ?? [];
 

@@ -18,6 +18,7 @@ using OpenTrack.Core.Querying;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Queries;
+using OpenTrack.Infrastructure.Relationships;
 using OpenTrack.API;
 
 namespace OpenTrack.API.Endpoints;
@@ -201,6 +202,30 @@ public static class IssueEndpoints
             db.IssueNotes.Add(note);
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/issues/{id}", note.Id);
+        });
+
+        group.MapGet("/issues/{id:int}/relationships", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var items = await RelationshipOperations.ListAsync(db, access, id, ct);
+            return Results.Ok(items.Select(i => new IssueRelationshipDto(i.Id, i.OtherIssueId, i.OtherIssueTitle, i.OtherProjectName, i.Label)));
+        });
+
+        group.MapPost("/issues/{id:int}/relationships", async (int id, AddRelationshipRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var error = await RelationshipOperations.AddAsync(db, access, id, req.TargetIssueId, req.Type, ct);
+            return error is null ? Results.NoContent() : Results.BadRequest(error);
+        });
+
+        group.MapDelete("/relationships/{relationshipId:int}", async (int relationshipId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var removed = await RelationshipOperations.RemoveAsync(db, access, relationshipId, ct);
+            return removed ? Results.NoContent() : Results.NotFound();
         });
 
         group.MapGet("/issues/{id:int}/history", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>

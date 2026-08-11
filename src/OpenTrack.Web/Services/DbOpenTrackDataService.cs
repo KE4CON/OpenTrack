@@ -20,6 +20,7 @@ using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Queries;
+using OpenTrack.Infrastructure.Relationships;
 using OpenTrack.UI.Services;
 
 namespace OpenTrack.Web.Services;
@@ -541,5 +542,29 @@ public class DbOpenTrackDataService(
         db.IssueAttachments.Remove(attachment);
         await db.SaveChangesAsync(ct);
         await attachmentStorage.DeleteAsync(storageKey, ct);
+    }
+
+    // ---- Relationships (ACL logic shared with the API via RelationshipOperations) ----
+
+    public async Task<IReadOnlyList<IssueRelationshipView>> GetIssueRelationshipsAsync(int issueId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var items = await RelationshipOperations.ListAsync(db, access, issueId, ct);
+        return items.Select(i => new IssueRelationshipView(i.Id, i.OtherIssueId, i.OtherIssueTitle, i.OtherProjectName, i.Label)).ToList();
+    }
+
+    public async Task<string?> AddIssueRelationshipAsync(int sourceIssueId, int targetIssueId, IssueRelationshipType type, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await RelationshipOperations.AddAsync(db, access, sourceIssueId, targetIssueId, type, ct);
+    }
+
+    public async Task RemoveIssueRelationshipAsync(int relationshipId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        await RelationshipOperations.RemoveAsync(db, access, relationshipId, ct);
     }
 }

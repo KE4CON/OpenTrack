@@ -171,5 +171,29 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 .HasForeignKey(a => a.UploadedById)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        // ---- IssueRelationship ----
+        b.Entity<IssueRelationship>(e =>
+        {
+            // Source cascades, Target restricts: two cascade FKs to the same Issue table would be
+            // "multiple cascade paths" on SQL Server, so only one cascades. (Issues aren't deleted
+            // through the UI today; a future delete-issue must clear inbound relationships first.)
+            e.HasOne(r => r.SourceIssue)
+                .WithMany()
+                .HasForeignKey(r => r.SourceIssueId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(r => r.TargetIssue)
+                .WithMany()
+                .HasForeignKey(r => r.TargetIssueId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.CreatedBy)
+                .WithMany()
+                .HasForeignKey(r => r.CreatedById)
+                .OnDelete(DeleteBehavior.Restrict);
+            // No duplicate identical relationships.
+            e.HasIndex(r => new { r.SourceIssueId, r.TargetIssueId, r.Type }).IsUnique();
+        });
     }
+
+    public DbSet<IssueRelationship> IssueRelationships => Set<IssueRelationship>();
 }
