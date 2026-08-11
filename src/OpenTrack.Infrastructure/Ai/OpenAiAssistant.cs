@@ -47,6 +47,14 @@ public sealed class OpenAiAssistant(HttpClient http, AiOptions options, ILogger<
         return raw is null ? null : ParseSearch(raw, projectNames);
     }
 
+    public async Task<string?> SummarizeIssueAsync(
+        string title, string? description, IReadOnlyList<string> notes, CancellationToken ct = default)
+    {
+        if (!IsEnabled) return null;
+        var raw = await PostAsync(BuildTextBody(AiSummary.BuildPrompt(title, description, notes)), ct);
+        return raw is null ? null : ExtractText(raw);
+    }
+
     private object BuildBody(string prompt, string toolName, string toolDesc, object schema) => new
     {
         model = options.Model,
@@ -57,6 +65,13 @@ public sealed class OpenAiAssistant(HttpClient http, AiOptions options, ILogger<
             new { type = "function", function = new { name = toolName, description = toolDesc, parameters = schema } },
         },
         tool_choice = new { type = "function", function = new { name = toolName } },
+    };
+
+    private object BuildTextBody(string prompt) => new
+    {
+        model = options.Model,
+        max_tokens = 700,
+        messages = new object[] { new { role = "user", content = prompt } },
     };
 
     private async Task<string?> PostAsync(object body, CancellationToken ct)
@@ -122,4 +137,23 @@ public sealed class OpenAiAssistant(HttpClient http, AiOptions options, ILogger<
 
     public static SearchCriteria? ParseSearch(string responseJson, IReadOnlyList<string> projectNames) =>
         ExtractToolInput(responseJson) is { } input ? AiSearch.FromInput(input, projectNames) : null;
+
+    /// <summary>Read the assistant message's plain text content of a (non-tool) Chat Completions response.</summary>
+    public static string? ExtractText(string responseJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(responseJson);
+            if (!doc.RootElement.TryGetProperty("choices", out var choices) ||
+                choices.ValueKind != JsonValueKind.Array || choices.GetArrayLength() == 0)
+                return null;
+            var content = choices[0].GetProperty("message").GetProperty("content");
+            var result = content.ValueKind == JsonValueKind.String ? content.GetString()?.Trim() : null;
+            return string.IsNullOrEmpty(result) ? null : result;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

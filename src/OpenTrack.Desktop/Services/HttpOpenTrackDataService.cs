@@ -140,6 +140,15 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         return d is null ? null : new AiSearchView(d.Status, d.Severity, d.Priority, d.Text, d.Stale, d.Sort, d.ProjectName);
     }
 
+    private sealed record AiSummaryDto(string? Summary);
+    public async Task<string?> SummarizeIssueAsync(int issueId, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/ai/summarize", new { issueId }, JsonOptions, ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        var d = await resp.Content.ReadFromJsonAsync<AiSummaryDto>(JsonOptions, ct);
+        return d?.Summary;
+    }
+
     public async Task<DashboardView> GetDashboardAsync(CancellationToken ct = default) =>
         await http.GetFromJsonAsync<DashboardView>("/api/dashboard", JsonOptions, ct)
             ?? new DashboardView(0, 0, 0, [], [], []);

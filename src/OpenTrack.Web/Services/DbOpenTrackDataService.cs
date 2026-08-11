@@ -272,6 +272,17 @@ public class DbOpenTrackDataService(
             : null;
     }
 
+    public async Task<string?> SummarizeIssueAsync(int issueId, CancellationToken ct = default)
+    {
+        if (!ai.IsEnabled) return null;
+        // Reuse the ACL-checked detail loader — returns null (and its notes are already visibility-filtered)
+        // if the caller can't see the issue, so the summary never includes anything they couldn't read.
+        var d = await GetIssueAsync(issueId, ct);
+        if (d is null) return null;
+        var notes = d.Notes.Select(n => $"{n.AuthorName}: {n.Text}").ToList();
+        return await ai.SummarizeIssueAsync(d.Title, d.Description, notes, ct);
+    }
+
     public async Task<ReportView> GetReportAsync(int? projectId, CancellationToken ct = default)
     {
         var (db, access) = await OpenAsync(ct);

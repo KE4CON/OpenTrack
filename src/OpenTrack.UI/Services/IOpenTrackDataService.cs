@@ -46,6 +46,8 @@ public interface IOpenTrackDataService
     // Turn a plain-English request into structured issue-list filter fields (project match limited to the
     // caller's visible projects). Null if AI is off/unavailable — the caller then leaves the search as-is.
     Task<AiSearchView?> InterpretIssueSearchAsync(string query, CancellationToken ct = default);
+    // Plain-language summary of an issue thread (only notes the caller may see). Null if AI is off/unavailable.
+    Task<string?> SummarizeIssueAsync(int issueId, CancellationToken ct = default);
 
     // Saved filters (the signed-in user's own). Saving with an existing name overwrites its query.
     Task<IReadOnlyList<SavedFilterView>> GetSavedFiltersAsync(CancellationToken ct = default);

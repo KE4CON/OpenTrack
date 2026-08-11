@@ -45,12 +45,27 @@ public sealed class AnthropicAiAssistant(HttpClient http, AiOptions options, ILo
         return raw is null ? null : ParseSearch(raw, projectNames);
     }
 
+    public async Task<string?> SummarizeIssueAsync(
+        string title, string? description, IReadOnlyList<string> notes, CancellationToken ct = default)
+    {
+        if (!IsEnabled) return null;
+        var raw = await PostAsync(BuildTextBody(AiSummary.BuildPrompt(title, description, notes)), ct);
+        return raw is null ? null : ExtractText(raw);
+    }
+
     private object BuildBody(string prompt, string toolName, string toolDesc, object schema) => new
     {
         model = options.Model,
         max_tokens = 512,
         tools = new object[] { new { name = toolName, description = toolDesc, input_schema = schema } },
         tool_choice = new { type = "tool", name = toolName },
+        messages = new object[] { new { role = "user", content = prompt } },
+    };
+
+    private object BuildTextBody(string prompt) => new
+    {
+        model = options.Model,
+        max_tokens = 700,
         messages = new object[] { new { role = "user", content = prompt } },
     };
 
@@ -104,4 +119,26 @@ public sealed class AnthropicAiAssistant(HttpClient http, AiOptions options, ILo
 
     public static SearchCriteria? ParseSearch(string responseJson, IReadOnlyList<string> projectNames) =>
         ExtractToolInput(responseJson) is { } input ? AiSearch.FromInput(input, projectNames) : null;
+
+    /// <summary>Concatenate the "text" content blocks of a (non-tool) Messages response.</summary>
+    public static string? ExtractText(string responseJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(responseJson);
+            if (!doc.RootElement.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array)
+                return null;
+            var sb = new System.Text.StringBuilder();
+            foreach (var block in content.EnumerateArray())
+                if (block.TryGetProperty("type", out var t) && t.GetString() == "text" &&
+                    block.TryGetProperty("text", out var txt) && txt.GetString() is { } s)
+                    sb.Append(s);
+            var result = sb.ToString().Trim();
+            return result.Length == 0 ? null : result;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

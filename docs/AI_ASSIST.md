@@ -101,6 +101,36 @@ machine. Nothing leaves your computer.
 
 *(LM Studio works the same way; it serves on `http://localhost:1234/v1`.)*
 
+### Run the local model on another machine (e.g. a Raspberry Pi) on your network
+
+The local engine does **not** have to run on the same computer as OpenTrack. If
+you have Ollama (or LM Studio) running on another box on your LAN — a Raspberry
+Pi, a NAS, a spare desktop — just point `BaseUrl` at **that machine's IP** instead
+of `localhost`:
+
+```
+OpenTrack:Ai:BaseUrl = http://192.168.1.50:11434/v1     (the Pi's LAN IP)
+```
+
+Two things to set up on the Pi so it's reachable from other machines:
+
+1. **Let Ollama listen on the network, not just itself.** By default it only
+   answers `localhost`. Start it with the environment variable
+   `OLLAMA_HOST=0.0.0.0:11434` so it accepts LAN connections. (On Raspberry Pi OS
+   / Linux you can add `Environment=OLLAMA_HOST=0.0.0.0:11434` to the ollama
+   systemd service, then `sudo systemctl restart ollama`.)
+2. **Allow port 11434** through the Pi's firewall if it has one enabled.
+
+Then OpenTrack (on your Beelink, laptop, wherever) calls the Pi across the LAN and
+the issue text still never leaves your own network.
+
+**Reality check on speed:** a Raspberry Pi has no GPU, so it can only run small
+models and will be **noticeably slower** than a cloud call — fine for the
+occasional triage/summary, less so for rapid-fire use. A Pi 5 with 8 GB can run a
+small model (roughly 1–3 billion parameters, e.g. `llama3.2:3b`); stick to small
+models and keep expectations modest. This is why the OpenAI provider is given a
+longer (60-second) timeout than the cloud path.
+
 ---
 
 ## Turn it on
@@ -130,7 +160,9 @@ OpenTrack:Ai:Model    = gpt-4o-mini
 ```
 OpenTrack:Ai:Enabled  = true
 OpenTrack:Ai:Provider = openai
-OpenTrack:Ai:BaseUrl  = http://localhost:11434/v1
+OpenTrack:Ai:BaseUrl  = http://localhost:11434/v1     (or a LAN IP like
+                                                       http://192.168.1.50:11434/v1
+                                                       for a Pi/NAS/other machine)
 OpenTrack:Ai:Model    = llama3.1
                                               (no ApiKey needed for local)
 ```

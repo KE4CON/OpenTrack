@@ -166,6 +166,28 @@ public class AiTriageTests
         Assert.Null(OpenAiAssistant.ParseSearch("""{ "choices": [] }""", []));
     }
 
+    // --- Thread summarization (plain-text response, no tool-use) ---
+
+    [Fact]
+    public void Anthropic_ExtractText_ConcatenatesTextBlocks()
+    {
+        var json = """
+        { "content": [ { "type": "text", "text": "The login button " }, { "type": "text", "text": "crashes on iOS." } ] }
+        """;
+        Assert.Equal("The login button crashes on iOS.", AnthropicAiAssistant.ExtractText(json));
+        Assert.Null(AnthropicAiAssistant.ExtractText("""{ "content": [] }"""));
+        Assert.Null(AnthropicAiAssistant.ExtractText("not json"));
+    }
+
+    [Fact]
+    public void OpenAi_ExtractText_ReadsMessageContent()
+    {
+        var json = """{ "choices": [ { "message": { "role": "assistant", "content": "Crashes on startup." } } ] }""";
+        Assert.Equal("Crashes on startup.", OpenAiAssistant.ExtractText(json));
+        Assert.Null(OpenAiAssistant.ExtractText("""{ "choices": [] }"""));
+        Assert.Null(OpenAiAssistant.ExtractText("not json"));
+    }
+
     [Fact]
     public void HasCredentials_LocalOpenAiEngineNeedsNoKey_ButCloudDoes()
     {

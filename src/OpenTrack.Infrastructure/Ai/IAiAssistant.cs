@@ -39,4 +39,9 @@ public interface IAiAssistant
     /// see. Returns null if AI is off or the call fails (the caller then leaves the search unchanged).</summary>
     Task<SearchCriteria?> InterpretSearchAsync(
         string query, IReadOnlyList<string> projectNames, CancellationToken ct = default);
+
+    /// <summary>Summarize an issue thread (title + description + already-ACL-filtered comments) into a few
+    /// plain-language sentences. Returns null if AI is off or the call fails.</summary>
+    Task<string?> SummarizeIssueAsync(
+        string title, string? description, IReadOnlyList<string> notes, CancellationToken ct = default);
 }

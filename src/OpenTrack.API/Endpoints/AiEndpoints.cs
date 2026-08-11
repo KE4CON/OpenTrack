@@ -23,6 +23,7 @@ public static class AiEndpoints
 {
     public record TriageRequest(int ProjectId, string Title, string? Description);
     public record SearchRequest(string Query);
+    public record SummarizeRequest(int IssueId);
 
     public static void MapAiEndpoints(this IEndpointRouteBuilder app)
     {
@@ -56,6 +57,30 @@ public static class AiEndpoints
             return c is { } sc
                 ? Results.Ok(new { sc.Status, sc.Severity, sc.Priority, sc.Text, sc.Stale, sc.Sort, ProjectName = sc.ProjectName })
                 : Results.Ok((object?)null);
+        });
+
+        group.MapPost("/summarize", async (SummarizeRequest req, ClaimsPrincipal user, AppDbContext db, IAiAssistant ai, CancellationToken ct) =>
+        {
+            if (!ai.IsEnabled) return Results.Ok(new { Summary = (string?)null });
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+
+            var issue = await db.Issues.AsNoTracking()
+                .Include(i => i.Project)
+                .Include(i => i.Notes).ThenInclude(n => n.Author)
+                .FirstOrDefaultAsync(i => i.Id == req.IssueId, ct);
+            if (issue is null) return Results.NotFound();
+            var ctx = access.For(issue.ProjectId);
+            if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+                return Results.NotFound(); // don't leak existence of a private issue
+
+            // Only feed the model notes this caller may see.
+            var notes = issue.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
+                .OrderBy(n => n.CreatedAt)
+                .Select(n => $"{n.Author.UserName ?? "unknown"}: {n.Text}")
+                .ToList();
+            var summary = await ai.SummarizeIssueAsync(issue.Title, issue.Description, notes, ct);
+            return Results.Ok(new { Summary = summary });
         });
     }
 }
