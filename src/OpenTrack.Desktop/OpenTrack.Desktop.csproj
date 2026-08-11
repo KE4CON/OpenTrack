@@ -4,12 +4,17 @@
              from the default MAUI template were removed: this is a desktop bug-tracker
              client, not a mobile app. Linux desktop is intentionally NOT a MAUI target
              (Microsoft doesn't support it) — Linux users run the fully cross-platform
-             web app instead. The Windows head must be built on Windows; the Mac Catalyst
-             head must be built on a Mac. -->
-        <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+             web app instead.
 
-        <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-        
+             Each OS builds only its own head, so a Windows machine doesn't need the
+             maccatalyst workload and a Mac doesn't need the Windows one: build the Windows
+             head on Windows, the Mac Catalyst head on a Mac. -->
+        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">net10.0-windows10.0.19041.0</TargetFrameworks>
+        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">net10.0-maccatalyst</TargetFrameworks>
+        <!-- Directory.Build.props sets a bare TargetFramework=net10.0 when none is defined; clear it
+             so this multi-targeting project uses TargetFrameworks (above) rather than colliding. -->
+        <TargetFramework></TargetFramework>
+
 
 
         <OutputType>Exe</OutputType>

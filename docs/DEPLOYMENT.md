@@ -1,0 +1,47 @@
+# OpenTrack — Deployment Notes
+
+Plain-language notes for running OpenTrack. This is not a full install guide; it covers the two
+settings people ask about first.
+
+## HTTPS vs. plain HTTP (the `RequireHttps` setting)
+
+OpenTrack is designed to run on a **trusted local network** (for example, a small server like the
+Beelink box on your home/office LAN). On that kind of network it runs over plain **HTTP** by default.
+
+**What this means for security:** with plain HTTP, the traffic between a browser (or the desktop app)
+and the server is **not encrypted**. Anyone who can watch that network could read login passwords and
+the sign-in tokens. On a trusted LAN that only you control, that is usually an acceptable trade-off.
+If the server is ever reachable from **outside** that trusted network, you should turn HTTPS on.
+
+**How to turn HTTPS on:** set `OpenTrack:RequireHttps` to `true`. You can do this in
+`appsettings.json`:
+
+```json
+"OpenTrack": {
+  "RequireHttps": true
+}
+```
+
+…or with an environment variable (no rebuild needed): `OpenTrack__RequireHttps=true`.
+
+When it is `true`, the web app and API require HTTPS (they redirect HTTP to HTTPS and send HSTS).
+You must also have an HTTPS endpoint configured (a certificate) — that part is standard ASP.NET Core
+hosting and is outside this document. And point the **desktop app's server address** at the
+`https://…` URL (see below).
+
+When it is `false` (the default), the app runs over plain HTTP and does **not** redirect — which is
+what you want on a plain-HTTP LAN, because forcing a redirect with no HTTPS endpoint would just break
+access.
+
+## Desktop app: which server it talks to
+
+The desktop app needs to know the server's address (the OpenTrack.API URL). You can change it two
+ways:
+
+1. **In the app:** open **Settings** from the menu, type the server address (for example
+   `http://192.168.1.50:5003`, or `https://…` if HTTPS is on), and save. The change takes effect on
+   your next action — no reinstall needed.
+2. **Before first run:** edit `wwwroot/appsettings.json` in the app folder and set `ApiBaseUrl`. This
+   is the default the app starts with until you change it in Settings.
+
+The in-app Settings value is remembered on that machine and overrides the bundled default.
