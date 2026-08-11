@@ -82,15 +82,76 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
-    public async Task AddIssueNoteAsync(int issueId, string text, CancellationToken ct = default)
+    public async Task AddIssueNoteAsync(int issueId, string text, bool isPrivate = false, CancellationToken ct = default)
     {
-        var resp = await http.PostAsJsonAsync($"/api/issues/{issueId}/notes", new { text }, JsonOptions, ct);
+        var resp = await http.PostAsJsonAsync($"/api/issues/{issueId}/notes", new { text, isPrivate }, JsonOptions, ct);
         resp.EnsureSuccessStatusCode();
     }
+
+    public async Task<IReadOnlyList<IssueHistoryEntry>> GetIssueHistoryAsync(int issueId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<IssueHistoryEntry>>($"/api/issues/{issueId}/history", JsonOptions, ct) ?? [];
 
     public async Task<IReadOnlyList<CategoryView>> GetProjectCategoriesAsync(int projectId, CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<CategoryView>>($"/api/projects/{projectId}/categories", JsonOptions, ct) ?? [];
 
     public async Task<IReadOnlyList<ProjectMemberView>> GetProjectMembersAsync(int projectId, CancellationToken ct = default) =>
         await http.GetFromJsonAsync<List<ProjectMemberView>>($"/api/projects/{projectId}/members", JsonOptions, ct) ?? [];
+
+    public async Task<IReadOnlyList<ProjectMemberDetail>> GetProjectMemberDetailsAsync(int projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<ProjectMemberDetail>>($"/api/projects/{projectId}/member-details", JsonOptions, ct) ?? [];
+
+    public async Task<string?> AddProjectMemberAsync(int projectId, AddProjectMemberInput input, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/projects/{projectId}/members", input, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            return await resp.Content.ReadAsStringAsync(ct);
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task SetProjectMemberRoleAsync(int projectId, int userId, OpenTrack.Core.Enums.UserRole role, CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/members/{userId}", new SetMemberRoleInput(role), JsonOptions, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task RemoveProjectMemberAsync(int projectId, int userId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/projects/{projectId}/members/{userId}", ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task<string?> CreateCategoryAsync(int projectId, string name, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/projects/{projectId}/categories", new { name }, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task DeleteCategoryAsync(int projectId, int categoryId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/projects/{projectId}/categories/{categoryId}", ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task<IReadOnlyList<ProjectVersionView>> GetProjectVersionsAsync(int projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<ProjectVersionView>>($"/api/projects/{projectId}/versions", JsonOptions, ct) ?? [];
+
+    public async Task<string?> CreateVersionAsync(int projectId, CreateVersionInput input, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/projects/{projectId}/versions", input, JsonOptions, ct);
+        if (resp.IsSuccessStatusCode) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return await resp.Content.ReadAsStringAsync(ct);
+        resp.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task DeleteVersionAsync(int projectId, int versionId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync($"/api/projects/{projectId}/versions/{versionId}", ct);
+        resp.EnsureSuccessStatusCode();
+    }
 }

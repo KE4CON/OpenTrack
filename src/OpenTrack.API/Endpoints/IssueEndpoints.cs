@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenTrack.API.Contracts;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
+using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.API;
 
@@ -25,126 +26,195 @@ public static class IssueEndpoints
     {
         var group = app.MapGroup("/api").RequireAuthorization().WithTags("Issues");
 
-        // Global list, optionally filtered by project.
-        group.MapGet("/issues", async (int? projectId, AppDbContext db) =>
+        // Global list, optionally filtered by project. Row-level filtered to what the caller may see.
+        group.MapGet("/issues", async (int? projectId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            var query = db.Issues.AsNoTracking().AsQueryable();
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+
+            var query = db.Issues.AsNoTracking().WhereVisibleTo(access);
             if (projectId is not null) query = query.Where(i => i.ProjectId == projectId);
 
-            return await query
-                .OrderByDescending(i => i.UpdatedAt)
+            var rows = await query
+                .OrderByDescending(i => i.IsSticky).ThenByDescending(i => i.UpdatedAt)
                 .Select(i => new IssueDto(
                     i.Id, i.ProjectId, i.Project.Name, i.Title, i.Status, i.Severity, i.Priority,
                     i.Reporter.UserName ?? "unknown", i.Assignee != null ? i.Assignee.UserName : null, i.UpdatedAt))
-                .ToListAsync();
+                .ToListAsync(ct);
+            return Results.Ok(rows);
         });
 
-        group.MapGet("/issues/{id:int}", async (int id, AppDbContext db) =>
+        group.MapGet("/issues/{id:int}", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+
             var issue = await db.Issues.AsNoTracking()
                 .Include(i => i.Project).Include(i => i.Category)
                 .Include(i => i.Reporter).Include(i => i.Assignee)
+                .Include(i => i.AffectsVersion).Include(i => i.FixVersion)
                 .Include(i => i.Notes).ThenInclude(n => n.Author)
-                .FirstOrDefaultAsync(i => i.Id == id);
+                .FirstOrDefaultAsync(i => i.Id == id, ct);
             if (issue is null) return Results.NotFound();
+
+            var ctx = access.For(issue.ProjectId);
+            if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+                return Results.NotFound(); // don't leak existence of a private issue
 
             return Results.Ok(new IssueDetailDto(
                 issue.Id, issue.ProjectId, issue.Project.Name, issue.Title, issue.Description,
-                issue.StepsToReproduce, issue.Status, issue.Severity, issue.Priority,
+                issue.StepsToReproduce, issue.ExpectedBehavior, issue.ActualBehavior,
+                issue.Status, issue.Severity, issue.Priority,
                 issue.Reproducibility, issue.Resolution,
                 issue.ReporterId, issue.Reporter.UserName ?? "unknown",
                 issue.AssigneeId, issue.Assignee?.UserName,
                 issue.CategoryId, issue.Category?.Name, issue.IsSticky, issue.IsPrivate,
-                issue.CreatedAt, issue.UpdatedAt,
-                issue.Notes.OrderBy(n => n.CreatedAt)
-                    .Select(n => new IssueNoteDto(n.Id, n.Author.UserName ?? "unknown", n.Text, n.CreatedAt))
+                issue.CreatedAt, issue.UpdatedAt, issue.DueDate,
+                issue.AffectsVersionId, issue.AffectsVersion?.Name, issue.FixVersionId, issue.FixVersion?.Name,
+                issue.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
+                    .OrderBy(n => n.CreatedAt)
+                    .Select(n => new IssueNoteDto(n.Id, n.Author.UserName ?? "unknown", n.Text, n.IsPrivate, n.CreatedAt))
                     .ToList()));
         });
 
-        group.MapPost("/projects/{projectId:int}/issues", async (int projectId, CreateIssueRequest req, ClaimsPrincipal user, AppDbContext db) =>
+        group.MapPost("/projects/{projectId:int}/issues", async (int projectId, CreateIssueRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            var userId = ProjectEndpoints.GetUserId(user);
-            if (userId is null) return Results.Unauthorized();
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
 
-            var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId);
+            var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);
             if (project is null) return Results.NotFound();
+
+            var ctx = access.For(projectId);
+            if (!ctx.CanViewProject(project.IsPublic)) return Results.NotFound();
+            if (!ctx.CanCreateIssue(project.IsPublic)) return Results.Forbid();
 
             var issue = new Issue
             {
                 ProjectId = projectId, Title = req.Title, Description = req.Description,
-                StepsToReproduce = req.StepsToReproduce, CategoryId = req.CategoryId,
+                StepsToReproduce = req.StepsToReproduce, ExpectedBehavior = req.ExpectedBehavior,
+                ActualBehavior = req.ActualBehavior, CategoryId = req.CategoryId,
                 Severity = req.Severity, Priority = req.Priority, Reproducibility = req.Reproducibility,
-                ReporterId = userId.Value, Status = IssueStatus.New,
+                DueDate = req.DueDate, AffectsVersionId = req.AffectsVersionId, FixVersionId = req.FixVersionId,
+                ReporterId = access.UserId, Status = IssueStatus.New,
                 CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
             };
-            db.Issues.Add(issue);
-            await db.SaveChangesAsync();
-
-            db.IssueHistories.Add(new IssueHistory
+            // History via navigation => single atomic SaveChanges.
+            issue.History.Add(new IssueHistory
             {
-                IssueId = issue.Id, UserId = userId.Value, FieldChanged = "Status",
+                UserId = access.UserId, FieldChanged = "Status",
                 OldValue = null, NewValue = IssueStatus.New.ToString(), ChangedAt = DateTime.UtcNow
             });
-            await db.SaveChangesAsync();
+            db.Issues.Add(issue);
+            await db.SaveChangesAsync(ct);
 
             return Results.Created($"/api/issues/{issue.Id}", issue.Id);
         });
 
-        group.MapPut("/issues/{id:int}", async (int id, UpdateIssueRequest req, ClaimsPrincipal user, AppDbContext db) =>
+        group.MapPut("/issues/{id:int}", async (int id, UpdateIssueRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            var issue = await db.Issues.FirstOrDefaultAsync(i => i.Id == id);
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+
+            var issue = await db.Issues.Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == id, ct);
             if (issue is null) return Results.NotFound();
 
-            var userId = ProjectEndpoints.GetUserId(user) ?? 0;
+            var ctx = access.For(issue.ProjectId);
+            if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+                return Results.NotFound();
+            if (!ctx.CanEditIssue()) return Results.Forbid();
+
             var originalStatus = issue.Status;
             var originalAssigneeId = issue.AssigneeId;
 
             issue.Title = req.Title;
             issue.Description = req.Description;
+            issue.StepsToReproduce = req.StepsToReproduce;
+            issue.ExpectedBehavior = req.ExpectedBehavior;
+            issue.ActualBehavior = req.ActualBehavior;
             issue.Status = req.Status;
             issue.Severity = req.Severity;
             issue.Priority = req.Priority;
+            issue.Reproducibility = req.Reproducibility;
             issue.Resolution = req.Resolution;
-            issue.AssigneeId = req.AssigneeId;
             issue.CategoryId = req.CategoryId;
-            issue.IsSticky = req.IsSticky;
-            issue.IsPrivate = req.IsPrivate;
+            issue.DueDate = req.DueDate;
+            issue.AffectsVersionId = req.AffectsVersionId;
+            issue.FixVersionId = req.FixVersionId;
+
+            // Privileged fields: ignore (keep existing) unless the caller is authorized, so a crafted
+            // request body cannot escalate past what the UI exposes for the caller's role.
+            if (ctx.CanAssignIssue() && await IsAssignableAsync(db, issue.ProjectId, req.AssigneeId, ct))
+                issue.AssigneeId = req.AssigneeId;
+            if (ctx.CanSetIssuePrivacy())
+                issue.IsPrivate = req.IsPrivate;
+            if (ctx.CanSetIssueSticky())
+                issue.IsSticky = req.IsSticky;
+
             issue.UpdatedAt = DateTime.UtcNow;
 
             if (issue.Status != originalStatus)
-            {
-                db.IssueHistories.Add(new IssueHistory
+                issue.History.Add(new IssueHistory
                 {
-                    IssueId = issue.Id, UserId = userId, FieldChanged = "Status",
+                    UserId = access.UserId, FieldChanged = "Status",
                     OldValue = originalStatus.ToString(), NewValue = issue.Status.ToString(), ChangedAt = DateTime.UtcNow
                 });
-            }
             if (issue.AssigneeId != originalAssigneeId)
-            {
-                db.IssueHistories.Add(new IssueHistory
+                issue.History.Add(new IssueHistory
                 {
-                    IssueId = issue.Id, UserId = userId, FieldChanged = "Assignee",
+                    UserId = access.UserId, FieldChanged = "Assignee",
                     OldValue = originalAssigneeId?.ToString(), NewValue = issue.AssigneeId?.ToString(), ChangedAt = DateTime.UtcNow
                 });
-            }
 
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(ct);
             return Results.NoContent();
-        }).RequireAuthorization(AuthorizationPolicies.RequireUpdater);
+        });
 
-        group.MapPost("/issues/{id:int}/notes", async (int id, AddIssueNoteRequest req, ClaimsPrincipal user, AppDbContext db) =>
+        group.MapPost("/issues/{id:int}/notes", async (int id, AddIssueNoteRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            var userId = ProjectEndpoints.GetUserId(user);
-            if (userId is null) return Results.Unauthorized();
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
             if (string.IsNullOrWhiteSpace(req.Text)) return Results.BadRequest("Note text is required.");
 
-            var issueExists = await db.Issues.AnyAsync(i => i.Id == id);
-            if (!issueExists) return Results.NotFound();
+            var issue = await db.Issues.AsNoTracking().Include(i => i.Project)
+                .FirstOrDefaultAsync(i => i.Id == id, ct);
+            if (issue is null) return Results.NotFound();
 
-            var note = new IssueNote { IssueId = id, AuthorId = userId.Value, Text = req.Text, CreatedAt = DateTime.UtcNow };
+            var ctx = access.For(issue.ProjectId);
+            if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+                return Results.NotFound();
+            if (!ctx.CanAddNote()) return Results.Forbid();
+            var effectivePrivate = req.IsPrivate && ctx.CanAddPrivateNote();
+
+            var note = new IssueNote { IssueId = id, AuthorId = access.UserId, Text = req.Text, IsPrivate = effectivePrivate, CreatedAt = DateTime.UtcNow };
             db.IssueNotes.Add(note);
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(ct);
             return Results.Created($"/api/issues/{id}", note.Id);
         });
+
+        group.MapGet("/issues/{id:int}/history", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+            var issue = await db.Issues.AsNoTracking().Include(i => i.Project)
+                .FirstOrDefaultAsync(i => i.Id == id, ct);
+            if (issue is null) return Results.NotFound();
+            var ctx = access.For(issue.ProjectId);
+            if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+                return Results.NotFound();
+
+            var rows = await db.IssueHistories.AsNoTracking()
+                .Where(h => h.IssueId == id).OrderByDescending(h => h.ChangedAt)
+                .Select(h => new IssueHistoryDto(h.Id, h.User.UserName ?? "unknown", h.FieldChanged, h.OldValue, h.NewValue, h.ChangedAt))
+                .ToListAsync(ct);
+            return Results.Ok(rows);
+        });
+    }
+
+    private static async Task<bool> IsAssignableAsync(AppDbContext db, int projectId, int? assigneeId, CancellationToken ct)
+    {
+        if (assigneeId is null) return true;
+        return await db.ProjectMemberships.AsNoTracking()
+            .AnyAsync(m => m.ProjectId == projectId && m.UserId == assigneeId, ct);
     }
 }

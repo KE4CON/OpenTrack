@@ -9,8 +9,11 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using OpenTrack.Core.Enums;
+using OpenTrack.Infrastructure.Authorization;
+using OpenTrack.Infrastructure.Data;
 
 namespace OpenTrack.API;
 
@@ -21,6 +24,17 @@ public static class AuthorizationPolicies
     public const string RequireDeveloper = "RequireDeveloper";
     public const string RequireManager = "RequireManager";
     public const string RequireAdministrator = "RequireAdministrator";
+}
+
+/// <summary>Loads the caller's per-project access snapshot for endpoint authorization,
+/// using the exact same rules as the web/EF path.</summary>
+public static class ApiAccess
+{
+    public static async Task<AccessSnapshot?> LoadAsync(ClaimsPrincipal user, AppDbContext db, CancellationToken ct = default)
+    {
+        var identity = user.GetAccessIdentity();
+        return identity is null ? null : await AccessSnapshot.LoadAsync(db, identity.Value, ct);
+    }
 }
 
 /// <summary>Shared role-threshold check used by the API's authorization policies.</summary>

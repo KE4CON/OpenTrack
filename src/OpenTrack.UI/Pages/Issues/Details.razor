@@ -34,6 +34,16 @@ else
         <div class="col-md-3"><strong>Category:</strong> @(issue.CategoryName ?? "—")</div>
         <div class="col-md-3"><strong>Updated:</strong> @issue.UpdatedAt.ToString("g")</div>
     </div>
+    <div class="row mb-3">
+        <div class="col-md-3"><strong>Resolution:</strong> @issue.Resolution</div>
+        <div class="col-md-3"><strong>Due:</strong> @(issue.DueDate is { } d ? d.ToString("d") : "—")</div>
+        <div class="col-md-3"><strong>Affects:</strong> @(issue.AffectsVersionName ?? "—")</div>
+        <div class="col-md-3"><strong>Fixed in:</strong> @(issue.FixVersionName ?? "—")</div>
+    </div>
+    @if (issue.IsPrivate)
+    {
+        <p><span class="badge text-bg-warning">Private issue</span></p>
+    }
 
     <h2 class="h5">Description</h2>
     <p style="white-space: pre-wrap">@issue.Description</p>
@@ -42,6 +52,18 @@ else
     {
         <h2 class="h5">Steps to Reproduce</h2>
         <p style="white-space: pre-wrap">@issue.StepsToReproduce</p>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(issue.ExpectedBehavior))
+    {
+        <h2 class="h5">Expected Behavior</h2>
+        <p style="white-space: pre-wrap">@issue.ExpectedBehavior</p>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(issue.ActualBehavior))
+    {
+        <h2 class="h5">Actual Behavior</h2>
+        <p style="white-space: pre-wrap">@issue.ActualBehavior</p>
     }
 
     <h2 class="h5 mt-4">Notes</h2>
@@ -53,8 +75,11 @@ else
     {
         @foreach (var note in issue.Notes)
         {
-            <div class="border rounded p-2 mb-2">
-                <div class="small text-muted">@note.AuthorName &mdash; @note.CreatedAt.ToString("g")</div>
+            <div class="border rounded p-2 mb-2 @(note.IsPrivate ? "border-warning" : "")">
+                <div class="small text-muted">
+                    @note.AuthorName &mdash; @note.CreatedAt.ToString("g")
+                    @if (note.IsPrivate) { <span class="badge text-bg-warning ms-1">Private</span> }
+                </div>
                 <div style="white-space: pre-wrap">@note.Text</div>
             </div>
         }
@@ -62,36 +87,68 @@ else
 
     <EditForm Model="noteModel" OnValidSubmit="AddNote" FormName="addNote" class="col-md-8 mt-3">
         <InputTextArea @bind-Value="noteModel.Text" class="form-control mb-2" rows="2" placeholder="Add a note&hellip;" />
+        <div class="form-check mb-2">
+            <InputCheckbox @bind-Value="noteModel.IsPrivate" class="form-check-input" id="notePrivate" />
+            <label class="form-check-label" for="notePrivate">Private note (visible to developers and up)</label>
+        </div>
         <button type="submit" class="btn btn-secondary btn-sm">Add Note</button>
     </EditForm>
+
+    <h2 class="h5 mt-4">History</h2>
+    @if (history.Count == 0)
+    {
+        <p class="text-muted">No changes recorded yet.</p>
+    }
+    else
+    {
+        <table class="table table-sm">
+            <thead><tr><th>When</th><th>Who</th><th>Field</th><th>From</th><th>To</th></tr></thead>
+            <tbody>
+                @foreach (var h in history)
+                {
+                    <tr>
+                        <td>@h.ChangedAt.ToString("g")</td>
+                        <td>@h.UserName</td>
+                        <td>@h.FieldChanged</td>
+                        <td>@(h.OldValue ?? "—")</td>
+                        <td>@(h.NewValue ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
 }
 
 @code {
     [Parameter] public int Id { get; set; }
     private IssueDetail? issue;
+    private IReadOnlyList<IssueHistoryEntry> history = [];
     [SupplyParameterFromForm]
-    private NoteFormModel noteModel { get; set; } = new();
+    private NoteFormModel noteModel { get; set; } = default!;
 
     protected override async Task OnParametersSetAsync()
     {
+        noteModel ??= new();
         await LoadIssue();
     }
 
     private async Task LoadIssue()
     {
         issue = await Data.GetIssueAsync(Id);
+        history = issue is null ? [] : await Data.GetIssueHistoryAsync(Id);
     }
 
     private async Task AddNote()
     {
         if (string.IsNullOrWhiteSpace(noteModel.Text)) return;
-        await Data.AddIssueNoteAsync(Id, noteModel.Text);
-        noteModel.Text = string.Empty;
+        await Data.AddIssueNoteAsync(Id, noteModel.Text, noteModel.IsPrivate);
+        noteModel = new();
         await LoadIssue();
     }
 
     private sealed class NoteFormModel
     {
         public string Text { get; set; } = string.Empty;
+        public bool IsPrivate { get; set; }
     }
 }

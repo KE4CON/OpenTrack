@@ -1,0 +1,107 @@
+@page "/admin/users"
+@attribute [Authorize(Policy = "RequireAdministrator")]
+@using Microsoft.AspNetCore.Authorization
+@using OpenTrack.Core.Enums
+@using OpenTrack.Web.Services
+@inject AdminService Admin
+
+<PageTitle>Users — Administration</PageTitle>
+
+<h1 class="h3 mb-3">User Administration</h1>
+
+@if (message is not null)
+{
+    <div class="alert @(messageIsError ? "alert-danger" : "alert-success")">@message</div>
+}
+
+<table class="table align-middle">
+    <thead><tr><th>User</th><th>Email</th><th>Global role</th><th>Status</th></tr></thead>
+    <tbody>
+        @foreach (var u in users)
+        {
+            <tr>
+                <td>@u.UserName</td>
+                <td>@u.Email</td>
+                <td>@u.Role</td>
+                <td>@(u.IsActive ? "Active" : "Deactivated")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="row g-4 mt-1">
+    <div class="col-md-5">
+        <h2 class="h6">Set global role</h2>
+        <EditForm Model="roleForm" OnValidSubmit="SetRole" FormName="setUserRole">
+            <InputSelect @bind-Value="roleForm.UserId" class="form-select mb-2">
+                <option value="0" disabled>Select user…</option>
+                @foreach (var u in users) { <option value="@u.Id">@u.UserName</option> }
+            </InputSelect>
+            <InputSelect @bind-Value="roleForm.Role" class="form-select mb-2">
+                @foreach (var r in AllRoles) { <option value="@r">@r</option> }
+            </InputSelect>
+            <button type="submit" class="btn btn-primary btn-sm">Update role</button>
+            <div class="form-text">You cannot change your own role.</div>
+        </EditForm>
+    </div>
+
+    <div class="col-md-5">
+        <h2 class="h6">Activate / deactivate</h2>
+        <EditForm Model="statusForm" OnValidSubmit="SetStatus" FormName="setUserStatus">
+            <InputSelect @bind-Value="statusForm.UserId" class="form-select mb-2">
+                <option value="0" disabled>Select user…</option>
+                @foreach (var u in users) { <option value="@u.Id">@u.UserName</option> }
+            </InputSelect>
+            <InputSelect @bind-Value="statusForm.Active" class="form-select mb-2">
+                <option value="true">Active</option>
+                <option value="false">Deactivated</option>
+            </InputSelect>
+            <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+            <div class="form-text">A deactivated user cannot sign in. You cannot deactivate yourself.</div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private static readonly UserRole[] AllRoles =
+        [UserRole.Viewer, UserRole.Reporter, UserRole.Updater, UserRole.Developer, UserRole.Manager, UserRole.Administrator];
+
+    private IReadOnlyList<AdminUserRow> users = [];
+    private string? message;
+    private bool messageIsError;
+
+    [SupplyParameterFromForm(FormName = "setUserRole")] private RoleForm roleForm { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "setUserStatus")] private StatusForm statusForm { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        roleForm ??= new();
+        statusForm ??= new();
+        await Load();
+    }
+
+    private async Task Load() => users = await Admin.GetUsersAsync();
+
+    private async Task SetRole()
+    {
+        if (roleForm.UserId <= 0) { Set("Select a user.", true); return; }
+        try { await Admin.SetUserRoleAsync(roleForm.UserId, roleForm.Role); Set("Role updated.", false); }
+        catch (Exception ex) { Set(ex.Message, true); }
+        roleForm = new();
+        await Load();
+    }
+
+    private async Task SetStatus()
+    {
+        if (statusForm.UserId <= 0) { Set("Select a user.", true); return; }
+        try { await Admin.SetUserActiveAsync(statusForm.UserId, statusForm.Active); Set("Status updated.", false); }
+        catch (Exception ex) { Set(ex.Message, true); }
+        statusForm = new();
+        await Load();
+    }
+
+    private void Set(string msg, bool error) { message = msg; messageIsError = error; }
+
+    private sealed class RoleForm { public int UserId { get; set; } public UserRole Role { get; set; } = UserRole.Reporter; }
+    private sealed class StatusForm { public int UserId { get; set; } public bool Active { get; set; } = true; }
+}

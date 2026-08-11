@@ -20,22 +20,32 @@ public record IssueDto(
 
 public record IssueDetailDto(
     int Id, int ProjectId, string ProjectName, string Title, string Description,
-    string? StepsToReproduce, IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
+    string? StepsToReproduce, string? ExpectedBehavior, string? ActualBehavior,
+    IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
     IssueReproducibility Reproducibility, IssueResolution Resolution,
     int ReporterId, string ReporterName, int? AssigneeId, string? AssigneeName,
     int? CategoryId, string? CategoryName, bool IsSticky, bool IsPrivate,
-    DateTime CreatedAt, DateTime UpdatedAt,
+    DateTime CreatedAt, DateTime UpdatedAt, DateTime? DueDate,
+    int? AffectsVersionId, string? AffectsVersionName,
+    int? FixVersionId, string? FixVersionName,
     IReadOnlyList<IssueNoteDto> Notes);
 
-public record IssueNoteDto(int Id, string AuthorName, string Text, DateTime CreatedAt);
+public record IssueNoteDto(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
+
+public record IssueHistoryDto(int Id, string UserName, string FieldChanged, string? OldValue, string? NewValue, DateTime ChangedAt);
 
 public record CreateIssueRequest(
-    string Title, string Description, string? StepsToReproduce, int? CategoryId,
-    IssueSeverity Severity, IssuePriority Priority, IssueReproducibility Reproducibility);
+    string Title, string Description, string? StepsToReproduce,
+    string? ExpectedBehavior, string? ActualBehavior, int? CategoryId,
+    IssueSeverity Severity, IssuePriority Priority, IssueReproducibility Reproducibility,
+    DateTime? DueDate, int? AffectsVersionId, int? FixVersionId);
 
 public record UpdateIssueRequest(
-    string Title, string Description, IssueStatus Status, IssueSeverity Severity,
-    IssuePriority Priority, IssueResolution Resolution, int? AssigneeId, int? CategoryId,
-    bool IsSticky, bool IsPrivate);
+    string Title, string Description, string? StepsToReproduce,
+    string? ExpectedBehavior, string? ActualBehavior,
+    IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
+    IssueReproducibility Reproducibility, IssueResolution Resolution,
+    int? AssigneeId, int? CategoryId, bool IsSticky, bool IsPrivate, DateTime? DueDate,
+    int? AffectsVersionId, int? FixVersionId);
 
-public record AddIssueNoteRequest(string Text);
+public record AddIssueNoteRequest(string Text, bool IsPrivate = false);

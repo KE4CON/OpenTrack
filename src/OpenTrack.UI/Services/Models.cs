@@ -30,26 +30,47 @@ public record IssueRow(
     IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
     string ReporterName, string? AssigneeName, DateTime UpdatedAt);
 
-public record IssueNoteView(int Id, string AuthorName, string Text, DateTime CreatedAt);
+public record IssueNoteView(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
+
+public record IssueHistoryEntry(int Id, string UserName, string FieldChanged, string? OldValue, string? NewValue, DateTime ChangedAt);
 
 public record IssueDetail(
     int Id, int ProjectId, string ProjectName, string Title, string Description,
-    string? StepsToReproduce, IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
+    string? StepsToReproduce, string? ExpectedBehavior, string? ActualBehavior,
+    IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
     IssueReproducibility Reproducibility, IssueResolution Resolution,
     int ReporterId, string ReporterName, int? AssigneeId, string? AssigneeName,
     int? CategoryId, string? CategoryName, bool IsSticky, bool IsPrivate,
-    DateTime CreatedAt, DateTime UpdatedAt,
+    DateTime CreatedAt, DateTime UpdatedAt, DateTime? DueDate,
+    int? AffectsVersionId, string? AffectsVersionName,
+    int? FixVersionId, string? FixVersionName,
     IReadOnlyList<IssueNoteView> Notes);
 
 public record CreateIssueInput(
-    string Title, string Description, string? StepsToReproduce, int? CategoryId,
-    IssueSeverity Severity, IssuePriority Priority, IssueReproducibility Reproducibility);
+    string Title, string Description, string? StepsToReproduce,
+    string? ExpectedBehavior, string? ActualBehavior, int? CategoryId,
+    IssueSeverity Severity, IssuePriority Priority, IssueReproducibility Reproducibility,
+    DateTime? DueDate, int? AffectsVersionId, int? FixVersionId);
 
 public record UpdateIssueInput(
-    string Title, string Description, IssueStatus Status, IssueSeverity Severity,
-    IssuePriority Priority, IssueResolution Resolution, int? AssigneeId, int? CategoryId,
-    bool IsSticky, bool IsPrivate);
+    string Title, string Description, string? StepsToReproduce,
+    string? ExpectedBehavior, string? ActualBehavior,
+    IssueStatus Status, IssueSeverity Severity, IssuePriority Priority,
+    IssueReproducibility Reproducibility, IssueResolution Resolution,
+    int? AssigneeId, int? CategoryId, bool IsSticky, bool IsPrivate, DateTime? DueDate,
+    int? AffectsVersionId, int? FixVersionId);
 
 public record CategoryView(int Id, string Name);
 
+public record ProjectVersionView(int Id, string Name, string? Description, DateTime? ReleaseDate, bool IsReleased);
+
+public record CreateVersionInput(string Name, string? Description, DateTime? ReleaseDate, bool IsReleased);
+
 public record ProjectMemberView(int Id, string UserName);
+
+/// <summary>A project member together with their per-project role, for the member-management UI.</summary>
+public record ProjectMemberDetail(int UserId, string UserName, UserRole Role, bool IsOwner);
+
+public record AddProjectMemberInput(string Email, UserRole Role);
+
+public record SetMemberRoleInput(UserRole Role);

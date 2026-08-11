@@ -6,6 +6,7 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
 @using OpenTrack.Infrastructure.Data
+@using OpenTrack.Infrastructure.Identity
 @using Microsoft.EntityFrameworkCore
 
 @inject UserManager<User> UserManager
@@ -89,9 +90,12 @@
 
         Logger.LogInformation("User created a new account with password.");
 
-        // The very first account registered on a fresh install becomes Administrator,
-        // so there's always at least one admin without a separate seeding step.
-        if (await DbContext.Users.CountAsync() == 1)
+        // Fallback bootstrap: if no administrator exists yet (fresh install with no configured
+        // OpenTrack:BootstrapAdmin), the first person to register becomes Administrator so the
+        // instance is usable. Checking "no admin exists" rather than "exactly one user" is robust
+        // to the count drifting. The RECOMMENDED path for public deployments is to set the
+        // BootstrapAdmin config so an admin exists before anyone can register (see OpenTrackSeeder).
+        if (!await OpenTrackSeeder.HasAdministratorAsync(DbContext))
         {
             user.Role = UserRole.Administrator;
             await UserManager.UpdateAsync(user);

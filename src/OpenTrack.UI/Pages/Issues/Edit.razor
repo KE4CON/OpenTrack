@@ -29,6 +29,22 @@ else
             <InputTextArea @bind-Value="model.Description" class="form-control" rows="4" />
         </div>
 
+        <div class="mb-3">
+            <label class="form-label">Steps to Reproduce</label>
+            <InputTextArea @bind-Value="model.StepsToReproduce" class="form-control" rows="3" />
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Expected Behavior</label>
+                <InputTextArea @bind-Value="model.ExpectedBehavior" class="form-control" rows="2" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Actual Behavior</label>
+                <InputTextArea @bind-Value="model.ActualBehavior" class="form-control" rows="2" />
+            </div>
+        </div>
+
         <div class="row">
             <div class="col-md-4 mb-3">
                 <label class="form-label">Status</label>
@@ -91,6 +107,39 @@ else
             </div>
         </div>
 
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Reproducibility</label>
+                <InputSelect @bind-Value="model.Reproducibility" class="form-select">
+                    @foreach (var r in Enum.GetValues<IssueReproducibility>())
+                    {
+                        <option value="@r">@r</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Due Date <span class="text-muted">(optional)</span></label>
+                <InputDate @bind-Value="model.DueDate" class="form-control" />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Affects Version</label>
+                <InputSelect @bind-Value="model.AffectsVersionId" class="form-select">
+                    <option value="">(none)</option>
+                    @foreach (var v in versions) { <option value="@v.Id">@v.Name</option> }
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Fix Version</label>
+                <InputSelect @bind-Value="model.FixVersionId" class="form-select">
+                    <option value="">(none)</option>
+                    @foreach (var v in versions) { <option value="@v.Id">@v.Name</option> }
+                </InputSelect>
+            </div>
+        </div>
+
         <div class="form-check mb-3">
             <InputCheckbox @bind-Value="model.IsSticky" class="form-check-input" id="sticky" />
             <label class="form-check-label" for="sticky">Sticky (pinned to top of project issue list)</label>
@@ -110,15 +159,17 @@ else
     [Parameter] public int Id { get; set; }
 
     [SupplyParameterFromForm]
-    private IssueEditModel model { get; set; } = new();
+    private IssueEditModel model { get; set; } = default!;
 
     private bool found;
     private string projectName = string.Empty;
     private IReadOnlyList<CategoryView> categories = [];
     private IReadOnlyList<ProjectMemberView> projectMembers = [];
+    private IReadOnlyList<ProjectVersionView> versions = [];
 
     protected override async Task OnParametersSetAsync()
     {
+        model ??= new();
         var issue = await Data.GetIssueAsync(Id);
         if (issue is null) return;
         found = true;
@@ -126,19 +177,27 @@ else
 
         categories = await Data.GetProjectCategoriesAsync(issue.ProjectId);
         projectMembers = await Data.GetProjectMembersAsync(issue.ProjectId);
+        versions = await Data.GetProjectVersionsAsync(issue.ProjectId);
 
         if (!model.Loaded)
         {
             model.Title = issue.Title;
             model.Description = issue.Description;
+            model.StepsToReproduce = issue.StepsToReproduce;
+            model.ExpectedBehavior = issue.ExpectedBehavior;
+            model.ActualBehavior = issue.ActualBehavior;
             model.Status = issue.Status;
             model.Severity = issue.Severity;
             model.Priority = issue.Priority;
+            model.Reproducibility = issue.Reproducibility;
             model.Resolution = issue.Resolution;
             model.AssigneeId = issue.AssigneeId;
             model.CategoryId = issue.CategoryId;
             model.IsSticky = issue.IsSticky;
             model.IsPrivate = issue.IsPrivate;
+            model.DueDate = issue.DueDate;
+            model.AffectsVersionId = issue.AffectsVersionId;
+            model.FixVersionId = issue.FixVersionId;
             model.Loaded = true;
         }
     }
@@ -148,8 +207,11 @@ else
         // Change-tracking for IssueHistory (status/assignee) is handled inside the
         // data service, so the page just submits the new values.
         await Data.UpdateIssueAsync(Id, new UpdateIssueInput(
-            model.Title, model.Description, model.Status, model.Severity, model.Priority,
-            model.Resolution, model.AssigneeId, model.CategoryId, model.IsSticky, model.IsPrivate));
+            model.Title, model.Description, model.StepsToReproduce,
+            model.ExpectedBehavior, model.ActualBehavior,
+            model.Status, model.Severity, model.Priority, model.Reproducibility,
+            model.Resolution, model.AssigneeId, model.CategoryId, model.IsSticky, model.IsPrivate, model.DueDate,
+            model.AffectsVersionId, model.FixVersionId));
         Nav.NavigateTo($"issues/{Id}");
     }
 
@@ -157,19 +219,26 @@ else
     {
         public bool Loaded { get; set; }
 
-        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.StringLength(300)]
+        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.StringLength(OpenTrack.Core.Validation.FieldLimits.IssueTitle)]
         public string Title { get; set; } = string.Empty;
 
         [System.ComponentModel.DataAnnotations.Required]
         public string Description { get; set; } = string.Empty;
 
+        public string? StepsToReproduce { get; set; }
+        public string? ExpectedBehavior { get; set; }
+        public string? ActualBehavior { get; set; }
         public IssueStatus Status { get; set; }
         public IssueSeverity Severity { get; set; }
         public IssuePriority Priority { get; set; }
+        public IssueReproducibility Reproducibility { get; set; }
         public IssueResolution Resolution { get; set; }
         public int? AssigneeId { get; set; }
         public int? CategoryId { get; set; }
         public bool IsSticky { get; set; }
         public bool IsPrivate { get; set; }
+        public DateTime? DueDate { get; set; }
+        public int? AffectsVersionId { get; set; }
+        public int? FixVersionId { get; set; }
     }
 }

@@ -34,9 +34,27 @@ public interface IOpenTrackDataService
     Task<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default);
     Task<int> CreateIssueAsync(int projectId, CreateIssueInput input, CancellationToken ct = default);
     Task UpdateIssueAsync(int id, UpdateIssueInput input, CancellationToken ct = default);
-    Task AddIssueNoteAsync(int issueId, string text, CancellationToken ct = default);
+    Task AddIssueNoteAsync(int issueId, string text, bool isPrivate = false, CancellationToken ct = default);
+    Task<IReadOnlyList<IssueHistoryEntry>> GetIssueHistoryAsync(int issueId, CancellationToken ct = default);
 
     // Lookups used by the issue create/edit forms
     Task<IReadOnlyList<CategoryView>> GetProjectCategoriesAsync(int projectId, CancellationToken ct = default);
     Task<IReadOnlyList<ProjectMemberView>> GetProjectMembersAsync(int projectId, CancellationToken ct = default);
+
+    // Member management (Manager+ on the project). Returns include the per-project role.
+    Task<IReadOnlyList<ProjectMemberDetail>> GetProjectMemberDetailsAsync(int projectId, CancellationToken ct = default);
+    /// <summary>Adds an existing user (looked up by email) to the project. Returns null on success,
+    /// or a human-readable reason on failure (unknown email, already a member, etc.).</summary>
+    Task<string?> AddProjectMemberAsync(int projectId, AddProjectMemberInput input, CancellationToken ct = default);
+    Task SetProjectMemberRoleAsync(int projectId, int userId, OpenTrack.Core.Enums.UserRole role, CancellationToken ct = default);
+    Task RemoveProjectMemberAsync(int projectId, int userId, CancellationToken ct = default);
+
+    // Category management (Manager+ on the project). Returns null on success or a reason on failure.
+    Task<string?> CreateCategoryAsync(int projectId, string name, CancellationToken ct = default);
+    Task DeleteCategoryAsync(int projectId, int categoryId, CancellationToken ct = default);
+
+    // Version management (Manager+ on the project).
+    Task<IReadOnlyList<ProjectVersionView>> GetProjectVersionsAsync(int projectId, CancellationToken ct = default);
+    Task<string?> CreateVersionAsync(int projectId, CreateVersionInput input, CancellationToken ct = default);
+    Task DeleteVersionAsync(int projectId, int versionId, CancellationToken ct = default);
 }

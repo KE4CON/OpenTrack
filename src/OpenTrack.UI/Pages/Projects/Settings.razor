@@ -1,0 +1,148 @@
+@page "/projects/{Id:int}/settings"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+
+<PageTitle>Settings — @(projectName ?? "Project")</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Settings@(projectName is null ? "" : $" — {projectName}")</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="projects/@Id">Back to project</a>
+</div>
+
+@if (!canManage)
+{
+    <div class="alert alert-warning">You need the Manager role on this project to change its settings.</div>
+}
+else
+{
+    @if (message is not null)
+    {
+        <div class="alert @(messageIsError ? "alert-danger" : "alert-success")">@message</div>
+    }
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <h2 class="h5">Categories</h2>
+            @if (categories.Count == 0) { <p class="text-muted">No categories yet.</p> }
+            else
+            {
+                <ul>@foreach (var c in categories) { <li>@c.Name</li> }</ul>
+            }
+            <EditForm Model="catAdd" OnValidSubmit="AddCategory" FormName="addCategory" class="mb-3">
+                <div class="input-group">
+                    <InputText @bind-Value="catAdd.Name" class="form-control" placeholder="New category name" />
+                    <button type="submit" class="btn btn-primary">Add</button>
+                </div>
+            </EditForm>
+            @if (categories.Count > 0)
+            {
+                <EditForm Model="catDel" OnValidSubmit="DeleteCategory" FormName="delCategory">
+                    <div class="input-group">
+                        <InputSelect @bind-Value="catDel.Id" class="form-select">
+                            <option value="0" disabled>Select category…</option>
+                            @foreach (var c in categories) { <option value="@c.Id">@c.Name</option> }
+                        </InputSelect>
+                        <button type="submit" class="btn btn-outline-danger">Delete</button>
+                    </div>
+                </EditForm>
+            }
+        </div>
+
+        <div class="col-md-6">
+            <h2 class="h5">Versions</h2>
+            @if (versions.Count == 0) { <p class="text-muted">No versions yet.</p> }
+            else
+            {
+                <ul>@foreach (var v in versions) { <li>@v.Name @(v.IsReleased ? "(released)" : "")</li> }</ul>
+            }
+            <EditForm Model="verAdd" OnValidSubmit="AddVersion" FormName="addVersion" class="mb-3">
+                <InputText @bind-Value="verAdd.Name" class="form-control mb-2" placeholder="Version name (e.g. 1.0)" />
+                <InputText @bind-Value="verAdd.Description" class="form-control mb-2" placeholder="Description (optional)" />
+                <div class="row">
+                    <div class="col-7"><InputDate @bind-Value="verAdd.ReleaseDate" class="form-control" /></div>
+                    <div class="col-5 form-check pt-2">
+                        <InputCheckbox @bind-Value="verAdd.IsReleased" class="form-check-input" id="rel" />
+                        <label class="form-check-label" for="rel">Released</label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm mt-2">Add version</button>
+            </EditForm>
+            @if (versions.Count > 0)
+            {
+                <EditForm Model="verDel" OnValidSubmit="DeleteVersion" FormName="delVersion">
+                    <div class="input-group">
+                        <InputSelect @bind-Value="verDel.Id" class="form-select">
+                            <option value="0" disabled>Select version…</option>
+                            @foreach (var v in versions) { <option value="@v.Id">@v.Name</option> }
+                        </InputSelect>
+                        <button type="submit" class="btn btn-outline-danger">Delete</button>
+                    </div>
+                </EditForm>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private string? projectName;
+    private bool canManage;
+    private IReadOnlyList<CategoryView> categories = [];
+    private IReadOnlyList<ProjectVersionView> versions = [];
+    private string? message;
+    private bool messageIsError;
+
+    [SupplyParameterFromForm(FormName = "addCategory")] private NameForm catAdd { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "delCategory")] private IdForm catDel { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "addVersion")] private VersionForm verAdd { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "delVersion")] private IdForm verDel { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        catAdd ??= new();
+        catDel ??= new();
+        verAdd ??= new();
+        verDel ??= new();
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        var project = await Data.GetProjectAsync(Id);
+        projectName = project?.Name;
+        // Managers-only signal: member-details returns rows only to a manager.
+        canManage = (await Data.GetProjectMemberDetailsAsync(Id)).Count > 0;
+        categories = await Data.GetProjectCategoriesAsync(Id);
+        versions = await Data.GetProjectVersionsAsync(Id);
+    }
+
+    private async Task AddCategory() { Report(await Data.CreateCategoryAsync(Id, catAdd.Name)); catAdd = new(); await Load(); }
+    private async Task DeleteCategory()
+    {
+        if (catDel.Id > 0) { try { await Data.DeleteCategoryAsync(Id, catDel.Id); Report(null); } catch (Exception ex) { Report(ex.Message); } }
+        catDel = new(); await Load();
+    }
+    private async Task AddVersion()
+    {
+        Report(await Data.CreateVersionAsync(Id, new CreateVersionInput(verAdd.Name, verAdd.Description, verAdd.ReleaseDate, verAdd.IsReleased)));
+        verAdd = new(); await Load();
+    }
+    private async Task DeleteVersion()
+    {
+        if (verDel.Id > 0) { try { await Data.DeleteVersionAsync(Id, verDel.Id); Report(null); } catch (Exception ex) { Report(ex.Message); } }
+        verDel = new(); await Load();
+    }
+
+    private void Report(string? error) { messageIsError = error is not null; message = error ?? "Saved."; }
+
+    private sealed class NameForm { public string Name { get; set; } = ""; }
+    private sealed class IdForm { public int Id { get; set; } }
+    private sealed class VersionForm
+    {
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+        public DateTime? ReleaseDate { get; set; }
+        public bool IsReleased { get; set; }
+    }
+}

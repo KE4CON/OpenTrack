@@ -13,13 +13,19 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using OpenTrack.Core.Entities;
+using OpenTrack.Core.Validation;
 
 namespace OpenTrack.Infrastructure.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options)
     : IdentityDbContext<User, IdentityRole<int>, int>(options)
 {
-    // Users, and the AspNetRoles/AspNetUserRoles/etc. tables, come from IdentityDbContext.
+    // Users (and the Identity user/passkey tables) come from IdentityDbContext. The AspNetRoles/
+    // AspNetUserRoles/AspNetRoleClaims tables also exist here but are VESTIGIAL and unused:
+    // OpenTrack authorization is driven entirely by the custom UserRole enum (User.Role) and
+    // ProjectMembership. We intentionally do not register .AddRoles(...) (see AddOpenTrackIdentity),
+    // so no RoleManager exists to write to them. They are kept only to avoid a schema migration
+    // that would also drop the .NET 10 passkey table; they can be removed in a future cleanup.
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectMembership> ProjectMemberships => Set<ProjectMembership>();
     public DbSet<Category> Categories => Set<Category>();
@@ -36,8 +42,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         // ---- Project ----
         b.Entity<Project>(e =>
         {
-            e.Property(p => p.Name).HasMaxLength(100).IsRequired();
-            e.Property(p => p.Description).HasMaxLength(2000);
+            e.Property(p => p.Name).HasMaxLength(FieldLimits.ProjectName).IsRequired();
+            e.Property(p => p.Description).HasMaxLength(FieldLimits.Description);
             e.HasOne(p => p.Owner)
                 .WithMany()
                 .HasForeignKey(p => p.OwnerId)
@@ -61,7 +67,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         // ---- Category ----
         b.Entity<Category>(e =>
         {
-            e.Property(c => c.Name).HasMaxLength(100).IsRequired();
+            e.Property(c => c.Name).HasMaxLength(FieldLimits.CategoryName).IsRequired();
             e.HasOne(c => c.Project)
                 .WithMany(p => p.Categories)
                 .HasForeignKey(c => c.ProjectId)
@@ -72,8 +78,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         // ---- ProjectVersion ----
         b.Entity<ProjectVersion>(e =>
         {
-            e.Property(v => v.Name).HasMaxLength(50).IsRequired();
-            e.Property(v => v.Description).HasMaxLength(2000);
+            e.Property(v => v.Name).HasMaxLength(FieldLimits.VersionName).IsRequired();
+            e.Property(v => v.Description).HasMaxLength(FieldLimits.Description);
             e.HasOne(v => v.Project)
                 .WithMany(p => p.Versions)
                 .HasForeignKey(v => v.ProjectId)
@@ -84,7 +90,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         // ---- Issue ----
         b.Entity<Issue>(e =>
         {
-            e.Property(i => i.Title).HasMaxLength(200).IsRequired();
+            e.Property(i => i.Title).HasMaxLength(FieldLimits.IssueTitle).IsRequired();
             e.Property(i => i.Description).IsRequired();
 
             e.HasOne(i => i.Project)
