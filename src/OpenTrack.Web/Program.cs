@@ -118,5 +118,7 @@ app.MapAdditionalIdentityEndpoints();
 
 // Cookie-authenticated attachment upload/download/delete for the web host.
 OpenTrack.Web.Endpoints.AttachmentWebEndpoints.MapAttachmentWebEndpoints(app);
+// Cookie-authenticated CSV/JSON export downloads for the web host.
+OpenTrack.Web.Endpoints.ExportWebEndpoints.MapExportWebEndpoints(app);
 
 app.Run();
