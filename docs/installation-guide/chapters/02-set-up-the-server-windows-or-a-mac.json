@@ -1,0 +1,445 @@
+{
+  "order": 2,
+  "title": "Set Up the Server (Windows or a Mac)",
+  "subtitle": "Run one setup script that installs, builds, and starts the whole server — with by-hand steps as a fallback.",
+  "in_this_chapter": [
+    "The easy way: run the one-command setup script",
+    "Change ports, the data location, or add the AI with a settings file",
+    "Create the first administrator",
+    "The by-hand alternative, step by step, if you'd rather not use the script"
+  ],
+  "blocks": [
+    {
+      "h1": "The easy way: one setup script"
+    },
+    {
+      "p": "You do not have to be technical to do this. OpenTrack comes with a **setup script** that does almost everything for you — it installs the tools it needs, downloads and builds OpenTrack, sets it up to run for your whole network, and starts it. There is a Windows version and a Mac version. You run it once, answer a few simple questions (mostly by just pressing **Enter**), and you're done."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "IN A NUTSHELL",
+        "text": "**(1)** Download the OpenTrack code and unzip it. **(2)** Run the one setup script. **(3)** Answer a few questions — or just press **Enter** for each. **(4)** Open the web address it prints, and register. That is the whole install; the steps below just walk you through it slowly."
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "WHAT YOU NEED FIRST",
+        "text": "A Windows 10/11 **or** macOS 13+ computer, an internet connection, and about 10–15 minutes. That is it — the script installs everything else it needs."
+      }
+    },
+    {
+      "h2": "On Windows"
+    },
+    {
+      "p": "**Step 1 — Download and unzip the OpenTrack code.**"
+    },
+    {
+      "steps": [
+        "In a web browser, go to **`https://github.com/KE4CON/OpenTrack`**.",
+        "Click the green **Code** button, then click **Download ZIP**. A file called **OpenTrack-main.zip** downloads to your **Downloads** folder.",
+        "Open your **Downloads** folder, **right-click** the file **OpenTrack-main.zip**, choose **Extract All…**, then click **Extract**. This creates a folder called **OpenTrack-main**.",
+        "Open the **OpenTrack-main** folder, then open the **scripts** folder inside it. Leave this window open — you will need it in the next steps."
+      ]
+    },
+    {
+      "p": "**Step 2 — Open PowerShell as Administrator.**"
+    },
+    {
+      "steps": [
+        "**Right-click the Start button** (the Windows logo in the bottom-left corner of the screen).",
+        "Click **Terminal (Admin)** — or **Windows PowerShell (Admin)** on older Windows. If Windows asks “Do you want to allow this app to make changes?”, click **Yes**.",
+        "A dark window with a blinking cursor opens. That is where the next commands go."
+      ]
+    },
+    {
+      "p": "**Step 3 — Run the setup script.**"
+    },
+    {
+      "steps": [
+        "In the dark window, type **cd** followed by **one space** — but do **not** press Enter yet.",
+        "Now **drag the `scripts` folder** (from the window you left open in Step 1) **into the dark window**. It types the folder's location for you, so you can't mistype it. Press **Enter**.",
+        "Type (or copy and paste) the line below exactly as shown, then press **Enter**:"
+      ]
+    },
+    {
+      "code": "powershell -ExecutionPolicy Bypass -File .\\Install-OpenTrackServer.ps1"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "IF IT MENTIONS “RUNNING SCRIPTS IS DISABLED”",
+        "text": "The `-ExecutionPolicy Bypass` part of that line is what prevents that message, so make sure you typed the **whole** line, including that part."
+      }
+    },
+    {
+      "h2": "On a Mac"
+    },
+    {
+      "p": "**Step 1 — Download and unzip the OpenTrack code.**"
+    },
+    {
+      "steps": [
+        "In Safari, go to **`https://github.com/KE4CON/OpenTrack`**, click the green **Code** button, then **Download ZIP**. Safari usually unzips it for you into **Downloads**, leaving a folder called **OpenTrack-main** (if it does not, double-click the `.zip` file to unzip it)."
+      ]
+    },
+    {
+      "p": "**Step 2 — Open Terminal and run the script.**"
+    },
+    {
+      "steps": [
+        "Open the **Terminal** app: press **Cmd+Space**, type **Terminal**, and press **Enter**.",
+        "Type **cd** and a **space** (do not press Enter yet), then **drag the `scripts` folder** (inside **OpenTrack-main**, in your Downloads) **into the Terminal window** to fill in its location, and press **Enter**.",
+        "Type the two lines below, pressing **Enter** after each. It will ask for your Mac password once — the typing stays invisible, which is normal; just type it and press **Enter**:"
+      ]
+    },
+    {
+      "code": [
+        "chmod +x install-opentrack-server.sh",
+        "./install-opentrack-server.sh"
+      ]
+    },
+    {
+      "p": "The script first **asks you a few simple questions** — where to keep the data, whether to install the local AI now, and whether to set up the first administrator — each with a sensible default you accept by just pressing **Enter**. Then it does everything automatically. When it finishes, it prints the **web address** to open."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "THE QUESTIONS IT ASKS",
+        "text": "In order: **where to keep the database** — on Windows it first asks whether the PC has a **second drive** and, if so, suggests putting the data there (so it survives a Windows reinstall); **install the free local AI?** (default No); **set up the first administrator now?** (default Yes — then it asks for an email and password); and **use the standard ports?** (default Yes). It shows a summary and asks you to confirm before changing anything. Accept every default and you'll have a working server — you just register the first account afterward."
+      }
+    },
+    {
+      "h2": "Optional: an unattended install (settings file)"
+    },
+    {
+      "p": "Because the script **asks** about the data location, the local AI, and the first administrator, most people never need this. But if you'd rather **not** be asked — for a hands-off install, or to set up several servers the same way — you can put all the answers in a small **settings file** and the script will skip the questions and just run. The same file works on both Windows and a Mac."
+    },
+    {
+      "steps": [
+        "In the `scripts` folder, **make a copy** of the file `opentrack-server.sample.conf` and name the copy `opentrack-server.conf`. (Copy, don't rename — keep the original sample as a reference.)",
+        "**Open** `opentrack-server.conf` in any plain-text editor: **Notepad** on Windows, or **TextEdit** on a Mac.",
+        "**Change only the line(s) you care about** and leave the rest exactly as they are. Each line is `Setting = Value`. The most common changes:"
+      ]
+    },
+    {
+      "table": {
+        "headers": [
+          "If you want to…",
+          "Change this line to…"
+        ],
+        "rows": [
+          [
+            "Keep the database on the **D: drive** (Windows)",
+            "`DataDir = D:\\OpenTrackData`"
+          ],
+          [
+            "Keep the database in a **specific folder** (Mac)",
+            "`DataDir = /Users/Shared/OpenTrack`"
+          ],
+          [
+            "Use a different **browser** port (default 5035)",
+            "`WebPort = 5035`"
+          ],
+          [
+            "Use a different **desktop-app** port (default 5003)",
+            "`ApiPort = 5003`"
+          ],
+          [
+            "**Install the free local AI** at the same time",
+            "`InstallAi = true`"
+          ],
+          [
+            "**Set the first administrator** automatically",
+            "`AdminEmail = you@example.com` (and `AdminPassword = a-strong-password`)"
+          ]
+        ],
+        "widths": [
+          3.3,
+          3.2
+        ]
+      }
+    },
+    {
+      "steps": [
+        "**Save** the file.",
+        "**Run the script the same way as before, but add your settings file** at the end. On **Windows**:"
+      ]
+    },
+    {
+      "code": [
+        "cd C:\\OpenTrack\\OpenTrack\\scripts",
+        "powershell -ExecutionPolicy Bypass -File .\\Install-OpenTrackServer.ps1 -ConfigFile .\\opentrack-server.conf"
+      ]
+    },
+    {
+      "steps": [
+        "On a **Mac**:"
+      ]
+    },
+    {
+      "code": [
+        "cd ~/OpenTrack/OpenTrack/scripts",
+        "./install-opentrack-server.sh --config ./opentrack-server.conf"
+      ]
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "SHORTCUT IF YOU ONLY WANT THE AI",
+        "text": "If the **only** thing you want to change is turning on the local AI, you don't even need the settings file — just add `-InstallAi` on Windows (or `--install-ai` on a Mac) to the end of the normal command from the previous section."
+      }
+    },
+    {
+      "h2": "What the script sets up"
+    },
+    {
+      "bullets": [
+        "The **two server programs** built and running — the **web app** on port **5035** (browsers) and the **API** on port **5003** (desktop apps).",
+        "**One shared database** in the data folder you chose when it asked (its suggestion is `C:\\OpenTrack\\data`, or a second drive like `D:\\OpenTrack\\Data`, on Windows; `/usr/local/opentrack/data` on a Mac).",
+        "On Windows, the **Firewall** opened for both ports so other devices can connect (a Mac on a trusted network needs nothing here).",
+        "Both programs **registered to start at boot** — a scheduled task on Windows, a launchd service on a Mac — and started now.",
+        "The **local AI** as well, if you asked for it."
+      ]
+    },
+    {
+      "h1": "Create the first administrator"
+    },
+    {
+      "steps": [
+        "Look at the lines the script printed when it finished — it shows the **exact** web address to open, something like `http://192.168.1.50:5035` (your number will be different).",
+        "On any computer on the same network, type **that exact address** into a web browser and press Enter. (On the server itself, `http://localhost:5035` also works.)",
+        "Choose **Register** and create your account — the **first** account registered becomes the **Administrator**. Do this soon, before anyone else."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "DON'T TYPE “SERVER-IP” LITERALLY",
+        "text": "In this guide, **SERVER-IP** is just a stand-in for your server's own network address — a number like `192.168.1.50`. Wherever you see something like `http://SERVER-IP:5035`, type your server's actual number in place of the words `SERVER-IP`. The easiest way to get it right: **copy the exact address the setup script printed.**"
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "OR SET THE ADMIN AUTOMATICALLY",
+        "text": "Put `AdminEmail` and `AdminPassword` in the settings file and the script hands those to the server, which creates/promotes that account to Administrator at startup — so you never rely on “first to register wins.”"
+      }
+    },
+    {
+      "h1": "Updating later"
+    },
+    {
+      "p": "To update OpenTrack, just **re-run the same script**. It pulls the latest code, rebuilds both programs, and restarts them. Your database and settings are untouched."
+    },
+    {
+      "h1": "The by-hand alternative (optional)"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "YOU CAN SKIP THIS",
+        "text": "The steps below do the same work as the script, by hand, and are written for **Windows** (on a Mac the script does the equivalent using Homebrew and launchd). You only need them if you want to understand or customize the setup, or the script doesn't fit your environment. If the script worked, you're done — go on to Chapter 3 (AI) or Chapter 4 (desktop app)."
+      }
+    },
+    {
+      "h1": "Step A — Prepare Windows and the drives"
+    },
+    {
+      "p": "If your server has a **second drive** (or you can make a second partition), keep **Windows and the app on C:** and put **your data on D:**. That way, if you ever have to reinstall Windows, your projects and issues on D: are untouched. **Only have one drive?** No problem — just use a folder on C: for the data instead, and make sure it's part of your off-machine backup."
+    },
+    {
+      "steps": [
+        "Finish Windows setup and install all **Windows Updates** (Settings → Windows Update).",
+        "**If you have a second drive:** confirm it shows as **D:** (This PC). If it isn't formatted yet, open **Disk Management**, initialize it, and create a simple **D:** volume.",
+        "Create a folder for the app and one for the data. We'll use `C:\\OpenTrack` (app) and `D:\\OpenTrackData` (data) throughout — if you only have C:, use `C:\\OpenTrackData` for the data and substitute that path wherever you see `D:\\OpenTrackData`."
+      ]
+    },
+    {
+      "code": [
+        "mkdir C:\\OpenTrack",
+        "mkdir D:\\OpenTrackData"
+      ]
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "TIP",
+        "text": "Set the server's power settings so it **never sleeps** (Settings → System → Power → Screen and sleep → set sleep to *Never* when plugged in). It's your server — it should stay awake and reachable."
+      }
+    },
+    {
+      "h1": "Step B — Install the .NET 10 SDK and Git"
+    },
+    {
+      "steps": [
+        "In a browser on the server, go to Microsoft's .NET download page and install the **.NET 10 Software Development Kit (SDK)** (the SDK, not just the runtime). Accept the defaults.",
+        "Install **Git for Windows** from git-scm.com (defaults are fine).",
+        "Close and reopen your terminal (Windows Terminal or PowerShell) so it picks up the new tools, then confirm both are installed:"
+      ]
+    },
+    {
+      "code": [
+        "dotnet --version",
+        "git --version"
+      ]
+    },
+    {
+      "p": "Each command should print a version number. If `dotnet` prints 10.x, you're set."
+    },
+    {
+      "h1": "Step C — Download (clone) OpenTrack"
+    },
+    {
+      "steps": [
+        "In your terminal, go to the app folder and clone the repository:"
+      ]
+    },
+    {
+      "code": [
+        "cd C:\\OpenTrack",
+        "git clone https://github.com/KE4CON/OpenTrack.git",
+        "cd OpenTrack"
+      ]
+    },
+    {
+      "p": "You now have the full OpenTrack source in `C:\\OpenTrack\\OpenTrack`."
+    },
+    {
+      "h1": "Step D — Build the two server programs"
+    },
+    {
+      "p": "The server runs **two** small programs that share one database:"
+    },
+    {
+      "bullets": [
+        "**The web app** — what phones, tablets, and other computers open in a **browser**.",
+        "**The API** — what the **desktop apps** (Windows/Mac) talk to."
+      ]
+    },
+    {
+      "p": "Build (“publish”) both into your app folder:"
+    },
+    {
+      "code": [
+        "dotnet publish src\\OpenTrack.Web -c Release -o C:\\OpenTrack\\web",
+        "dotnet publish src\\OpenTrack.API -c Release -o C:\\OpenTrack\\api"
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "FIRST BUILD IS SLOW",
+        "text": "The very first build downloads packages and can take several minutes. That's normal and only happens once."
+      }
+    },
+    {
+      "h1": "Step E — Point both programs at the D: drive"
+    },
+    {
+      "p": "Tell both programs to keep the database on D: (so your data survives a Windows reinstall). You do this by setting one environment variable, `ConnectionStrings__Default`. The cleanest way is a **system environment variable** so it applies every time the server starts."
+    },
+    {
+      "steps": [
+        "Open **Edit the system environment variables** (search for it in the Start menu) → **Environment Variables…** → under *System variables* click **New…**",
+        "Name: `ConnectionStrings__Default`  —  Value: the line below (this is one line)."
+      ]
+    },
+    {
+      "code": "Data Source=D:\\OpenTrackData\\opentrack.db;Cache=Shared"
+    },
+    {
+      "p": "Both the web app and the API read this same setting, so they share one database file."
+    },
+    {
+      "h1": "Step F — Run the server so the whole network can reach it"
+    },
+    {
+      "p": "By default a fresh program only answers itself. We start each one bound to **all network addresses** (`0.0.0.0`) on a fixed port so other devices can connect. We'll use **5003** for the API and **5035** for the web app."
+    },
+    {
+      "p": "Open **two** terminal windows. In the first, start the API:"
+    },
+    {
+      "code": [
+        "cd C:\\OpenTrack\\api",
+        "set ASPNETCORE_URLS=http://0.0.0.0:5003",
+        "OpenTrack.API.exe"
+      ]
+    },
+    {
+      "p": "In the second, start the web app:"
+    },
+    {
+      "code": [
+        "cd C:\\OpenTrack\\web",
+        "set ASPNETCORE_URLS=http://0.0.0.0:5035",
+        "OpenTrack.Web.exe"
+      ]
+    },
+    {
+      "p": "Leave both windows running. On the server itself, open a browser to **http://localhost:5035** — you should see the OpenTrack sign-in page."
+    },
+    {
+      "h1": "Step G — Open the Windows Firewall"
+    },
+    {
+      "p": "So other devices on your network can reach the two ports, allow them through the firewall. In an **Administrator** terminal:"
+    },
+    {
+      "code": [
+        "netsh advfirewall firewall add rule name=\"OpenTrack API 5003\" dir=in action=allow protocol=TCP localport=5003",
+        "netsh advfirewall firewall add rule name=\"OpenTrack Web 5035\" dir=in action=allow protocol=TCP localport=5035"
+      ]
+    },
+    {
+      "p": "Now from another computer on the same network, browse to your server's address with `:5035` on the end (type the server's actual number, for example `http://192.168.1.50:5035`). If the sign-in page loads, your server is reachable. 🎉"
+    },
+    {
+      "h1": "Step H — Create the first administrator"
+    },
+    {
+      "steps": [
+        "On the sign-in page, choose **Register** and create your account.",
+        "The **first** account registered automatically becomes the **Administrator**."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "OPTIONAL: SET THE ADMIN AHEAD OF TIME",
+        "text": "If you'd rather not rely on “first to register wins,” set `OpenTrack__BootstrapAdmin__Email` and `OpenTrack__BootstrapAdmin__Password` as system environment variables before first launch — the web app promotes that account to Administrator at startup. See docs/guides/DEPLOYMENT.md."
+      }
+    },
+    {
+      "h1": "Step I — Make it start automatically at boot"
+    },
+    {
+      "p": "You don't want to start the programs by hand every time the server reboots. The simplest reliable way on Windows is **Task Scheduler**, which can launch each program at startup."
+    },
+    {
+      "steps": [
+        "Open **Task Scheduler** → **Create Task** (not *Basic*).",
+        "General tab: name it *OpenTrack API*; select **Run whether user is logged on or not**; check **Run with highest privileges**.",
+        "Triggers tab: **New…** → Begin the task **At startup**.",
+        "Actions tab: **New…** → Start a program → Program: `C:\\OpenTrack\\api\\OpenTrack.API.exe`; *Start in*: `C:\\OpenTrack\\api`.",
+        "Repeat the whole process for a second task, *OpenTrack Web*, pointing at `C:\\OpenTrack\\web\\OpenTrack.Web.exe` (start-in `C:\\OpenTrack\\web`)."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "SETTING THE PORTS FOR AUTO-START",
+        "text": "Because Task Scheduler doesn't run your `set ASPNETCORE_URLS` line, add a system environment variable `ASPNETCORE_URLS` = `http://0.0.0.0:5035` for the web task, or (cleaner) create a tiny `.bat` for each program that sets the URL then launches the .exe, and point the task at the `.bat`."
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "PREFER DOCKER? (ALTERNATIVE)",
+        "text": "If you'd rather not manage services, install **Docker Desktop** on the server and run `docker compose up -d` from the OpenTrack folder — it starts the web app on port **8080** with automatic backups, and restarts on reboot. See docs/guides/DOCKER.md. (Desktop-app clients still need the API running as above.)"
+      }
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "order": 5,
+  "title": "Install the Desktop App on macOS",
+  "subtitle": "Install the signed Mac app, or build it from source — then point it at your server.",
+  "in_this_chapter": [
+    "Method A: install the signed Mac app (the easy way)",
+    "Method B: build it from source on a Mac (always works)",
+    "Point it at the server and sign in"
+  ],
+  "blocks": [
+    {
+      "p": "As on Windows, there are **two ways** to get the Mac app — the same app either way. Use **Method A** if a signed, notarized build is available; otherwise use **Method B** to build it yourself on the Mac."
+    },
+    {
+      "h1": "Method A — Install the signed app (recommended)"
+    },
+    {
+      "p": "When a build signed with an **Apple Developer ID** and **notarized** (checked and stamped by Apple) is available, macOS opens it normally — no warnings."
+    },
+    {
+      "steps": [
+        "On the OpenTrack releases page, download the latest **Mac app** (a `.dmg` disk image or `.app`).",
+        "Open the `.dmg` and drag **OpenTrack** into your **Applications** folder.",
+        "Launch it from Applications, and skip to “Point it at the server” below."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "SIGNING IS OPTIONAL",
+        "text": "A signed, notarized Mac build requires a paid **Apple Developer** account. If one isn't published — or you'd rather not depend on paying for it — **Method B** below always works and builds the identical app."
+      }
+    },
+    {
+      "h1": "Method B — Build it from source (on a Mac)"
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "MAC APPS ARE BUILT ON A MAC",
+        "text": "Apple requires the Mac version to be built on macOS — it can't be built from the Windows server. Do these steps on the **Mac** itself."
+      }
+    },
+    {
+      "steps": [
+        "On the Mac, install the **.NET 10 Software Development Kit (SDK)** (the macOS installer from Microsoft) and **Git** (it comes with the Xcode Command Line Tools; run `xcode-select --install` if needed).",
+        "Install the **.NET MAUI (Multi-platform App User Interface)** build components once:"
+      ]
+    },
+    {
+      "code": "dotnet workload install maui"
+    },
+    {
+      "steps": [
+        "Clone (download) OpenTrack and build the Mac app:"
+      ]
+    },
+    {
+      "code": [
+        "git clone https://github.com/KE4CON/OpenTrack.git",
+        "cd OpenTrack",
+        "dotnet build src/OpenTrack.Desktop -c Release -f net10.0-maccatalyst"
+      ]
+    },
+    {
+      "p": "The build produces an **OpenTrack.Desktop.app** under `src/OpenTrack.Desktop/bin/Release/net10.0-maccatalyst/`."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "FIRST LAUNCH: RIGHT-CLICK → OPEN",
+        "text": "Because a self-built app isn't signed/notarized, macOS Gatekeeper blocks a normal double-click the first time. **Right-click (or Control-click) the app → Open**, then confirm — you only do this once. (Method A's signed build avoids this.)"
+      }
+    },
+    {
+      "h1": "Point it at the server and sign in"
+    },
+    {
+      "steps": [
+        "Launch the app and open its **Settings**.",
+        "Set the **server address** to your server's number ending in **:5003** — the **same** number as the web address the setup script printed, just ending in **5003** instead of 5035 (for example `http://192.168.1.50:5003`).",
+        "Sign in with your account. Done — the Mac now shows the same data as everything else."
+      ]
+    }
+  ]
+}
