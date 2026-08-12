@@ -118,5 +118,6 @@ app.MapReportEndpoints();
 app.MapAiEndpoints();
 app.MapAutomationEndpoints();
 app.MapSlaEndpoints();
+app.MapGitEndpoints();
 
 app.Run();

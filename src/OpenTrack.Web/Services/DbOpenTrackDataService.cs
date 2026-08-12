@@ -22,6 +22,7 @@ using OpenTrack.Core.Sla;
 using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Automation;
+using OpenTrack.Infrastructure.Git;
 using OpenTrack.Infrastructure.Sla;
 using OpenTrack.Infrastructure.Checklist;
 using OpenTrack.Infrastructure.CustomFields;
@@ -265,6 +266,32 @@ public class DbOpenTrackDataService(
             SlaCalculator.IsOpen(issue.Status), DateTime.UtcNow, hours);
         return new SlaIssueView(a.Status, a.DueUtc);
     }
+
+    public async Task<GitIntegrationView?> GetGitIntegrationAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var config = await GitIntegrationOperations.GetForProjectAsync(db, access, projectId, ct);
+        return config is null ? null : new GitIntegrationView(config.Enabled, config.WebhookSecret, config.AutoResolve);
+    }
+
+    public async Task<string?> SaveGitIntegrationAsync(int projectId, bool enabled, string? webhookSecret, bool autoResolve, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await GitIntegrationOperations.SetAsync(db, access, projectId, enabled, webhookSecret, autoResolve, ct);
+    }
+
+    public async Task<IReadOnlyList<IssueCommitView>> GetIssueCommitsAsync(int issueId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var items = await GitIntegrationOperations.ListForIssueAsync(db, access, issueId, ct);
+        return items.Select(ToCommitView).ToList();
+    }
+
+    private static IssueCommitView ToCommitView(OpenTrack.Core.Entities.IssueCommitLink l) => new(
+        l.Sha, l.Sha.Length >= 7 ? l.Sha[..7] : l.Sha, l.Message, l.Author, l.Url, l.Closing, l.CommittedAt);
 
     public async Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default)
     {

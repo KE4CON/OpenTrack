@@ -123,6 +123,26 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         return await resp.Content.ReadFromJsonAsync<SlaIssueView>(JsonOptions, ct);
     }
 
+    public async Task<GitIntegrationView?> GetGitIntegrationAsync(int projectId, CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync($"/api/projects/{projectId}/git-integration", ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        return await resp.Content.ReadFromJsonAsync<GitIntegrationView>(JsonOptions, ct);
+    }
+
+    public async Task<string?> SaveGitIntegrationAsync(int projectId, bool enabled, string? webhookSecret, bool autoResolve, CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/git-integration",
+            new { enabled, webhookSecret, autoResolve }, JsonOptions, ct);
+        ThrowIfForbidden(resp, "Managing Git integration requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+        var d = await resp.Content.ReadFromJsonAsync<SaveErrorDto>(JsonOptions, ct);
+        return d?.Error;
+    }
+
+    public async Task<IReadOnlyList<IssueCommitView>> GetIssueCommitsAsync(int issueId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<IssueCommitView>>($"/api/issues/{issueId}/commits", JsonOptions, ct) ?? [];
+
     public async Task SetPublicIntakeEnabledAsync(int projectId, bool enabled, CancellationToken ct = default)
     {
         var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/public-intake", new { enabled }, JsonOptions, ct);

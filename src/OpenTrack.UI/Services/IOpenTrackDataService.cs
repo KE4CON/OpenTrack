@@ -78,6 +78,13 @@ public interface IOpenTrackDataService
     Task<SlaBoardView> GetSlaBoardAsync(CancellationToken ct = default);
     Task<SlaIssueView?> GetIssueSlaAsync(int issueId, CancellationToken ct = default);
 
+    // Per-project Git integration (Manager only): the inbound-webhook secret + auto-resolve toggle.
+    // GetGitIntegration returns null for a non-manager or an unconfigured project. GetIssueCommits lists
+    // the commits that referenced an issue (visible to anyone who can see the issue).
+    Task<GitIntegrationView?> GetGitIntegrationAsync(int projectId, CancellationToken ct = default);
+    Task<string?> SaveGitIntegrationAsync(int projectId, bool enabled, string? webhookSecret, bool autoResolve, CancellationToken ct = default);
+    Task<IReadOnlyList<IssueCommitView>> GetIssueCommitsAsync(int issueId, CancellationToken ct = default);
+
     // Project webhooks (Manager only — a URL can carry a secret token). Returns null/reason on add.
     Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default);
     Task<string?> AddWebhookAsync(int projectId, string url, WebhookFormat format, CancellationToken ct = default);
