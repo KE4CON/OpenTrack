@@ -1,0 +1,89 @@
+{
+  "order": 4,
+  "title": "Install the Desktop App on Windows",
+  "subtitle": "Install the signed app, or build it from source — then point it at your server.",
+  "in_this_chapter": [
+    "Method A: install the signed Windows app (the easy way)",
+    "Method B: build it from source (always works, no signing needed)",
+    "Point it at the server and sign in"
+  ],
+  "blocks": [
+    {
+      "p": "There are **two ways** to get the Windows desktop app, and they produce the exact same app. Use **Method A** if a signed installer is available — it's a normal double-click install. Use **Method B** to build it yourself, which always works even if no signed build is published."
+    },
+    {
+      "h1": "Method A — Install the signed app (recommended)"
+    },
+    {
+      "p": "When a **code-signed** Windows build is available, this is the easy path. “Code-signed” means the app carries a digital signature from a trusted certificate, so Windows installs it without the scary “unknown publisher” warning."
+    },
+    {
+      "steps": [
+        "On the OpenTrack releases page, download the latest **Windows installer** (a signed installer file, typically an `.msix` or `.exe`).",
+        "Double-click it and follow the prompts. Because it's signed, Windows installs it cleanly.",
+        "Launch **OpenTrack** from the Start menu, and skip to “Point it at the server” below."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "SIGNING IS OPTIONAL",
+        "text": "A signed installer requires a paid developer signing certificate (for Windows, a Microsoft/Azure code-signing identity). If a signed build isn't published — or you'd rather not depend on paying for one — **Method B** below always works with the free tools and produces the identical app."
+      }
+    },
+    {
+      "h1": "Method B — Build it from source"
+    },
+    {
+      "p": "This path needs no installer and no signing — you build the app with the free Microsoft tools. Do this on the **Windows PC** that will run it (which can be the server itself, or any Windows machine)."
+    },
+    {
+      "steps": [
+        "Install the **.NET 10 Software Development Kit (SDK)** and **Git** (same as the server, Chapter 2 Step B). The SDK is the free Microsoft toolkit that builds .NET apps.",
+        "Install the **.NET MAUI (Multi-platform App User Interface)** build components once — MAUI is the framework the desktop app is built with:"
+      ]
+    },
+    {
+      "code": "dotnet workload install maui"
+    },
+    {
+      "steps": [
+        "Clone (download) OpenTrack if you haven't already, and build the Windows app:"
+      ]
+    },
+    {
+      "code": [
+        "git clone https://github.com/KE4CON/OpenTrack.git",
+        "cd OpenTrack",
+        "dotnet build src\\OpenTrack.Desktop -c Release -f net10.0-windows10.0.19041.0"
+      ]
+    },
+    {
+      "p": "The built app lands under `src\\OpenTrack.Desktop\\bin\\Release\\...`; run the `OpenTrack.Desktop.exe` it produces."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "FIRST LAUNCH: “WINDOWS PROTECTED YOUR PC”",
+        "text": "Because a self-built app isn't signed, Windows SmartScreen may show a blue warning the first time you run it. Click **More info → Run anyway**. (Method A's signed installer avoids this.)"
+      }
+    },
+    {
+      "h1": "Point it at the server and sign in"
+    },
+    {
+      "steps": [
+        "Launch the desktop app.",
+        "Open its **Settings** and set the **server address**. Use your server's number ending in **:5003** — the **same** number as the web address the setup script printed, just ending in **5003** instead of 5035. For example, if the web address was `http://192.168.1.50:5035`, type `http://192.168.1.50:5003` here.",
+        "Sign in with the account you created on the server. You're in — same projects and issues as the web app, in a native window."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "THE ADDRESS IS REMEMBERED PER MACHINE",
+        "text": "Each computer stores its own server address, so you set it once. If the server's address ever changes, just update it here."
+      }
+    }
+  ]
+}

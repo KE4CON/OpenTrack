@@ -1,0 +1,89 @@
+{
+  "order": 7,
+  "title": "First-Run Configuration",
+  "subtitle": "Create your first project, add people, and turn on the features you want.",
+  "in_this_chapter": [
+    "Create a project and invite people (with the right roles)",
+    "Optional power features: SLA targets, automation, Git, public intake + QR"
+  ],
+  "blocks": [
+    {
+      "p": "You now have a working server — nice work. There are only **two things you actually need to do** here: create a project, and add the people who'll use it. Everything else on this page is optional; turn it on only if you want it."
+    },
+    {
+      "h1": "Create your first project"
+    },
+    {
+      "steps": [
+        "Sign in with the administrator account you registered earlier.",
+        "In the menu on the **left side of the screen**, click **Projects**, then click the **New project** button.",
+        "Give it a **name** (usually the software, system, or thing you're tracking bugs for) and click **Create**. That's the minimum — you have a project now.",
+        "Optional: open the project, click **Settings**, and add a few **categories** (buckets like “User Interface” or “Database”) and, if you track releases, **versions**."
+      ]
+    },
+    {
+      "h1": "Add the people who'll use it"
+    },
+    {
+      "p": "Everyone needs their own account, and you give each person a **role** on each project — the role decides what they're allowed to do."
+    },
+    {
+      "steps": [
+        "Have each person open your server's web address in a browser and click **Register** to make an account (or you can do it for them).",
+        "Open the project, click **Members**, type the person's **email**, pick a **role**, and click **Add**."
+      ]
+    },
+    {
+      "p": "Roles go from **Reporter** (can file issues), up through **Developer** (can be assigned work), **Manager** (can change the project's settings), and **Administrator** (runs everything). A good rule: give each person the **lowest** role that still lets them do their job."
+    },
+    {
+      "h1": "Optional power features"
+    },
+    {
+      "p": "None of these are required, but they're what make OpenTrack shine. Turn on the ones you want, per project, under the project's **Settings**:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Feature",
+          "What it does",
+          "Where"
+        ],
+        "rows": [
+          [
+            "**SLA (Service-Level Agreement) targets**",
+            "Flags issues at-risk/breached by priority; escalates breaches",
+            "Settings → SLA targets"
+          ],
+          [
+            "**Automation**",
+            "“When a new issue matches → do” (auto-tag/assign/set)",
+            "Settings → Automation"
+          ],
+          [
+            "**Git integration**",
+            "Link commits to issues; auto-resolve on “fixes #123”",
+            "Settings → Git"
+          ],
+          [
+            "**Public intake + QR**",
+            "Let anyone report a problem via a link or a scanned QR (Quick Response) code poster",
+            "Settings → Public intake"
+          ]
+        ],
+        "widths": [
+          1.7,
+          3.1,
+          1.7
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "DON'T WORRY ABOUT THESE YET",
+        "text": "You do **not** need any of these to start using OpenTrack — skip them for now and come back if you ever want them. The **User Manual** explains each one, step by step, when you're ready."
+      }
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "order": 3,
+  "title": "Install the AI on the Server (Optional)",
+  "subtitle": "Add the free, private, local AI assistant with Ollama — no account, no cloud, no per-use fee.",
+  "in_this_chapter": [
+    "What the AI does and why local is the private choice",
+    "Install Ollama on the server and pull a model",
+    "Turn on OpenTrack's AI and point it at the local model",
+    "The cloud option (Claude / OpenAI) if you prefer"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "THE SETUP SCRIPT CAN DO ALL OF THIS",
+        "text": "If you ran Chapter 2's setup script with `InstallAi = true` (or the `-InstallAi` switch), the local AI below is already installed and turned on — you can skip this chapter. The steps here are the by-hand version, and the place to look if you want the cloud option instead."
+      }
+    },
+    {
+      "h1": "What the AI adds"
+    },
+    {
+      "p": "With **AI (artificial intelligence)** turned on, OpenTrack gains a **✨ Suggest with AI** button on the New-issue page (it fills in severity, priority, category, and tags from what you typed) and an **✨ Ask in plain English** search box. It's **off by default**, opt-in, and every suggestion is just that — a suggestion you accept or change."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "LOCAL = PRIVATE & FREE",
+        "text": "Running the model **locally on the server** with Ollama means your issue text never leaves the machine, there's no API key, and there's no per-use charge. On a CPU-only mini-PC it's not instant, but it's fine for the occasional triage/search."
+      }
+    },
+    {
+      "h1": "Step A — Install Ollama and pull a model"
+    },
+    {
+      "steps": [
+        "On the server, download and install **Ollama** from ollama.com (Windows installer).",
+        "Open a terminal and pull a model. A good balance for 24 GB RAM is an 8-billion-parameter model:"
+      ]
+    },
+    {
+      "code": "ollama pull llama3.1:8b"
+    },
+    {
+      "p": "Ollama now serves an OpenAI-compatible endpoint at **http://localhost:11434/v1** on the server."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "TOO SLOW? USE A SMALLER MODEL",
+        "text": "If suggestions feel sluggish on the CPU, pull a smaller model and use it instead: `ollama pull llama3.2:3b` (then set the Model to `llama3.2:3b` below). Faster, still fine for triage."
+      }
+    },
+    {
+      "h1": "Step B — Turn on OpenTrack's AI"
+    },
+    {
+      "p": "Set these as **system environment variables** on the server (same place you set the connection string), then restart the web app and API:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Setting",
+          "Value"
+        ],
+        "rows": [
+          [
+            "`OpenTrack__Ai__Enabled`",
+            "`true`"
+          ],
+          [
+            "`OpenTrack__Ai__Provider`",
+            "`openai`"
+          ],
+          [
+            "`OpenTrack__Ai__BaseUrl`",
+            "`http://localhost:11434/v1`"
+          ],
+          [
+            "`OpenTrack__Ai__Model`",
+            "`llama3.1:8b`"
+          ]
+        ],
+        "widths": [
+          2.6,
+          3.9
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "NO API KEY FOR LOCAL",
+        "text": "Leave `OpenTrack__Ai__ApiKey` unset — a local Ollama model needs no key. The `openai` provider just means “any OpenAI-compatible endpoint,” which Ollama is."
+      }
+    },
+    {
+      "steps": [
+        "Restart the web app and API (stop the windows / restart the scheduled tasks).",
+        "Open **New Issue** in the web app — you should now see the **✨ Suggest with AI** button. Type a title and click it to confirm the model responds."
+      ]
+    },
+    {
+      "h1": "Prefer the cloud instead?"
+    },
+    {
+      "p": "You can point OpenTrack at cloud Claude or OpenAI instead of local Ollama. Set `OpenTrack__Ai__Provider` to `anthropic` (with an Anthropic key) or `openai` (with an OpenAI key and no BaseUrl). Cloud is faster but bills a separate API account and sends issue text off the machine. Full details — including running Ollama on a separate box — are in **docs/guides/AI_ASSIST.md**."
+    }
+  ]
+}

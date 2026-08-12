@@ -1,0 +1,134 @@
+{
+  "order": 8,
+  "title": "Backups & Keeping It Running",
+  "subtitle": "Turn on automatic backups, know how to restore, and keep OpenTrack updated.",
+  "in_this_chapter": [
+    "Turn on automatic database backups",
+    "How to restore from a backup",
+    "Updating OpenTrack and a quick troubleshooting checklist"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "THE EASIEST BACKUP — ANYONE CAN DO IT",
+        "text": "At any time, sign in and click **Backup & export** in the left menu to download a full copy of your data. No setup, no typing — just click and save the file somewhere safe (do it before any big change). The automatic option below is nicer, but this one click is the simplest safety net."
+      }
+    },
+    {
+      "h1": "Turn on automatic backups (optional, a bit technical)"
+    },
+    {
+      "p": "For hands-off safety, OpenTrack can also write a **snapshot** of the database on a schedule (safe while the app is running). This one is more technical: set these system environment variables on the server and restart the web app. Not comfortable with that? The one-click export above is plenty."
+    },
+    {
+      "table": {
+        "headers": [
+          "Setting",
+          "Value",
+          "Meaning"
+        ],
+        "rows": [
+          [
+            "`OpenTrack__Backup__Enabled`",
+            "`true`",
+            "Turn backups on"
+          ],
+          [
+            "`OpenTrack__Backup__IntervalHours`",
+            "`24`",
+            "How often (hours)"
+          ],
+          [
+            "`OpenTrack__Backup__Directory`",
+            "(leave blank)",
+            "Where snapshots go — blank means a `backups` folder next to your database"
+          ],
+          [
+            "`OpenTrack__Backup__Retention`",
+            "`14`",
+            "How many to keep"
+          ]
+        ],
+        "widths": [
+          2.7,
+          1.9,
+          1.9
+        ]
+      }
+    },
+    {
+      "p": "Snapshots are named like `opentrack-20260812-013000.db` and land in your data folder (right next to the database) unless you set a different folder above."
+    },
+    {
+      "h1": "How to restore"
+    },
+    {
+      "steps": [
+        "Stop the web app and API.",
+        "In your data folder, find the snapshot you want (a file named like `opentrack-YYYYMMDD-HHMMSS.db`) and **copy it over** the live `opentrack.db`, replacing it.",
+        "Start the web app and API again. You're back to that point in time."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "KEEP A COPY OFF THE SERVER",
+        "text": "Snapshots protect against mistakes and corruption, but they sit on the **same machine**. For real safety, every so often copy a snapshot (or a one-click export) to another drive or a cloud folder — so if the whole server ever dies, your data doesn't die with it."
+      }
+    },
+    {
+      "h1": "Updating OpenTrack"
+    },
+    {
+      "p": "Easiest: **re-run the setup script** from Chapter 2 (`Install-OpenTrackServer.ps1`). It pulls the latest code, rebuilds both programs, and restarts them — the database upgrades itself on first start, with no manual database steps."
+    },
+    {
+      "p": "By hand instead: in your OpenTrack folder run `git pull`, re-publish both programs (Chapter 2's manual Step D), and restart the web app and API."
+    },
+    {
+      "h1": "Quick troubleshooting"
+    },
+    {
+      "table": {
+        "headers": [
+          "Symptom",
+          "Check this"
+        ],
+        "rows": [
+          [
+            "Another device can't reach the server",
+            "You're using the server's **actual number** (not the words “SERVER-IP”) with the right port; both devices are on the same network; the firewall was opened for both ports"
+          ],
+          [
+            "Web app loads on the server but not on other devices",
+            "The server must listen on `0.0.0.0`, not `localhost` (the setup script does this automatically — re-run it if unsure)"
+          ],
+          [
+            "Desktop app can't connect",
+            "Its server address must end in the **API** port **:5003**, not the web port :5035"
+          ],
+          [
+            "✨ AI button is missing",
+            "AI wasn't turned on — re-run the setup script and answer **Yes** to the local-AI question (or set it up in Chapter 3)"
+          ],
+          [
+            "Server didn't come back after a reboot",
+            "The auto-start didn't register — just re-run the setup script; it puts it back"
+          ]
+        ],
+        "widths": [
+          2.4,
+          4.1
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "YOU'RE DONE",
+        "text": "Your server is serving OpenTrack to your whole network, your Windows and Mac apps connect to it, tablets can scan and report, and (optionally) a private local AI is helping triage. Next up: the **User Manual** walks through every feature in detail."
+      }
+    }
+  ]
+}

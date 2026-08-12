@@ -1,0 +1,162 @@
+{
+  "order": 1,
+  "title": "Before You Begin",
+  "subtitle": "What OpenTrack is, how the pieces fit together, and what you'll need.",
+  "in_this_chapter": [
+    "What OpenTrack is and how it's laid out across your devices",
+    "The one rule that makes everything else make sense: the server is the single source of truth",
+    "The hardware, downloads, and accounts to have ready"
+  ],
+  "blocks": [
+    {
+      "h1": "What you're installing"
+    },
+    {
+      "p": "OpenTrack is a **self-hosted issue and bug tracker** — think of it as your own private version of a help desk / bug list for all of your projects. “Self-hosted” means *you* run it on *your own* computer; nothing lives on someone else's cloud, and there is no monthly fee. You own the data."
+    },
+    {
+      "p": "OpenTrack comes in a few pieces that work together. You do **not** install all of them on every machine — each device gets the piece that fits it:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Piece",
+          "Runs on",
+          "Who uses it"
+        ],
+        "rows": [
+          [
+            "**Server** (web app + API + database)",
+            "Your **mini-PC or Mac mini** (always on)",
+            "Everything connects to it"
+          ],
+          [
+            "**Desktop app**",
+            "A **Windows** PC and/or a **Mac**",
+            "You, day to day, as a native app"
+          ],
+          [
+            "**Browser / tablet access**",
+            "Any phone, tablet, Linux laptop, Raspberry Pi",
+            "Anyone, through a web browser"
+          ],
+          [
+            "**AI assistant** (optional)",
+            "The server (local) or the cloud",
+            "Adds ✨ smart triage & search"
+          ]
+        ],
+        "widths": [
+          2.5,
+          2.1,
+          1.9
+        ]
+      }
+    },
+    {
+      "p": "A few quick terms from that table: the **API** stands for **Application Programming Interface** — it's the behind-the-scenes service the desktop apps talk to. Your **LAN** is your **Local Area Network** — simply the home or office network your devices share. And **AI** just means **artificial intelligence** — the optional smart-suggestions helper (Chapter 3). Whenever this guide uses a short form like these, it's spelled out the first time."
+    },
+    {
+      "h1": "The one rule to remember"
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "THE KEY IDEA",
+        "text": "The **server is the single source of truth**. It runs the database and the app. Every other device — your Windows PC, your Mac, tablets — is just a **window** into the server over your home/office network (your LAN). Set the server up first; everything else simply points at it."
+      }
+    },
+    {
+      "p": "That's why this guide installs the **server first** (Chapter 2), then the optional **AI** on it (Chapter 3), then the **desktop apps** and **browser access** that connect to it (Chapters 4–6), and finally the **first-run setup and backups** (Chapters 7–8)."
+    },
+    {
+      "h1": "What you'll need"
+    },
+    {
+      "h2": "Hardware: the server (any small always-on computer)"
+    },
+    {
+      "p": "The server can be **any always-on computer** that meets the modest requirements below — a Windows mini-PC (the author uses a Beelink EQi12, but any brand works), a small desktop, a spare laptop, or a **Mac mini**. It just needs to stay powered on and on your network. This guide sets it up on **Windows or macOS** — pick whichever you have."
+    },
+    {
+      "table": {
+        "headers": [
+          "",
+          "Minimum",
+          "Recommended"
+        ],
+        "rows": [
+          [
+            "**CPU** (processor)",
+            "Any modern 2-core 64-bit",
+            "Quad-core or better — especially if you run the local AI on it"
+          ],
+          [
+            "**RAM** (memory)",
+            "4 GB",
+            "8 GB — or **16–24 GB** if you'll run the local AI here"
+          ],
+          [
+            "**Storage**",
+            "128 GB SSD (solid-state drive)",
+            "A **second drive** (or partition) for the data, so it survives a Windows reinstall"
+          ],
+          [
+            "**OS** (operating system)",
+            "Windows 10/11 (64-bit) **or** macOS 13+",
+            "Windows 11, or macOS on Apple Silicon"
+          ],
+          [
+            "**Network**",
+            "Wi-Fi",
+            "**Wired Ethernet** — steadier for an always-on server"
+          ]
+        ],
+        "widths": [
+          1.1,
+          2.3,
+          3.1
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "WINDOWS PC OR MAC MINI — EITHER WORKS",
+        "text": "There's nothing special about a Beelink — it's just a quiet, low-power mini-PC that's easy to leave on. Any machine meeting the specs above works the same way. A **Mac mini (Apple Silicon)** is an excellent choice too, and its unified memory makes the optional local AI (Chapter 3) notably faster. More RAM only matters if you also host that local AI."
+      }
+    },
+    {
+      "h2": "The other devices (all optional)"
+    },
+    {
+      "bullets": [
+        "A **Windows PC** and/or a **Mac** for the native desktop app (optional — you can use only the browser).",
+        "Tablets, phones, Linux laptops, a Raspberry Pi — anything with a web browser — for browser or web-app access."
+      ]
+    },
+    {
+      "h2": "Software you'll download (links in the steps)"
+    },
+    {
+      "bullets": [
+        "**Git** — to download (clone) the OpenTrack code.",
+        "**.NET 10 Software Development Kit (SDK)** — to build and run OpenTrack (free, from Microsoft).",
+        "**Ollama** — only if you want the free local AI on the server (Chapter 3)."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "TWO WAYS TO INSTALL THE APPS",
+        "text": "The Windows and Mac desktop apps can be installed either from a **signed installer** (a normal double-click, when one is published — see Chapters 4 and 5) or **built from source** with the free .NET tools. The **server** (Chapter 2) is set up by building it from source. Either way, every command is written out for you, step by step — if you can copy and paste, you can do this."
+      }
+    },
+    {
+      "h2": "Give the server a fixed address (recommended)"
+    },
+    {
+      "p": "Because every device points at the server, it helps if the server's network address — its **IP (Internet Protocol)** address — doesn't change. The easiest way is a **DHCP (Dynamic Host Configuration Protocol) reservation** in your router, which tells the router to always hand the server the same address. Write that address down; you'll use it a lot. Throughout this guide we'll call it **SERVER-IP** (for example, `192.168.1.50`) — so wherever you see `SERVER-IP`, type that actual number in its place, not the letters “SERVER-IP.”"
+    }
+  ]
+}

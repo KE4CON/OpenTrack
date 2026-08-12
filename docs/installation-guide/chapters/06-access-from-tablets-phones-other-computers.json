@@ -1,0 +1,51 @@
+{
+  "order": 6,
+  "title": "Access from Tablets, Phones & Other Computers",
+  "subtitle": "No install needed — just a browser. Plus a one-tap “app” icon for tablets.",
+  "in_this_chapter": [
+    "Open OpenTrack in any browser on the network",
+    "Add it to a tablet's home screen as an installable web app",
+    "Where the browser fits (Linux, Raspberry Pi, phones)"
+  ],
+  "blocks": [
+    {
+      "h1": "Open it in a browser"
+    },
+    {
+      "p": "Any device on the same network — an iPad, an Android tablet, a phone, a Linux laptop, a Raspberry Pi — can use OpenTrack with **no install at all**. Just open a browser and go to the **exact same web address the setup script printed** — the one you used to register on the server. It looks like this (your number will be different):"
+    },
+    {
+      "code": "http://192.168.1.50:5035"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "USE YOUR SERVER'S REAL NUMBER",
+        "text": "`192.168.1.50` above is just an example. Type **your** server's number (the one the setup script printed), not this one. Same address on every device."
+      }
+    },
+    {
+      "p": "Sign in with your account. That's it. This is the universal way in, and it's the *only* option on devices that can't run the native desktop app (Linux, Raspberry Pi, phones, tablets)."
+    },
+    {
+      "h1": "Add it to a tablet's home screen"
+    },
+    {
+      "p": "OpenTrack is a **Progressive Web App (PWA)**, so a tablet can pin it to the home screen and open it like a real app — full screen, its own icon, and it even keeps working through brief network drops for checklists."
+    },
+    {
+      "steps": [
+        "**iPad (Safari):** open the URL, tap the **Share** button, then **Add to Home Screen**.",
+        "**Android (Chrome):** open the URL, tap the **⋮** menu, then **Install app** / **Add to Home screen**.",
+        "Launch it from the new icon — it opens full-screen, like an installed app."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "GREAT FOR RUNNING A CHECKLIST",
+        "text": "The tablet PWA is ideal for walking a project's bug-hunt checklist — you can check items off even if the Wi-Fi hiccups, and it syncs when you're back online."
+      }
+    }
+  ]
+}
