@@ -108,7 +108,8 @@ CHAPTERS = [
                   "**IP (Internet Protocol)** address \u2014 doesn't change. The easiest way is a **DHCP (Dynamic Host "
                   "Configuration Protocol) reservation** in your router, which tells the router to always hand the "
                   "server the same address. Write that address down; you'll use it a lot. Throughout this guide "
-                  "we'll call it **SERVER-IP** (for example, `192.168.1.50`)."},
+                  "we'll call it **SERVER-IP** (for example, `192.168.1.50`) — so wherever you see "
+                  "`SERVER-IP`, type that actual number in its place, not the letters “SERVER-IP.”"},
         ],
     },
 
@@ -124,40 +125,67 @@ CHAPTERS = [
         ],
         "blocks": [
             {"h1": "The easy way: one setup script"},
-            {"p": "Almost everything in this chapter is automated by a **setup script** that ships with OpenTrack "
-                  "— a PowerShell script for **Windows** (`Install-OpenTrackServer.ps1`) and a bash script for "
-                  "**macOS** (`install-opentrack-server.sh`), both in the `scripts` folder. Either one installs the "
-                  "tools it needs (the .NET 10 Software Development Kit and Git), downloads and builds OpenTrack, "
-                  "points the web app and the API at one shared database, sets up networking, and registers both "
-                  "programs to start automatically at boot. You run it once; re-run it anytime to update."},
+            {"p": "You do not have to be technical to do this. OpenTrack comes with a **setup script** that does "
+                  "almost everything for you \u2014 it installs the tools it needs, downloads and builds OpenTrack, "
+                  "sets it up to run for your whole network, and starts it. There is a Windows version and a Mac "
+                  "version. You run it once, answer a few simple questions (mostly by just pressing **Enter**), and "
+                  "you're done."},
+            {"callout": {"kind": "tip", "label": "IN A NUTSHELL",
+                         "text": "**(1)** Download the OpenTrack code and unzip it. **(2)** Run the one setup "
+                                 "script. **(3)** Answer a few questions \u2014 or just press **Enter** for each. "
+                                 "**(4)** Open the web address it prints, and register. That is the whole install; "
+                                 "the steps below just walk you through it slowly."}},
             {"callout": {"kind": "note", "label": "WHAT YOU NEED FIRST",
-                         "text": "A Windows 10/11 **or** macOS 13+ machine, an internet connection, and about 10\u201315 minutes. The "
-                                 "script needs elevated rights (it runs as **Administrator** on Windows, or asks "
-                                 "for your password for `sudo` on a Mac) to set up networking and auto-start. It "
-                                 "installs the .NET SDK and Git for you if they're missing."}},
+                         "text": "A Windows 10/11 **or** macOS 13+ computer, an internet connection, and about "
+                                 "10\u201315 minutes. That is it \u2014 the script installs everything else it needs."}},
+
             {"h2": "On Windows"},
+            {"p": "**Step 1 \u2014 Download and unzip the OpenTrack code.**"},
             {"steps": [
-                "Get the OpenTrack code onto the server: on the project's GitHub page click the green **Code** "
-                "button \u2192 **Download ZIP**, then unzip it (for example to `C:\\OpenTrack`). Or, if you already "
-                "have Git, `git clone https://github.com/KE4CON/OpenTrack.git`.",
-                "Open **PowerShell as Administrator**: right-click the Start button \u2192 **Terminal (Admin)** (or "
-                "**Windows PowerShell (Admin)**).",
-                "Go to the `scripts` folder inside the code you just unzipped, and run the setup script:",
+                "In a web browser, go to **`https://github.com/KE4CON/OpenTrack`**.",
+                "Click the green **Code** button, then click **Download ZIP**. A file called "
+                "**OpenTrack-main.zip** downloads to your **Downloads** folder.",
+                "Open your **Downloads** folder, **right-click** the file **OpenTrack-main.zip**, choose "
+                "**Extract All\u2026**, then click **Extract**. This creates a folder called **OpenTrack-main**.",
+                "Open the **OpenTrack-main** folder, then open the **scripts** folder inside it. Leave this "
+                "window open \u2014 you will need it in the next steps.",
             ]},
-            {"code": [
-                "cd C:\\OpenTrack\\OpenTrack\\scripts",
-                "powershell -ExecutionPolicy Bypass -File .\\Install-OpenTrackServer.ps1",
+            {"p": "**Step 2 \u2014 Open PowerShell as Administrator.**"},
+            {"steps": [
+                "**Right-click the Start button** (the Windows logo in the bottom-left corner of the screen).",
+                "Click **Terminal (Admin)** \u2014 or **Windows PowerShell (Admin)** on older Windows. If Windows "
+                "asks \u201cDo you want to allow this app to make changes?\u201d, click **Yes**.",
+                "A dark window with a blinking cursor opens. That is where the next commands go.",
             ]},
+            {"p": "**Step 3 \u2014 Run the setup script.**"},
+            {"steps": [
+                "In the dark window, type **cd** followed by **one space** \u2014 but do **not** press Enter yet.",
+                "Now **drag the `scripts` folder** (from the window you left open in Step 1) **into the dark "
+                "window**. It types the folder's location for you, so you can't mistype it. Press **Enter**.",
+                "Type (or copy and paste) the line below exactly as shown, then press **Enter**:",
+            ]},
+            {"code": "powershell -ExecutionPolicy Bypass -File .\\Install-OpenTrackServer.ps1"},
+            {"callout": {"kind": "note", "label": "IF IT MENTIONS \u201cRUNNING SCRIPTS IS DISABLED\u201d",
+                         "text": "The `-ExecutionPolicy Bypass` part of that line is what prevents that message, so "
+                                 "make sure you typed the **whole** line, including that part."}},
+
             {"h2": "On a Mac"},
+            {"p": "**Step 1 \u2014 Download and unzip the OpenTrack code.**"},
             {"steps": [
-                "Get the OpenTrack code onto the Mac the same way \u2014 **Download ZIP** from the GitHub **Code** "
-                "button and unzip it (into your home folder, say), or `git clone` it if you have Git.",
-                "Open the **Terminal** app (Applications \u2192 Utilities \u2192 Terminal).",
-                "Go to the `scripts` folder, make the script executable, and run it. It asks for your password "
-                "once, for the always-on setup:",
+                "In Safari, go to **`https://github.com/KE4CON/OpenTrack`**, click the green **Code** button, then "
+                "**Download ZIP**. Safari usually unzips it for you into **Downloads**, leaving a folder called "
+                "**OpenTrack-main** (if it does not, double-click the `.zip` file to unzip it).",
+            ]},
+            {"p": "**Step 2 \u2014 Open Terminal and run the script.**"},
+            {"steps": [
+                "Open the **Terminal** app: press **Cmd+Space**, type **Terminal**, and press **Enter**.",
+                "Type **cd** and a **space** (do not press Enter yet), then **drag the `scripts` folder** (inside "
+                "**OpenTrack-main**, in your Downloads) **into the Terminal window** to fill in its location, and "
+                "press **Enter**.",
+                "Type the two lines below, pressing **Enter** after each. It will ask for your Mac password once "
+                "\u2014 the typing stays invisible, which is normal; just type it and press **Enter**:",
             ]},
             {"code": [
-                "cd ~/OpenTrack/OpenTrack/scripts",
                 "chmod +x install-opentrack-server.sh",
                 "./install-opentrack-server.sh",
             ]},
@@ -233,11 +261,19 @@ CHAPTERS = [
             ]},
             {"h1": "Create the first administrator"},
             {"steps": [
-                "On any computer on the network, open the web address the script printed: "
-                "**http://SERVER-IP:5035**.",
+                "Look at the lines the script printed when it finished \u2014 it shows the **exact** web address to "
+                "open, something like `http://192.168.1.50:5035` (your number will be different).",
+                "On any computer on the same network, type **that exact address** into a web browser and press "
+                "Enter. (On the server itself, `http://localhost:5035` also works.)",
                 "Choose **Register** and create your account \u2014 the **first** account registered becomes the "
                 "**Administrator**. Do this soon, before anyone else.",
             ]},
+            {"callout": {"kind": "important", "label": "DON'T TYPE \u201cSERVER-IP\u201d LITERALLY",
+                         "text": "In this guide, **SERVER-IP** is just a stand-in for your server's own network "
+                                 "address \u2014 a number like `192.168.1.50`. Wherever you see something like "
+                                 "`http://SERVER-IP:5035`, type your server's actual number in place of the words "
+                                 "`SERVER-IP`. The easiest way to get it right: **copy the exact address the setup "
+                                 "script printed.**"}},
             {"callout": {"kind": "tip", "label": "OR SET THE ADMIN AUTOMATICALLY",
                          "text": "Put `AdminEmail` and `AdminPassword` in the settings file and the script hands "
                                  "those to the server, which creates/promotes that account to Administrator at "
@@ -343,8 +379,9 @@ CHAPTERS = [
                 'netsh advfirewall firewall add rule name="OpenTrack API 5003" dir=in action=allow protocol=TCP localport=5003',
                 'netsh advfirewall firewall add rule name="OpenTrack Web 5035" dir=in action=allow protocol=TCP localport=5035',
             ]},
-            {"p": "Now from another computer on the same network, browse to **http://SERVER-IP:5035** (using the "
-                  "server's address). If the sign-in page loads, your server is reachable. \U0001F389"},
+            {"p": "Now from another computer on the same network, browse to your server's address with `:5035` on "
+                  "the end (type the server's actual number, for example `http://192.168.1.50:5035`). If the "
+                  "sign-in page loads, your server is reachable. \U0001F389"},
 
             {"h1": "Step H \u2014 Create the first administrator"},
             {"steps": [
@@ -509,8 +546,10 @@ CHAPTERS = [
             {"h1": "Point it at the server and sign in"},
             {"steps": [
                 "Launch the desktop app.",
-                "Open its **Settings** and set the **server address** to your Application Programming Interface "
-                "(API) endpoint: **http://SERVER-IP:5003** (the API port from Chapter 2).",
+                "Open its **Settings** and set the **server address**. Use your server's number ending in "
+                "**:5003** \u2014 the **same** number as the web address the setup script printed, just ending in "
+                "**5003** instead of 5035. For example, if the web address was `http://192.168.1.50:5035`, type "
+                "`http://192.168.1.50:5003` here.",
                 "Sign in with the account you created on the server. You're in \u2014 same projects and issues as the "
                 "web app, in a native window.",
             ]},
@@ -574,8 +613,9 @@ CHAPTERS = [
             {"h1": "Point it at the server and sign in"},
             {"steps": [
                 "Launch the app and open its **Settings**.",
-                "Set the **server address** to your Application Programming Interface (API) endpoint: "
-                "**http://SERVER-IP:5003**.",
+                "Set the **server address** to your server's number ending in **:5003** \u2014 the **same** number as "
+                "the web address the setup script printed, just ending in **5003** instead of 5035 (for example "
+                "`http://192.168.1.50:5003`).",
                 "Sign in with your account. Done \u2014 the Mac now shows the same data as everything else.",
             ]},
         ],
@@ -593,8 +633,13 @@ CHAPTERS = [
         "blocks": [
             {"h1": "Open it in a browser"},
             {"p": "Any device on the same network \u2014 an iPad, an Android tablet, a phone, a Linux laptop, a "
-                  "Raspberry Pi \u2014 can use OpenTrack with **no install at all**. Just open a browser to:"},
-            {"code": "http://SERVER-IP:5035"},
+                  "Raspberry Pi \u2014 can use OpenTrack with **no install at all**. Just open a browser and go to the "
+                  "**exact same web address the setup script printed** \u2014 the one you used to register on the "
+                  "server. It looks like this (your number will be different):"},
+            {"code": "http://192.168.1.50:5035"},
+            {"callout": {"kind": "note", "label": "USE YOUR SERVER'S REAL NUMBER",
+                         "text": "`192.168.1.50` above is just an example. Type **your** server's number (the one "
+                                 "the setup script printed), not this one. Same address on every device."}},
             {"p": "Sign in with your account. That's it. This is the universal way in, and it's the *only* option "
                   "on devices that can't run the native desktop app (Linux, Raspberry Pi, phones, tablets)."},
 
