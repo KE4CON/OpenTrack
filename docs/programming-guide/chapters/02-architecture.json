@@ -1,0 +1,162 @@
+{
+  "order": 2,
+  "title": "The Big Picture: Architecture at 10,000 Feet",
+  "subtitle": "How three different front doors — a browser web app, a network API, and a native desktop app — are really one program: they share the same screens, talk to the same single database, and reach it through one narrow interface, so a feature written once appears everywhere and the three can never quietly disagree.",
+  "in_this_chapter": [
+    "The three hosts and what each one is for",
+    "The one idea that unifies them: one database, one set of screens, one interface between",
+    "The IOpenTrackDataService seam — the single doorway the shared screens knock on",
+    "The two implementations behind that doorway: direct database on the web, HTTP on the desktop",
+    "How a single request travels end to end, on each host",
+    "Why one shared SQLite file — and the care taken so all hosts open the very same one"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "__OpenTrack__ can be reached three different ways. You can open it in a web browser. A separate service can be called over the network by other programs. And there is a native desktop app for Windows and macOS. Three front doors — but behind them there is only one building. The same rooms, the same filing cabinet, the same rules. This chapter is the view from ten thousand feet: how three surfaces that look different to a user are, underneath, one program sharing one set of screens and one database."
+    },
+    {
+      "p": "Picture a bank with a lobby, a drive-through window, and a phone line. A customer experiences three very different things, but there is one vault, one ledger, and one set of policies behind all of them. Nobody would build three separate ledgers and hope they stay in sync — the day they drift, money goes missing. OpenTrack is built on exactly that instinct: however you reach it, you are reaching the same data through the same rules. The whole architecture exists to make three front doors impossible to pull apart into three diverging programs."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "OpenTrack has three hosts — a Blazor Server web app, an ASP.NET Core minimal API, and a MAUI Blazor Hybrid desktop app — that all run the same shared UI components against one SQLite database, reached through one interface (IOpenTrackDataService); the web app fulfills that interface by touching the database directly, and the desktop app fulfills it by calling the API over HTTP."
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A host is a runnable program — a thing you can actually start. An interface (in C#) is a named list of operations with no implementation attached: a contract that says \"whoever fills this in must provide these methods.\" HTTP is the ordinary language of the web — the same request-and-response one browser page uses, here spoken between the desktop app and the API. SQLite is a database that lives in a single ordinary file rather than needing its own separate server program."
+      }
+    },
+    { "h2": "The three hosts, and what each is for" },
+    {
+      "p": "Each host is a real project in the solution with its own entry point, and each exists to answer a different need."
+    },
+    {
+      "table": {
+        "headers": ["Host", "What it is", "Who reaches it, and why"],
+        "rows": [
+          ["OpenTrack.Web", "A Blazor Server web app — the screens run on the server and stream to the browser", "Anyone with a browser on the network; the always-on primary surface. It also owns background jobs (SLA scanning, backups) and public/webhook endpoints."],
+          ["OpenTrack.API", "An ASP.NET Core minimal API — no screens, just a service door returning data", "Other programs — chiefly the desktop app — that need OpenTrack's data over the network with a token instead of a login cookie."],
+          ["OpenTrack.Desktop", "A .NET MAUI Blazor Hybrid app — a native Windows/macOS window hosting the same web screens", "A user who wants an installed desktop app; it renders the shared UI locally and gets its data by calling the API."]
+        ]
+      }
+    },
+    {
+      "p": "The key thing to notice is that only __one__ of these three actually contains the screens and the database logic. The web app has the screens and touches the database. The API has the database logic but no screens. The desktop app has the screens but no database logic — it borrows the screens from the shared UI and gets its data from the API. Nothing important is written three times. That is the payoff the rest of the chapter unpacks."
+    },
+    { "h2": "The unifying idea: one database, one UI, one seam between them" },
+    {
+      "p": "Three ingredients make the three hosts into one program. First, they all read and write __one shared database__ — a single SQLite file. Second, the web app and the desktop app both render __one shared set of screens__, the components living in the `OpenTrack.UI` project. Third — and this is the hinge everything turns on — those shared screens never talk to the database directly. They talk to a single narrow interface called `IOpenTrackDataService`, and each host plugs its own answer in behind that interface."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A \"seam\" is a deliberate joint in a program — a clean line where two parts meet through a defined contract, so either side can be swapped without disturbing the other. IOpenTrackDataService is OpenTrack's main seam: the screens sit on one side, the data-fetching sits on the other, and the interface is the joint they meet at. \"DI\" (dependency injection) is the machinery that, at startup, decides which real implementation gets plugged into each seam."
+      }
+    },
+    {
+      "p": "The interface's own summary comment states the design in one paragraph — worth reading slowly because the whole architecture is compressed into it:"
+    },
+    {
+      "code": "/// <summary>\n/// The single data-access seam for OpenTrack's shared Blazor UI. The web app implements\n/// this with direct EF Core access (DbOpenTrackDataService); the desktop app implements it\n/// by calling OpenTrack.API over HTTP (HttpOpenTrackDataService). The CRUD pages depend\n/// only on this interface, so the exact same components run in both hosts.\n/// </summary>\npublic interface IOpenTrackDataService\n{\n    // Projects\n    Task<IReadOnlyList<ProjectRow>> GetProjectsAsync(CancellationToken ct = default);\n    Task<ProjectDetail?> GetProjectAsync(int id, CancellationToken ct = default);\n    Task<int> CreateProjectAsync(CreateProjectInput input, CancellationToken ct = default);\n    // ... many more operations, all shaped the same way ...\n}"
+    },
+    {
+      "p": "Read the promise in the last sentence of that comment: \"the CRUD pages depend __only on this interface__, so the exact same components run in both hosts.\" A screen that lists issues does not know, and is not allowed to know, whether the issues came from a database on the same machine or from an API across the network. It asks the interface for issues and gets issues. That ignorance is a feature — it is exactly what lets one screen serve two hosts."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "CRUD is shorthand for Create, Read, Update, Delete — the four basic things you do to any record. \"CRUD pages\" are the ordinary screens for listing, viewing, adding, and editing issues and projects. A CancellationToken (the ct on every method) is a signal that lets a slow operation be called off early — for example when the user navigates away — so nothing keeps running that nobody is waiting for."
+      }
+    },
+    { "h2": "Two implementations behind one doorway" },
+    {
+      "p": "The interface is a contract; something has to fulfill it. Two things do, one per host that shows screens, and they could hardly be more different inside — which is the whole point."
+    },
+    {
+      "p": "On the web, the fulfiller is `DbOpenTrackDataService`, and it reaches straight into the database with Entity Framework Core. On the desktop, the fulfiller is `HttpOpenTrackDataService`, and it reaches nothing locally — it turns each call into a web request to the API. Its summary comment describes just how thin it is: it \"calls OpenTrack.API over HTTP (thin client). The API's DTOs are shaped to match the UI's view models, so most calls are near-passthrough deserialization.\" A typical method is a single line — ask the API, hand back what comes:"
+    },
+    {
+      "code": "public async Task<IReadOnlyList<ProjectRow>> GetProjectsAsync(CancellationToken ct = default) =>\n    await http.GetFromJsonAsync<List<ProjectRow>>(\"/api/projects\", JsonOptions, ct) ?? [];"
+    },
+    {
+      "p": "Which implementation a host uses is decided once, at startup, by dependency injection — a single registration line per host. The web host wires in the database-backed one:"
+    },
+    {
+      "code": "// OpenTrack.Web/Program.cs\n// The shared UI's data seam, backed by direct EF Core access in the web app.\nbuilder.Services.AddScoped<OpenTrack.UI.Services.IOpenTrackDataService,\n    OpenTrack.Web.Services.DbOpenTrackDataService>();"
+    },
+    {
+      "code": "// OpenTrack.Desktop/MauiProgram.cs\n// The shared UI's data seam, backed by HTTP calls to OpenTrack.API in the desktop app.\nbuilder.Services.AddScoped<IOpenTrackDataService>(sp =>\n    new HttpOpenTrackDataService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(\"OpenTrackApi\")));"
+    },
+    {
+      "p": "Two lines, in two files, are the entire difference between \"talk to the database\" and \"talk over the network.\" Everything above the seam — every screen, every button, every list — is identical. This is the single most important structural fact about OpenTrack: the surface you see is shared, and only the plumbing underneath the seam changes per host."
+    },
+    { "h2": "How a request travels, end to end" },
+    {
+      "p": "Trace one action — a user opening the list of projects — through each host, and the shapes become concrete."
+    },
+    {
+      "p": "__On the web app.__ The path is short because the screen and the database live in the same process:"
+    },
+    {
+      "steps": [
+        "The shared Blazor screen (running on the server) calls `GetProjectsAsync` on `IOpenTrackDataService`.",
+        "Dependency injection has plugged in `DbOpenTrackDataService`, so that call lands there.",
+        "It opens a short-lived Entity Framework Core context, queries the SQLite database — filtered to what the signed-in user is allowed to see — and returns the rows.",
+        "Blazor Server streams the rendered list back down to the browser."
+      ]
+    },
+    {
+      "p": "__On the desktop app.__ The same screen, the same interface call — but the request now leaves the machine and comes back:"
+    },
+    {
+      "steps": [
+        "The identical shared Blazor screen calls the identical `GetProjectsAsync` on `IOpenTrackDataService`.",
+        "Here dependency injection has plugged in `HttpOpenTrackDataService`, so the call becomes an HTTP GET to `/api/projects` on the API server, with the user's bearer token attached automatically.",
+        "The API host receives the request, runs the very same database logic the web app would have run, and returns the projects as JSON.",
+        "`HttpOpenTrackDataService` deserializes that JSON straight into the same `ProjectRow` objects the screen expected, and the screen renders — none the wiser about the round trip."
+      ]
+    },
+    {
+      "p": "Both journeys start and end in the same place with the same objects. The middle differs — one stays home, one crosses the network — but the screen at the top and the database logic at the bottom are shared. That is why a feature added to a screen shows up on web and desktop at once, and why a permission enforced in the database logic protects both surfaces without being written twice."
+    },
+    { "h2": "One database, and the care taken to keep it one" },
+    {
+      "p": "The shared database is a single SQLite file. The choice pays off only if every host truly opens the __same__ file — and there is a subtle way to get that wrong, which the code goes out of its way to prevent. All hosts resolve their connection string through one shared helper, `ResolveOpenTrackConnectionString`, whose comment names the exact trap it is closing:"
+    },
+    {
+      "code": "// OpenTrack.Infrastructure/DependencyInjection.cs\n// ... every host falls back to the SAME absolute path — a single opentrack.db in a\n// shared per-machine data folder — rather than each resolving \"opentrack.db\" relative\n// to its own launch directory, which would silently create separate databases for the\n// web app and the API.\nvar dataDir = Path.Combine(\n    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),\n    \"OpenTrack\");\nDirectory.CreateDirectory(dataDir);\nvar dbPath = Path.Combine(dataDir, \"opentrack.db\");\nreturn $\"Data Source={dbPath};Cache=Shared\";"
+    },
+    {
+      "p": "The danger is quiet, not loud: if the web app opened `opentrack.db` in its own folder and the API opened `opentrack.db` in a different folder, nothing would crash — each would happily create its own file, and the two hosts would drift into two separate realities. The fix is to make every host compute one absolute path in one shared per-machine location, so \"the same database\" is guaranteed by construction rather than by luck. Both `OpenTrack.Web` and `OpenTrack.API` call this one helper, and a comment in the API's startup underlines the intent: its data layer uses the \"shared SQLite database with OpenTrack.Web.\""
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "The recurring instinct: decide once, share the decision",
+        "text": "You have now seen the same reflex three times — one shared build file for compiler settings, one interface for data access, one helper for the database path. Each replaces something that could be written separately per host (and eventually diverge) with something written once and shared. When two hosts must agree about something, OpenTrack's answer is almost always to give them one thing to agree on rather than two things to keep in sync."
+      }
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The architecture's whole ambition is to make three front doors behave as one program without ever being written three times. It gets there with three shared things: one database that all hosts open by the same absolute path; one set of UI screens that both display-hosts render; and one interface, `IOpenTrackDataService`, that the screens depend on so completely that they cannot tell a local database from a remote API. Behind that interface sit two very different implementations — direct EF Core and HTTP — but their difference is confined to two startup lines and never leaks upward."
+    },
+    {
+      "p": "If you are extending OpenTrack, the shape tells you exactly where new work goes. A new kind of data the screens need becomes a new method on the interface, implemented once against the database (for the web) and once as an API call (for the desktop) — and then every screen, on both hosts, can use it. You do not add a screen that reaches around the seam to the database, and you do not teach one host a data operation the other cannot perform, because that is precisely the drift the architecture was built to prevent."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "Keep the shared screens talking only to IOpenTrackDataService — never to the database or the network directly. Every new data operation is a new method on that interface with both implementations supplied, so web and desktop stay in lockstep. And whenever two hosts must agree on something, give them one shared thing to depend on (one interface, one helper, one file) rather than two copies to keep synchronized. One program wearing three faces — never three programs."
+      }
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "order": 7,
+  "title": "Entity Framework Core & the One Shared Database",
+  "subtitle": "How OpenTrack's whole world of data — projects, issues, notes, users, and every feature table — is described once in plain C#, stored in a single SQLite file, and reached the same way by the web app and the API, so the two front doors can never end up reading from two different databases.",
+  "in_this_chapter": [
+    "What a DbContext is, and why AppDbContext is the map of the entire database",
+    "How the tables, keys, and relationships are declared in one place (OnModelCreating)",
+    "Why the app uses a context factory for the web and a plain scoped context for the API — and the Blazor circuit problem that forces it",
+    "How every host is made to point at the exact same opentrack.db file",
+    "How the database schema is built and kept up to date by migrations that run at startup",
+    "Why the design-time factory has to build the context the same way the real app does"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "Everything OpenTrack remembers — every project, every issue, every note, comment, tag, attachment, and user account — lives in a database. This chapter is about the layer that owns that database: how the shape of all the data is described in ordinary C# code, how it is stored in one small file on disk, and how both of OpenTrack's front doors (the website and the API the desktop app talks to) are wired to reach that one file and never accidentally split into two."
+    },
+    {
+      "p": "Think of it as the building's records room. There is exactly one records room, one filing system, and one set of rules for how folders are laid out and cross-referenced. Whether a clerk walks in from the front lobby (the web app) or the loading dock (the API), they open the same cabinets and read the same folders. The whole point of this layer is to guarantee that there is only ever one records room — not a second, shadow copy that quietly drifts out of sync."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "Entity Framework Core (EF Core) is Microsoft's library that lets you work with a database using normal C# objects instead of hand-written SQL — you say `db.Issues`, it writes the SQL for you. SQLite is a database that is just a single ordinary file on disk (here, opentrack.db) with no separate server to install or run. A DbContext is the C# object that represents one live connection-and-session to that database. A DbSet is one table exposed as a list you can query (`db.Issues` is the Issues table)."
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "AppDbContext is the single C# description of the whole database; every host reaches it through the same connection string so they all share one opentrack.db; and the schema is built and upgraded automatically by migrations that run when the app starts."
+      }
+    },
+    { "h2": "The map of the whole database: AppDbContext" },
+    {
+      "p": "The class `AppDbContext` is the one place that lists every table OpenTrack has. Each table is exposed as a `DbSet` — a queryable list of one kind of thing. Reading the top of the class is like reading the index of the records room:"
+    },
+    {
+      "code": "public DbSet<Project> Projects => Set<Project>();\npublic DbSet<ProjectMembership> ProjectMemberships => Set<ProjectMembership>();\npublic DbSet<Category> Categories => Set<Category>();\npublic DbSet<ProjectVersion> Versions => Set<ProjectVersion>();\npublic DbSet<Issue> Issues => Set<Issue>();\npublic DbSet<IssueNote> IssueNotes => Set<IssueNote>();\npublic DbSet<IssueHistory> IssueHistories => Set<IssueHistory>();\npublic DbSet<IssueAttachment> IssueAttachments => Set<IssueAttachment>();"
+    },
+    {
+      "p": "Further down the file the list continues with the tables that back OpenTrack's later features — `Tags`, `IssueTags`, `IssueMonitors`, `Notifications`, `CustomFieldDefinitions`, `CustomFieldValues`, `SavedFilters`, `UserPreferences`, `ProjectWebhooks`, `TimeLogs`, `WorkflowTransitions`, `AutomationRules`, `SlaPolicies`, `GitIntegrations`, and more. Each `DbSet` corresponds to one entity class from `OpenTrack.Core` (the plain data shapes covered in Part II). One class, one master list: if a table is not here, OpenTrack does not have it."
+    },
+    {
+      "p": "One detail at the very top of the class is worth calling out, because it explains why the user table is not in that list. `AppDbContext` does not start from scratch — it inherits from ASP.NET Identity's user-store context:"
+    },
+    {
+      "code": "public class AppDbContext(DbContextOptions<AppDbContext> options)\n    : IdentityUserContext<User, int>(options)"
+    },
+    {
+      "p": "By deriving from `IdentityUserContext<User, int>`, OpenTrack gets the `Users` table (and the sign-in login/token and passkey tables) for free from the sign-in framework, and adds its own tables on top. The code's own comment explains a deliberate choice: it uses `IdentityUserContext`, not the fuller `IdentityDbContext`, because \"OpenTrack authorization is driven entirely by the custom UserRole enum (User.Role) and ProjectMembership, never ASP.NET Identity's role store, so we omit the AspNetRoles/AspNetUserRoles/AspNetRoleClaims tables.\" In other words, OpenTrack keeps the parts of the sign-in framework it uses (accounts, passwords, passkeys) and skips the built-in role tables, because — as Chapter 8 showed — its permission system is its own."
+    },
+    { "h2": "One place that declares every table's shape" },
+    {
+      "p": "Listing the tables is only half the job. The other half is describing each table in detail: how long a name can be, which columns are required, which tables point at which, and what happens to child rows when a parent is deleted. All of that lives in a single method, `OnModelCreating`, which EF Core calls once to learn the model. It is long, but it is long the way a table of contents is long — every entity gets a short, readable block."
+    },
+    {
+      "p": "Here is the `Project` block. Read it as a sentence: a project has a required name capped at a set length, an optional description, a concurrency token, and an owner that must exist and cannot be deleted out from under it:"
+    },
+    {
+      "code": "b.Entity<Project>(e =>\n{\n    e.Property(p => p.Name).HasMaxLength(FieldLimits.ProjectName).IsRequired();\n    e.Property(p => p.Description).HasMaxLength(FieldLimits.Description);\n    e.Property(p => p.RowVersion).IsConcurrencyToken();\n    e.HasOne(p => p.Owner)\n        .WithMany()\n        .HasForeignKey(p => p.OwnerId)\n        .OnDelete(DeleteBehavior.Restrict);\n});"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A foreign key is a column that points at a row in another table — an issue's `ProjectId` points at the project it belongs to. A cascade delete means 'when the parent goes, its children go too' (delete a project and its issues vanish with it). Restrict means the opposite — 'refuse to delete the parent while children still point at it.' A concurrency token (`RowVersion`) is a stamp that changes on every save, so if two people edit the same issue at once, the second save is caught instead of silently overwriting the first."
+      }
+    },
+    {
+      "p": "The lengths are never bare numbers — they come from a shared `FieldLimits` constants class (`FieldLimits.ProjectName`, `FieldLimits.Description`, and so on), so the same limit is used by the database, the validation code, and the UI. Notice too the deliberate choice of delete behavior. A project's issues are set to `OnDelete(DeleteBehavior.Cascade)` — remove the project, remove its issues — while a project's owner is `Restrict` — you cannot delete a user who still owns a project. Each relationship is a small, considered decision about what should happen when something is removed."
+    },
+    {
+      "p": "A few of these decisions carry long comments because they encode a real trap. The `IssueRelationship` block, which links one issue to another, spells out why one side cascades and the other restricts:"
+    },
+    {
+      "code": "// Source cascades, Target restricts: two cascade FKs to the same Issue table would be\n// \"multiple cascade paths\" on SQL Server, so only one cascades. Nothing deletes issues or\n// projects through the UI today. WHEN a delete feature is added, it must first clear\n// relationships where the doomed issue is the TARGET ...\ne.HasOne(r => r.SourceIssue)\n    .WithMany()\n    .HasForeignKey(r => r.SourceIssueId)\n    .OnDelete(DeleteBehavior.Cascade);\ne.HasOne(r => r.TargetIssue)\n    .WithMany()\n    .HasForeignKey(r => r.TargetIssueId)\n    .OnDelete(DeleteBehavior.Restrict);"
+    },
+    {
+      "p": "The value of putting all this in one method is that the database's shape is never a mystery scattered across the codebase. Want to know whether tag names must be unique, or whether deleting an issue deletes its notes? It is all in `OnModelCreating`, in the block named for that entity. The model also declares indexes here — for example `e.HasIndex(i => i.Status)` and `e.HasIndex(i => i.ProjectId)` on issues — which are the database's shortcuts for fast lookups, again decided once and in the open."
+    },
+    { "h2": "Why the web app and the API get the context differently" },
+    {
+      "p": "Now the subtle part, and the reason this chapter exists as its own topic. A `DbContext` is a short-lived working object: you open one, do a unit of work, and let it go. It is explicitly not safe to share one across several things happening at the same time. That collides head-on with how the web app is built, and the collision is what shapes the registration code."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "OpenTrack's website is a Blazor Server app. Blazor Server keeps a long-lived connection open to your browser — called a circuit — for as long as you have the page open, and runs the page's code on the server over that connection. 'Scoped' is a lifetime rule in .NET: normally one shared instance per web request. The trouble is that a Blazor circuit is not one quick request — it can live for many minutes while you click around, and several things on the page can run at the same moment."
+      }
+    },
+    {
+      "p": "Put those two facts together and the danger is clear: if the whole Blazor circuit shared a single `DbContext`, then two parts of the page doing database work at the same instant would be using the same non-thread-safe object at once — which throws. The registration method `AddOpenTrackInfrastructure` solves this with a two-part setup, and its summary comment lays out the reasoning in full:"
+    },
+    {
+      "code": "public static IServiceCollection AddOpenTrackInfrastructure(\n    this IServiceCollection services, string connectionString)\n{\n    services.AddDbContextFactory<AppDbContext>(options => options.UseSqlite(connectionString));\n    services.AddScoped<AppDbContext>(sp =>\n        sp.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext());\n    return services;\n}"
+    },
+    {
+      "p": "The first line registers a factory — a little machine that hands out a brand-new, short-lived `AppDbContext` every time you ask. The Blazor web code uses that factory to create a fresh context for each operation and dispose it right after, so two simultaneous actions on the same page never touch the same context. The second line adds a scoped shim: a plain `AppDbContext` that other code can still ask for directly, which the shim quietly builds from the same factory. The comment explains exactly who each is for:"
+    },
+    {
+      "bullets": [
+        "__The factory__ exists because \"a single scoped context lives for the entire SignalR circuit and DbContext is not thread-safe, so concurrent component operations on a shared instance throw.\" The web data service creates a short-lived context per operation.",
+        "__The scoped shim__ exists \"so ASP.NET Identity and the API endpoints can still inject AppDbContext directly (they run per-HTTP-request, where a request-scoped context is short-lived and safe).\""
+      ]
+    },
+    {
+      "p": "So the same registration serves both worlds. The API is a normal request-in, response-out program — each request is quick and gets its own context, which is exactly the classic \"scoped\" pattern, so injecting `AppDbContext` directly is safe there. The web app's long-lived, concurrent circuits are the exception, and they use the factory. One method, `AddOpenTrackInfrastructure`, sets up both, and both hosts call it at startup."
+    },
+    { "h2": "The one shared file: resolving the connection string" },
+    {
+      "p": "A database is only \"one shared database\" if every program actually opens the same file. This is easy to get wrong in a way that fails silently: SQLite will happily create a new empty file if you point at a path that does not exist yet. If the web app resolved `opentrack.db` relative to its own folder and the API resolved `opentrack.db` relative to a different folder, each would create its own database and neither would ever see the other's data — with no error to warn you. OpenTrack closes that trap in one shared helper, `ResolveOpenTrackConnectionString`:"
+    },
+    {
+      "code": "public static string ResolveOpenTrackConnectionString(this IConfiguration configuration)\n{\n    var configured = configuration.GetConnectionString(\"Default\");\n    if (!string.IsNullOrWhiteSpace(configured))\n        return configured;\n\n    var dataDir = Path.Combine(\n        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),\n        \"OpenTrack\");\n    Directory.CreateDirectory(dataDir);\n    var dbPath = Path.Combine(dataDir, \"opentrack.db\");\n    return $\"Data Source={dbPath};Cache=Shared\";\n}"
+    },
+    {
+      "p": "The logic is deliberately boring, which is the point. First, if the deployment has set an explicit connection string in configuration, use it exactly as given — this is the hook the real Beelink deployment uses to point the database at the D: drive. Otherwise, every host falls back to the __same absolute path__: a single `opentrack.db` inside a per-machine `OpenTrack` folder under the operating system's local-application-data location. The comment states the goal plainly — fall back to the same absolute path \"rather than each resolving 'opentrack.db' relative to its own launch directory, which would silently create separate databases for the web app and the API.\""
+    },
+    {
+      "p": "Both hosts wire this up identically at startup, so both end up at the same file. In the web host's `Program.cs`:"
+    },
+    {
+      "code": "var connectionString = builder.Configuration.ResolveOpenTrackConnectionString();\nbuilder.Services.AddOpenTrackInfrastructure(connectionString);"
+    },
+    {
+      "p": "The API host's `Program.cs` contains the exact same two lines. Because the resolution logic lives in one shared method and both hosts call it, the website and the API cannot end up looking at different databases unless someone deliberately configures them apart. (A third caller, the web app's backup scheduler, uses the same helper too, so backups always target the live file.)"
+    },
+    { "h2": "How the database gets built and stays current: migrations" },
+    {
+      "p": "The `OnModelCreating` method describes what the database should look like. But the actual file on disk has to be created to match, and when the model changes — a new feature adds a table or a column — the existing file has to be updated without losing anyone's data. That is what migrations are for."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A migration is a small, ordered, dated step that changes the database's structure — 'add this table', 'add this column'. Each one is a C# file with an `Up` method (apply the change) and a `Down` method (undo it). Run every migration in order against an empty file and you get the current schema; run only the new ones against an existing file and it catches up. They live in the Migrations folder, each stamped with a timestamp so their order is fixed."
+      }
+    },
+    {
+      "p": "OpenTrack's `Migrations` folder holds the whole history, from `InitialCreate` through steps like `AddConcurrencyTokens`, `AddTags`, `AddCustomFields`, `AddSlaPolicies`, and `AddGitIntegration` — one per feature that touched the schema, each a readable record of exactly what changed. A single migration is small and legible. `AddConcurrencyTokens`, for example, just adds the `RowVersion` stamp column to two tables:"
+    },
+    {
+      "code": "protected override void Up(MigrationBuilder migrationBuilder)\n{\n    migrationBuilder.AddColumn<Guid>(\n        name: \"RowVersion\",\n        table: \"Projects\",\n        type: \"TEXT\",\n        nullable: false,\n        defaultValue: new Guid(\"00000000-0000-0000-0000-000000000000\"));\n\n    migrationBuilder.AddColumn<Guid>(\n        name: \"RowVersion\",\n        table: \"Issues\",\n        type: \"TEXT\",\n        nullable: false,\n        defaultValue: new Guid(\"00000000-0000-0000-0000-000000000000\"));\n}"
+    },
+    {
+      "p": "The operator never has to run these by hand. Each host applies any pending migrations automatically the moment it starts. In the web host's `Program.cs`, right after the app is built:"
+    },
+    {
+      "code": "// Apply any pending EF Core migrations at startup so the SQLite database (and the\n// Identity tables) are created/updated automatically when the app runs.\nusing (var scope = app.Services.CreateScope())\n{\n    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();\n    db.Database.Migrate();\n    await OpenTrackSeeder.EnsureBootstrapAdminAsync(scope.ServiceProvider, app.Configuration);\n}"
+    },
+    {
+      "p": "The single call `db.Database.Migrate()` does the whole job: if the database file does not exist, it is created and every migration is applied to bring it up to the current shape; if it already exists, only the migrations it has not seen yet are run. This is why a fresh install \"just works\" — start the app and the schema builds itself — and why upgrading is equally quiet: start the new version and the file catches up. The API host runs the identical `db.Database.Migrate()` at its own startup, so whichever host launches first prepares the shared file for both."
+    },
+    { "h2": "One more safeguard: the design-time factory" },
+    {
+      "p": "There is a fiddly edge case worth understanding, because it caused a real bug that a comment now guards against. When a developer generates a new migration with the `dotnet ef` tooling, that tooling has to build an `AppDbContext` without the full web app running. OpenTrack provides a special `AppDbContextFactory` for exactly that moment — and it is written to build the context the __same way the running hosts do__, not with a bare `new AppDbContext(...)`."
+    },
+    {
+      "code": "public AppDbContext CreateDbContext(string[] args)\n{\n    var services = new ServiceCollection();\n    services.AddLogging();\n    services.AddDataProtection();\n    services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());\n\n    services.AddOpenTrackInfrastructure(\"Data Source=opentrack-designtime.db\");\n    services.AddOpenTrackIdentity();\n\n    var provider = services.BuildServiceProvider();\n    return provider.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext();\n}"
+    },
+    {
+      "p": "Why bother going through the same registrations? Because building the context any other way quietly produces a __different__ model. The factory's comment records the exact failure: a bare construction \"has no application service provider, so Identity's schema version never applies and the model silently OMITS the .NET 10 AspNetUserPasskeys table — which made every scaffolded migration try to DROP that table (audit finding D1), and passkeys are a live feature here.\" In plain terms: if the tool that writes migrations sees a slightly different picture of the database than the running app does, it writes migrations that would delete a table the app actually needs. Forcing the design-time factory through `AddOpenTrackInfrastructure` and `AddOpenTrackIdentity` — the very same setup the real hosts use — guarantees the migration tool and the running app always agree on what the database looks like."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The shape to preserve here is \"one description, one file, one path to it.\" The entire database is described in a single class, `AppDbContext`, with every table's rules gathered in `OnModelCreating`. There is one physical file, `opentrack.db`, and one shared helper that every host calls to find it, so the website and the API cannot drift onto separate databases. And the schema builds and upgrades itself through dated migrations applied at startup, so nobody has to run database commands by hand for an install or an upgrade to work."
+    },
+    {
+      "p": "The reason for the factory-plus-shim split is equally worth keeping in mind: the web app's long-lived, concurrent Blazor circuits need a fresh short-lived context per operation, while the API's quick per-request lifetime is safe with a directly-injected scoped context. Both are served by one registration method. And the design-time factory must always build the context exactly as the app does, or the migration tooling and the app will disagree about reality — the kind of mismatch that writes a migration to drop a table you depend on."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "When you change the data model, change it in one place — add or edit the entity, wire it in OnModelCreating, then generate a migration through the shared AppDbContextFactory and let startup apply it. Never point a host at a database path of its own, never construct AppDbContext by hand for tooling, and never assume a schema change is done until a migration exists for it. One description, one file, one path — keep it that way and the two front doors stay in perfect agreement about the data beneath them."
+      }
+    }
+  ]
+}

@@ -1,0 +1,237 @@
+{
+  "order": 4,
+  "title": "Issues as Data: the Entity Model",
+  "subtitle": "The handful of plain C# classes that describe everything OpenTrack remembers — the issue at the center, the project and people around it, and the notes, attachments, tags, relationships, versions, and custom fields that hang off it — and the deliberate way they point at one another.",
+  "in_this_chapter": [
+    "What an 'entity' is, and why the whole app is built out of a few of them",
+    "The Issue at the center of everything, field by field",
+    "Project, User, and the ProjectMembership join that ties people to projects with a role",
+    "The satellites: Note, Attachment, History, Tag, Relationship, Category, ProjectVersion, custom fields, checklist items",
+    "How the classes point at each other — foreign keys and navigation properties, in plain words",
+    "Why some fields are allowed to be empty and others never are (nullability)",
+    "The small, load-bearing details: RowVersion, the private flags, imported-source keys"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "__OpenTrack__ is an issue tracker — a shared list of problems, bugs, and tasks that a team works through. Everything the program remembers has to be written down somewhere in a definite shape: an issue has a title and a status, it belongs to a project, it was filed by a person, it might have notes and file attachments. This chapter is about those shapes. In the code they are called __entities__, and they are the vocabulary the rest of the book is written in."
+    },
+    {
+      "p": "Think of the entity model as the set of blank forms the whole system uses. There is a form for an issue, a form for a project, a form for a person, a form for a note, and so on. Each form has named boxes to fill in, and some boxes say \"see form number 12\" — that is how an issue points at the project it belongs to. Get these forms right and everything above them — the screens, the rules, the reports — has solid ground to stand on. Get them wrong and no amount of clever code above will save you. That is why they live in the deepest, simplest project in the whole solution, `OpenTrack.Core`, with no database code and no web code anywhere near them."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "An entity is one kind of thing the app stores, written as a C# class — a named bundle of fields. Each entity usually becomes one table in the database, and each stored item becomes one row. A property is one named box on the form (Title, Status, CreatedAt). A foreign key is a box that holds the id number of a row in another table — the way one form references another. A navigation property is the same link seen from the code's side: instead of an id number, it hands you the whole related object."
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "OpenTrack stores its whole world as a small set of plain C# classes — Issue at the center, surrounded by Project, User, and the membership that joins them, plus the notes, attachments, tags, relationships, versions, and custom fields that decorate an issue — and every link between them is just an id number in one direction and a convenience object in the other."
+      }
+    },
+    { "h2": "The Issue: the center of gravity" },
+    {
+      "p": "Nearly everything in OpenTrack exists to describe, organize, or attach to an __issue__. So the `Issue` class is the largest and most important form in the system. Read it top to bottom and you can see the life of a bug: what it is, how bad it is, who owns it, which version it affects, and when things happened."
+    },
+    {
+      "p": "The first boxes are the human description — the words a person types:"
+    },
+    {
+      "code": "public int Id { get; set; }\n\npublic string Title { get; set; } = string.Empty;\npublic string Description { get; set; } = string.Empty;\npublic string? StepsToReproduce { get; set; }\npublic string? ExpectedBehavior { get; set; }\npublic string? ActualBehavior { get; set; }"
+    },
+    {
+      "p": "Notice a small but deliberate distinction hiding in the punctuation. `Title` and `Description` are `string` and start out as `string.Empty` — the design says every issue always has a title and a description, even if only an empty one; they are never \"missing.\" But `StepsToReproduce`, `ExpectedBehavior`, and `ActualBehavior` are written `string?` with a question mark, which means they are allowed to be genuinely absent. That is the whole grammar of nullability: a plain type is a promise the value is always there; a `?` is permission for it to be nothing."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "'Nullable' — the `?` after a type — means the box is allowed to be empty (hold 'nothing', which in C# is called null). Without the `?`, the code is declaring the box should always hold a real value. This isn't decoration: it tells every screen and rule above whether it must handle the 'no value' case. `Id` is the row's unique number, assigned by the database; a brand-new, unsaved issue has Id 0."
+      }
+    },
+    {
+      "p": "Next come the five classifications — the fixed-menu fields that let the team sort and prioritize. Each is an __enum__ (a fixed menu of named choices, covered in full in the next chapter), and each is given a sensible starting value so a half-filled new issue is never in a nonsense state:"
+    },
+    {
+      "code": "public IssueStatus Status { get; set; } = IssueStatus.New;\npublic IssueSeverity Severity { get; set; } = IssueSeverity.Minor;\npublic IssuePriority Priority { get; set; } = IssuePriority.Normal;\npublic IssueReproducibility Reproducibility { get; set; } = IssueReproducibility.HaveNotTried;\npublic IssueResolution Resolution { get; set; } = IssueResolution.Open;\n\npublic bool IsPrivate { get; set; }\npublic bool IsSticky { get; set; }"
+    },
+    {
+      "p": "The two `bool` flags below them are quietly important. `IsPrivate` is the single switch that the entire access-control system reads to decide whether an issue is hidden from most people (it is the star of §8). `IsSticky` marks an issue as pinned to the top of a list. A `bool` defaults to `false`, so an issue is public and un-pinned unless someone deliberately says otherwise — a safe default in both cases."
+    },
+    { "h2": "How an Issue points at everything around it" },
+    {
+      "p": "An issue does not live alone. It belongs to a project, sits in a category, was filed by one person and maybe assigned to another, and may name the versions it affects and fixes. Every one of those links is written the same way — a paired __foreign key and navigation property__ — and the pattern is worth learning once because it repeats across every entity in the system."
+    },
+    {
+      "code": "// Project / categorisation\npublic int ProjectId { get; set; }\npublic Project Project { get; set; } = null!;\npublic int? CategoryId { get; set; }\npublic Category? Category { get; set; }\n\n// People\npublic int ReporterId { get; set; }\npublic User Reporter { get; set; } = null!;\npublic int? AssigneeId { get; set; }\npublic User? Assignee { get; set; }\n\n// Versions\npublic int? AffectsVersionId { get; set; }\npublic ProjectVersion? AffectsVersion { get; set; }\npublic int? FixVersionId { get; set; }\npublic ProjectVersion? FixVersion { get; set; }"
+    },
+    {
+      "p": "Read the pairs and the design decisions are visible in the nullability. `ProjectId` is a plain `int` and `ReporterId` is a plain `int`: an issue __must__ belong to a project and __must__ have been filed by someone — there is no such thing as a project-less or author-less issue. But `CategoryId`, `AssigneeId`, `AffectsVersionId`, and `FixVersionId` are all `int?`: an issue can be uncategorized, unassigned, and silent about versions. Those are real, ordinary states — a freshly filed bug that nobody has picked up yet has no assignee — and the `?` is how the model admits it."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Why every link is stored as an id, plus a matching object",
+        "text": "The id (ProjectId) is what actually lives in the database — a plain number pointing at a row in another table. The object (Project) is a convenience for the code: when the data layer loads it, you can write issue.Project.Name instead of looking the project up yourself. The `= null!;` on the object is the author telling the compiler 'trust me, the data layer fills this in' — it isn't stored, it's populated on load. Store the number; travel to the object when you need it."
+      }
+    },
+    {
+      "p": "The `Reporter`/`Assignee` split is a good example of why the model bothers with two separate links to the same `User` table. One person filed the issue (the reporter, fixed forever); a possibly-different person is responsible for it now (the assignee, which changes as work moves around). Both are users, but they answer different questions, so they are different boxes on the form — and this same reporter-or-assignee distinction is exactly what the private-issue rule keys on in §8."
+    },
+    { "h2": "Timestamps, geography, and the housekeeping fields" },
+    {
+      "p": "The rest of the `Issue` form is dates and a set of small operational fields, each solving one concrete problem. The timestamps record the issue's life; the location fields exist for field and mobile reports; and a scatter of nullable fields quietly support imports, service-level tracking, and public intake:"
+    },
+    {
+      "code": "public DateTime CreatedAt { get; set; } = DateTime.UtcNow;\npublic DateTime UpdatedAt { get; set; } = DateTime.UtcNow;\npublic DateTime? DueDate { get; set; }\n\npublic double? Latitude { get; set; }\npublic double? Longitude { get; set; }\n\npublic DateTime? SlaBreachNotifiedAt { get; set; }\npublic int? ImportedMantisId { get; set; }\npublic string? ImportedExternalKey { get; set; }\npublic string? IntakeName { get; set; }\npublic string? IntakeEmail { get; set; }"
+    },
+    {
+      "p": "You do not have to memorize these, but the pattern is instructive: they are __all nullable except the two creation/update stamps__, because every one of them describes an optional circumstance. An issue only has a due date if someone set one. It only has coordinates if the reporter chose to attach their location — the source comment says the fields are \"Null unless the reporter chose to attach their location.\" `SlaBreachNotifiedAt` is null until the background scanner has sent a breach warning, and its whole job is to make sure that warning goes out once rather than \"every tick.\" `ImportedMantisId` and `ImportedExternalKey` remember where an imported issue came from so that re-running the same import \"skip[s] issues already brought in, instead of duplicating them.\" And `IntakeName`/`IntakeEmail` hold the name and email of someone who filed a ticket through the public page without an account."
+    },
+    {
+      "p": "One field deserves special attention because it protects your data from a subtle disaster:"
+    },
+    {
+      "code": "public Guid RowVersion { get; set; } = Guid.NewGuid();"
+    },
+    {
+      "p": "This is the __optimistic-concurrency token__. Imagine two people open the same issue and both start editing. Person A saves; then Person B saves a few seconds later, unaware, and silently erases Person A's change — a \"lost update.\" `RowVersion` prevents it: it is a random value that is reassigned on every save, and if the value a client loaded no longer matches when they try to save, the database layer \"raises DbUpdateConcurrencyException instead of silently overwriting a concurrent edit.\" The same guard appears on `Project`. It is a tiny field that turns a data-corruption bug into a polite \"someone else changed this, please reload.\""
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A Guid is a 'globally unique identifier' — a long random value practically guaranteed never to repeat. 'Optimistic concurrency' means the system optimistically assumes two people rarely edit the same row at once, so it doesn't lock anything up front; instead it checks the RowVersion at save time and only complains if a clash actually happened. UTC is Coordinated Universal Time — timestamps are stored in one worldwide zone so a Mac in California and a server in Virginia agree on when things happened."
+      }
+    },
+    { "h2": "The satellites: what hangs off an issue" },
+    {
+      "p": "The bottom of the `Issue` form is a set of __navigation collections__ — lists pointing at the smaller entities that decorate an issue. An issue does not store its notes inside itself; instead, each note stores the id of its issue, and this list is the convenient view back the other way:"
+    },
+    {
+      "code": "// Navigation\npublic ICollection<IssueNote> Notes { get; set; } = [];\npublic ICollection<IssueAttachment> Attachments { get; set; } = [];\npublic ICollection<IssueHistory> History { get; set; } = [];\npublic ICollection<IssueTag> IssueTags { get; set; } = [];\npublic ICollection<CustomFieldValue> CustomFieldValues { get; set; } = [];"
+    },
+    {
+      "p": "Each of these is its own small form. `IssueNote` is a comment: it belongs to one issue and one author, carries its `Text`, and — echoing the issue itself — has its own `IsPrivate` flag so a note can be hidden even on a visible issue. `IssueAttachment` is an uploaded file: it records the `FileName`, the `FilePath` on disk, the `FileSize`, the `ContentType`, and who uploaded it. Notice attachments store a __path__, not the file's bytes — the database keeps the small facts about the file, the file itself lives on disk."
+    },
+    {
+      "p": "`IssueHistory` is the audit trail, and its comment states its job in one line: \"one row per field change on an issue.\" Every time a field changes, a row is written recording which field, its `OldValue`, its `NewValue`, who changed it, and when — so an issue's whole past can be reconstructed:"
+    },
+    {
+      "code": "public string FieldChanged { get; set; } = string.Empty;\npublic string? OldValue { get; set; }\npublic string? NewValue { get; set; }\npublic DateTime ChangedAt { get; set; } = DateTime.UtcNow;"
+    },
+    { "h2": "Tags and relationships: the many-to-many links" },
+    {
+      "p": "Two of the satellites are trickier because they connect __many things to many things__, and that always needs a small extra table in the middle. A `Tag` (a free-form label like \"regression\" or \"ui\") can be on many issues, and an issue can have many tags. You cannot store that with a single id on either side, so the model adds a tiny __join entity__, `IssueTag`, whose only job is to hold one issue-id and one tag-id — one row per pairing:"
+    },
+    {
+      "code": "public class Tag\n{\n    public int Id { get; set; }\n    public string Name { get; set; } = string.Empty;\n    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;\n\n    public ICollection<IssueTag> IssueTags { get; set; } = [];\n}\n\npublic class IssueTag\n{\n    public int IssueId { get; set; }\n    public Issue Issue { get; set; } = null!;\n\n    public int TagId { get; set; }\n    public Tag Tag { get; set; } = null!;\n}"
+    },
+    {
+      "p": "Tags are deliberately __global__ — shared across all projects, MantisBT-style — because a tag name is not sensitive. The `Tag` comment is careful to note the security consequence: \"Which issues a tag reveals is still governed by each issue's access control.\" Sharing the label does not share the issues; you still only see the tagged issues you are allowed to see."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A 'many-to-many' relationship is one where each side can link to many of the other — many issues, many tags. Databases can't express that with a single reference, so you add a 'join entity' (also called a join table) in the middle whose rows are just pairs: this issue with that tag. IssueTag and ProjectMembership are both join entities."
+      }
+    },
+    {
+      "p": "`IssueRelationship` connects an issue to another issue — \"duplicate of,\" \"blocks,\" \"parent of,\" \"related to.\" A subtle design choice lives in its comment: the link is \"stored once\" as a directed row from a `SourceIssue` to a `TargetIssue`, and \"the reciprocal is derived for display.\" In other words, if issue #10 blocks issue #12, the system stores that one fact once; when you look at #12 it computes the mirror label \"blocked by\" on the fly rather than storing a second row. That keeps the two sides from ever contradicting each other — there is only one row to keep honest."
+    },
+    {
+      "code": "public int SourceIssueId { get; set; }\npublic Issue SourceIssue { get; set; } = null!;\n\npublic int TargetIssueId { get; set; }\npublic Issue TargetIssue { get; set; } = null!;\n\npublic IssueRelationshipType Type { get; set; }"
+    },
+    { "h2": "Project, User, and the membership that binds them" },
+    {
+      "p": "Above the issue sit the two big organizing entities. A `Project` is a container for issues and everything project-scoped — its categories, versions, custom fields, and members. Most of its form is navigation collections pointing down at the things it owns, plus a couple of flags that shape behavior:"
+    },
+    {
+      "code": "public string Name { get; set; } = string.Empty;\npublic string? Description { get; set; }\npublic bool IsPublic { get; set; } = true;\n\npublic bool PublicIntakeEnabled { get; set; }\n\npublic int OwnerId { get; set; }\npublic User Owner { get; set; } = null!;"
+    },
+    {
+      "p": "`IsPublic` defaults to `true` and is the flag the access rules read to decide whether everyone signed in can see the project or only its members. `PublicIntakeEnabled` is off by default and, when a Manager turns it on, lets anyone with no account at all file a trouble ticket through the public \"Report a problem\" page. Every project also has an `Owner` — a required `User` link."
+    },
+    {
+      "p": "A `User` is an account. It is unusual among the entities because it does not define its own `Id`, `Email`, or password fields — it inherits them by building on ASP.NET Core Identity, the framework's ready-made login system:"
+    },
+    {
+      "code": "public class User : IdentityUser<int>\n{\n    /// <summary>Default/global role. Per-project roles live on <see cref=\"ProjectMembership\"/>.</summary>\n    public UserRole Role { get; set; } = UserRole.Reporter;\n\n    public bool IsActive { get; set; } = true;\n    public string? AvatarUrl { get; set; }\n    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "`class User : IdentityUser<int>` means User 'inherits from' — builds on top of — a class the framework already provides. All the login machinery (unique Id, UserName, Email, PasswordHash, SecurityStamp) comes from that base class for free, and OpenTrack only adds the fields it cares about, like the global Role. Not reinventing accounts is why the auth boxes aren't written here."
+      }
+    },
+    {
+      "p": "The single most important field on `User` is that one-line `Role` — the account's __global__ rank. But OpenTrack also lets a person have a different rank on a specific project, and that is where the third entity comes in. `ProjectMembership` is a join entity, like `IssueTag`, but it carries an extra piece of information — a role — which is the whole point of it:"
+    },
+    {
+      "code": "/// <summary>Join entity giving a user a role within a specific project.\n/// Composite key (UserId, ProjectId) is configured in AppDbContext.</summary>\npublic class ProjectMembership\n{\n    public int UserId { get; set; }\n    public User User { get; set; } = null!;\n\n    public int ProjectId { get; set; }\n    public Project Project { get; set; } = null!;\n\n    public UserRole Role { get; set; } = UserRole.Reporter;\n}"
+    },
+    {
+      "p": "This little three-field class is the linchpin of the entire permission system. A user has one global `Role`; each `ProjectMembership` row gives that user a possibly-different `Role` on one project. §8 combines the two into an \"effective role\" — the higher of the two — but the raw materials are exactly these two `Role` fields, one on `User` and one here. The comment notes the key is __composite__: a person can be a member of a project only once, because the pair (UserId, ProjectId) has to be unique."
+    },
+    { "h2": "Categories, versions, custom fields, and checklists" },
+    {
+      "p": "The remaining entities are all __project-scoped__ — each one belongs to a project and helps organize its issues. `Category` is a simple label an issue can sit in (\"Backend,\" \"Docs\"). `ProjectVersion` is a release of the product; it is named `ProjectVersion` rather than just \"Version\" for a mundane but real reason stated in its comment — to avoid \"clashing with System.Version,\" a type the framework already owns."
+    },
+    {
+      "p": "Custom fields let a Manager add their own boxes to a project's issue form, and they take __two__ entities to do it — a lesson in separating a definition from its values. `CustomFieldDefinition` is the box itself: its name, its type (text, number, date, or a fixed list), whether it is required, and its sort order. `CustomFieldValue` is one issue's answer to one such box:"
+    },
+    {
+      "code": "public class CustomFieldValue\n{\n    public int IssueId { get; set; }\n    public Issue Issue { get; set; } = null!;\n\n    public int CustomFieldDefinitionId { get; set; }\n    public CustomFieldDefinition Definition { get; set; } = null!;\n\n    public string? Value { get; set; }\n}"
+    },
+    {
+      "p": "The comment captures the design in one sentence: the value is \"Keyed by (IssueId, DefinitionId) so an issue has at most one value per field,\" and \"The stored form is always text; the definition's type governs how it was validated and how it renders.\" That last part is a recurring OpenTrack theme — store the simple thing (text), and let a separate rule decide what it means. (The rule that validates those values is pure Core logic, and we meet it in §6.)"
+    },
+    {
+      "p": "Finally, `ChecklistItem` supports the project's bug-hunt checklist — a list of things to verify, each marked Pass, Fail, or Not-Applicable, with a Fail typically \"turned into a linked issue\" via its nullable `LinkedIssueId`. Its comment is careful about scope: the checklist \"lives alongside — not inside — the normal issue list, so any unlisted problem is still logged as an ordinary issue.\" It is a companion to the issue list, not a replacement for it."
+    },
+    { "h2": "Reading the map: how it all connects" },
+    {
+      "p": "Step back and the shape of the whole model is simple to hold in your head. A short table of the main links makes the structure plain:"
+    },
+    {
+      "table": {
+        "headers": ["This entity", "points at", "via (required?)"],
+        "rows": [
+          ["Issue", "Project", "ProjectId — required"],
+          ["Issue", "User (reporter)", "ReporterId — required"],
+          ["Issue", "User (assignee)", "AssigneeId — optional"],
+          ["Issue", "Category / versions", "CategoryId, AffectsVersionId, FixVersionId — all optional"],
+          ["IssueNote / IssueAttachment / IssueHistory", "Issue", "IssueId — required"],
+          ["IssueTag", "Issue + Tag", "the many-to-many join"],
+          ["IssueRelationship", "Issue + Issue", "SourceIssueId + TargetIssueId"],
+          ["ProjectMembership", "User + Project (+ a Role)", "the join that grants project roles"],
+          ["Category / ProjectVersion / CustomFieldDefinition", "Project", "ProjectId — required"],
+          ["CustomFieldValue", "Issue + CustomFieldDefinition", "keyed by both"]
+        ]
+      }
+    },
+    {
+      "p": "Everything funnels toward `Issue` at the center, with `Project` and `User` as the two big anchors it hangs from, and a ring of smaller entities decorating each issue. There are no exotic structures here — no inheritance trees of issue subtypes, no clever tricks — just plain classes, plain id links, and a consistent rule about which links are required and which may be empty. That plainness is the feature."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The entity model is the foundation the entire building sits on, and its virtues are quiet ones. It is __plain__: every entity is an ordinary C# class with named fields, no framework attributes cluttering it, no database code mixed in — which is exactly why it can live in dependency-free `OpenTrack.Core` and be understood on its own. It is __consistent__: every link is the same foreign-key-plus-navigation pattern, so once you have read `Issue` you can read any of the others at a glance. And it is __honest about absence__: the difference between `int` and `int?`, between `string` and `string?`, is used carefully to say precisely which facts an issue must have and which it may lack."
+    },
+    {
+      "p": "The details that must not erode: required links (a project, a reporter) stay non-nullable so the system can never hold an orphaned issue; optional links stay nullable so real states like 'unassigned' are representable without lying; the `RowVersion` guards stay in place so concurrent edits fail loudly instead of losing data; and the privacy flags on `Issue` and `IssueNote` remain the single fields the access rules read, rather than sprouting copies. When you add a new kind of thing to OpenTrack, add it here as an entity in the same shape — an id, its own fields, foreign keys for what it belongs to, navigation properties for convenience — and the rest of the system will already know how to hold it."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "Before adding a field, decide two things and let the type say them: is this value always present (plain type) or sometimes absent (add the `?`), and does it point at another entity (then add both the id and the navigation object, and choose whether that link is required). Keep entities free of database and web code so they stay in Core. The model is the contract every layer above depends on — change it deliberately, and let nullability carry the meaning."
+      }
+    }
+  ]
+}

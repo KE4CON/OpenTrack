@@ -1,0 +1,159 @@
+{
+  "order": 21,
+  "title": "The Blazor UI Layer: components, PWA & offline",
+  "subtitle": "The one set of screens both the browser and the desktop app show — a shared Razor class library that talks only to the data-service seam, never to a database — plus the four browser-side pieces written in plain JavaScript that make it feel like an app you installed: a service worker for offline, an installable Progressive Web App manifest, a Ctrl/Cmd+K command palette, and an offline-capable bug-hunt checklist that queues your taps and replays them when you're back online.",
+  "in_this_chapter": [
+    "Why the screens live in one shared library instead of once per host",
+    "How the UI stays dependency-light and never touches a database directly",
+    "A theme-aware, dependency-free chart drawn as SVG — the house style in miniature",
+    "The four browser-side helpers, and why they are vanilla JavaScript",
+    "The service worker: what 'works offline' actually means here",
+    "The PWA manifest: making OpenTrack installable",
+    "The command palette: Ctrl/Cmd+K that only ever navigates",
+    "The offline checklist: optimistic taps, a localStorage queue, and replay-on-reconnect"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "OpenTrack has two ways to run: a website you open in a browser, and a desktop app for Windows and Mac. It would be a quiet disaster to build the screens twice — the issue list, the create form, the dashboard — because the two copies would drift apart, and every feature would cost double. So the screens are built __once__, in a shared library called `OpenTrack.UI`, and both hosts display the very same components. This chapter is about how that shared UI is organized and about the handful of small browser-side scripts that make the web version feel less like a web page and more like an installed app."
+    },
+    {
+      "p": "Picture the UI library as a set of stage scenery that two different theaters can wheel in. The scenery — the backdrops, the props, the layout — is identical; each theater just supplies its own stagehands (its own way of fetching the data behind the scenery). Then, layered on top of the web theater, are four little machines that don't exist on paper at all: one that lets you keep watching the show when the power flickers (offline caching), one that lets you install the theater on your phone's home screen, one that's a keyboard shortcut to jump anywhere, and one that lets you keep ticking off a checklist even with no signal and syncs it up later."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "The screens live once in the shared OpenTrack.UI library and talk only to the IOpenTrackDataService seam, so the web and desktop hosts render identical UI over different plumbing; and four vanilla-JavaScript files bolted onto the web host — a service worker, a PWA manifest, a Ctrl/Cmd+K command palette, and an offline checklist queue — turn that shared UI into something installable and usable offline."
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "Blazor is Microsoft's framework for building web UI in C# instead of JavaScript; a '.razor' component is one reusable piece of screen (a page or a widget). A Razor class library is a bundle of those components that other projects can share. A PWA (Progressive Web App) is an ordinary website that a browser can 'install' so it opens in its own window and works offline, like a native app. A service worker is a small script the browser keeps running in the background to intercept network requests — the piece that makes offline possible. 'Vanilla JavaScript' just means plain JavaScript with no framework or library involved."
+      }
+    },
+    { "h1": "One shared library of screens" },
+    { "h2": "What it does" },
+    {
+      "p": "`OpenTrack.UI` holds essentially every screen in the product. Under `Pages` you'll find the dashboard, the issue screens (`Index`, `Details`, `Create`, `Edit`, `Print`, `QuickCapture`), the project screens (settings, members, board, roadmap, checklist, automation, Git integration, the intake poster, and more), plus reports, SLA, notifications, preferences, backup, and import. Under `Shared` sit reusable widgets like `BarChart`. This one library is what both hosts point at."
+    },
+    { "h2": "Why it was built this way" },
+    {
+      "p": "The library is kept deliberately thin and unaware of infrastructure. Its project file is a Razor class library that references only `OpenTrack.Core` — not the database project, not Entity Framework, not the web host — and pulls in just the Blazor component packages plus `QRCoder` for the intake poster's QR code:"
+    },
+    {
+      "code": "<Project Sdk=\"Microsoft.NET.Sdk.Razor\">\n  <!-- ... -->\n  <ItemGroup>\n    <PackageReference Include=\"Microsoft.AspNetCore.Components.Web\" Version=\"10.0.10\" />\n    <PackageReference Include=\"QRCoder\" Version=\"1.6.0\" />\n  </ItemGroup>\n  <ItemGroup>\n    <ProjectReference Include=\"..\\OpenTrack.Core\\OpenTrack.Core.csproj\" />\n  </ItemGroup>\n</Project>"
+    },
+    {
+      "p": "The reason the same components can run on two very different hosts is the seam from Chapter 11. A page never reaches for a database; it asks for an injected `IOpenTrackDataService` and calls methods on it. On the web host that interface is implemented by `DbOpenTrackDataService` (which talks straight to the database); on the desktop it's implemented by `HttpOpenTrackDataService` (which calls the API over HTTP). The page cannot tell the difference, and doesn't try to. That single indirection is what lets the screens be written once."
+    },
+    {
+      "p": "Each host then just tells its Blazor router to include the shared library's components. In the web host's `App.razor`, that's one line adding the UI assembly to the render:"
+    },
+    {
+      "code": "app.MapRazorComponents<App>()\n    .AddInteractiveServerRenderMode()\n    .AddAdditionalAssemblies(typeof(OpenTrack.UI.AssemblyMarker).Assembly);"
+    },
+    { "h2": "The house style, in one small component" },
+    {
+      "p": "`BarChart` is worth a look because it captures the UI layer's whole aesthetic in forty lines. There is no charting library. The bar chart is drawn by hand as inline SVG built into a string, and it is careful about two things the whole UI cares about: theming and safety. Bars use the Bootstrap primary color via a CSS variable and text uses the current text color, so the same chart reads correctly in light mode, dark mode, and on either host; and every label is HTML-encoded, so a maliciously named category can't inject markup:"
+    },
+    {
+      "code": "sb.Append($\"<rect x=\\\"{labelW}\\\" y=\\\"{y + 5}\\\" width=\\\"{w}\\\" height=\\\"15\\\" rx=\\\"3\\\" fill=\\\"var(--bs-primary, #0d6efd)\\\"></rect>\");\n// ...\nprivate static string Enc(string s) => WebUtility.HtmlEncode(s);"
+    },
+    {
+      "p": "That preference — draw it ourselves with SVG and CSS variables rather than add a dependency — recurs across the UI (the far-field-style plots, the QR poster, this chart) and keeps the shared library light enough to run comfortably in a desktop WebView as well as a browser."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "SVG (Scalable Vector Graphics) describes a picture as shapes — rectangles, lines, text — rather than a grid of pixels, so it stays sharp at any size and can be built as plain text. A CSS variable like var(--bs-primary) is a named color the page defines once; using it means the chart automatically follows the current theme instead of hard-coding a color. 'HTML-encoding' converts characters like < and > into harmless equivalents so text can never be mistaken for markup."
+      }
+    },
+    { "h1": "The browser-side helpers: why plain JavaScript" },
+    {
+      "p": "Four capabilities can't be expressed as Blazor C# components because they live below the app, in the browser itself: intercepting network requests, being installable, a global keyboard shortcut, and surviving a lost connection. These are written as small vanilla-JavaScript files in the web host's `wwwroot` and wired up in `App.razor`. They are plain JS on purpose — with no framework — so the same file behaves identically on the static-rendered web host and inside the desktop WebView. The web host's page registers them directly:"
+    },
+    {
+      "code": "<script>\n    if (\"serviceWorker\" in navigator) {\n        window.addEventListener(\"load\", function () { navigator.serviceWorker.register(\"/sw.js\").catch(function () { }); });\n    }\n</script>\n<!-- ... -->\n<script src=\"command-palette.js\"></script>\n<script src=\"auto-refresh.js\"></script>\n<script src=\"checklist-offline.js\"></script>"
+    },
+    { "h2": "The service worker: what 'offline' really means" },
+    {
+      "p": "`sw.js` is the service worker — the background script that sits between the app and the network and can answer requests from a cache when the network is gone. Its strategy is stated plainly in its own header: static assets are cached when it installs, and page navigations are 'network-first with a cache fallback,' so \"pages you've opened while online remain viewable offline (e.g. a bug-hunt checklist next to you on a tablet).\""
+    },
+    {
+      "p": "The rules it enforces are deliberately conservative. Only GET requests are ever cached — any change (a POST) always goes to the network, never served stale. It ignores anything cross-origin, and it pointedly stays out of Blazor's way by not touching Blazor's own framework paths:"
+    },
+    {
+      "code": "self.addEventListener(\"fetch\", (e) => {\n    const req = e.request;\n    if (req.method !== \"GET\") return; // never cache mutations\n    const url = new URL(req.url);\n    if (url.origin !== location.origin) return; // don't touch cross-origin\n    if (url.pathname.startsWith(\"/_framework\") || url.pathname.startsWith(\"/_blazor\")) return; // let Blazor manage its own"
+    },
+    {
+      "p": "When the network is reachable it fetches fresh, caches successful navigations and known assets, and returns them; when a fetch throws (you're offline), it falls back to whatever is cached, and for a navigation with nothing cached it serves the app's home page as a last resort. The cache is named with a version (`ot-cache-v1`), and the header notes this suits a personal or trusted device — a caution the maintainer left in the code itself, since a cache persists across sign-out."
+    },
+    { "h2": "The manifest: making it installable" },
+    {
+      "p": "A service worker makes a site work offline; a __web manifest__ makes it installable. `manifest.webmanifest` gives the browser the metadata it needs to offer 'Install OpenTrack' and then launch it in its own standalone window like a native app — a name, colors, a start URL, and an icon:"
+    },
+    {
+      "code": "{\n  \"name\": \"OpenTrack — Bug & Issue Tracker\",\n  \"short_name\": \"OpenTrack\",\n  \"start_url\": \"/\",\n  \"scope\": \"/\",\n  \"display\": \"standalone\",\n  \"theme_color\": \"#0d6efd\",\n  \"icons\": [\n    { \"src\": \"/icon.svg\", \"sizes\": \"any\", \"type\": \"image/svg+xml\", \"purpose\": \"any\" },\n    { \"src\": \"/icon.svg\", \"sizes\": \"any\", \"type\": \"image/svg+xml\", \"purpose\": \"maskable\" }\n  ]\n}"
+    },
+    {
+      "p": "`\"display\": \"standalone\"` is what drops the browser chrome so the installed app opens in its own frame; the SVG icon (with both a normal and a 'maskable' purpose) keeps the home-screen icon crisp on any device. The manifest is linked from the app's head alongside the theme color and Apple-specific tags, so the same app installs cleanly on desktop and on iOS."
+    },
+    { "h2": "The command palette: Ctrl/Cmd+K to go anywhere" },
+    {
+      "p": "`command-palette.js` adds the now-familiar Ctrl/Cmd+K overlay: a search box that jumps you to a screen, an issue, or a search. Its header states the two design constraints that keep it simple and portable — it is \"pure vanilla JS so it works the same on the static-SSR web host and the desktop WebView,\" and \"it only ever navigates (changes the URL); no server interactivity.\" It never edits data; the worst it can do is take you somewhere."
+    },
+    {
+      "p": "Beyond a fixed list of destinations (dashboard, all issues, quick-add, projects, notifications, backup), it has one clever input rule: type a number and it offers to jump straight to that issue; type words and it offers a full-text issue search — so `#812` and `login crash` both do the natural thing:"
+    },
+    {
+      "code": "var m = q.match(/^#?(\\d+)$/);\nif (m) out.push({ label: \"Go to issue #\" + m[1], href: \"issues/\" + m[1] });\n// ...\nif (q && !m) out.push({ label: 'Search issues for \"' + q + '\"', href: \"issues?Text=\" + encodeURIComponent(q) });"
+    },
+    {
+      "p": "Arrow keys move the selection, Enter navigates, Escape closes — all handled by one keydown listener. Because it only manipulates the URL, it needs nothing from the server and can't get out of sync with application state."
+    },
+    { "h2": "The offline checklist: the cleverest of the four" },
+    {
+      "p": "`checklist-offline.js` is the most ambitious browser-side piece, and it exists for a very concrete scenario: someone running a bug-hunt checklist on a tablet, physically walking around, where the Wi-Fi comes and goes. Online, it does nothing special — the normal form posts as usual. Offline, it intercepts each Pass/Fail/N-A tap, records the change locally, updates the card immediately so the user sees progress, and replays the queued changes when the connection returns."
+    },
+    {
+      "p": "The queue lives in `localStorage` (which survives a page reload and a dead connection), and each item overwrites any earlier pending change for the same checklist item, so 'last write wins':"
+    },
+    {
+      "code": "function enqueue(pid, item, status) {\n    var items = readQueue().filter(function (x) { return !(x.p === pid && x.i === item); }); // last write wins per item\n    items.push({ p: pid, i: item, s: status });\n    writeQueue(items);\n}"
+    },
+    {
+      "p": "The interception is careful to only act when it must. If you're online it steps aside entirely and lets the normal form submit; only offline does it prevent the default, queue the change, and update the card optimistically:"
+    },
+    {
+      "code": "if (!STATUS[verb] || isNaN(item)) return;\nif (navigator.onLine) return; // online → let the normal form submit proceed\ne.preventDefault();\nenqueue(pid, item, STATUS[verb]);\noptimistic(item, STATUS[verb]);"
+    },
+    {
+      "p": "When the device comes back — on the next page load, or the moment the browser fires its `online` event — the queue is flushed to the same-origin checklist endpoint, carrying the anti-forgery token, and any items that fail to sync are kept for the next attempt. If anything did sync, the page reloads to show the true, server-confirmed state rather than the optimistic guess. One honest edge case is handled out loud: creating an issue from a failed check genuinely needs a connection, so that action, when offline, is blocked with a plain-language explanation instead of being silently queued. And a deliberate note in the header explains a portability choice — it avoids the Background Sync API precisely so it works on an iPad, where Safari lacks it."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "Optimistic UI, honestly labeled",
+        "text": "Updating the card the instant you tap — before the server has heard about it — is called optimistic UI: assume it'll succeed and show that, then reconcile later. The risk is lying to the user if the sync fails. This code manages that honestly: it marks the change 'pending sync' while it's only local, keeps unsynced items in the queue, and reloads to the real state once the server confirms — so the optimistic display is always eventually replaced by the truth."
+      }
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The UI layer earns its keep through one structural rule and one stylistic one. The structural rule is that the screens live once and talk only to the `IOpenTrackDataService` seam — so the web and desktop apps can never present different UI, and a new screen automatically works on both hosts the day it's written. The stylistic rule is dependency restraint: charts, QR codes, and the four browser helpers are hand-built with SVG, CSS variables, and vanilla JavaScript rather than pulled-in libraries, which keeps the shared library light enough to run in a browser and a desktop WebView alike."
+    },
+    {
+      "p": "The browser-side quartet shows a consistent instinct too: each does the smallest possible thing and stays out of the framework's way. The service worker caches only GETs and leaves Blazor's own paths alone; the command palette only navigates; the offline queue only intervenes when actually offline and always reconciles to the server's truth. None of them owns application state — they enhance the shared UI without competing with it."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "When you add a screen, put it in OpenTrack.UI and reach for data only through IOpenTrackDataService — never touch the database or an HttpClient from a component, or you'll break one of the two hosts. When you add browser behavior, prefer a small vanilla-JS file that enhances the page over anything that owns state: keep the service worker caching only safe GETs, keep the palette navigation-only, and if you queue anything offline, always reconcile to the server's confirmed state rather than trusting the optimistic guess."
+      }
+    }
+  ]
+}

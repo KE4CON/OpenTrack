@@ -1,0 +1,128 @@
+{
+  "order": 24,
+  "title": "How This Book Is Maintained + Amendments Register",
+  "subtitle": "The rules that keep this guide trustworthy as the code moves underneath it: stable section numbers that never shuffle, dated amendments instead of renumbering, Markdown as the living source with the Word document generated from it, and a simple way to spot which chapters a code change may have made stale.",
+  "in_this_chapter": [
+    "Why a book about code needs its own maintenance rules",
+    "Stable section numbers, and why they never get reshuffled",
+    "Amendments, not rewrites: how AMENDS and ADDS work",
+    "One source of truth: Markdown in, Word document out",
+    "The freshness idea: mapping chapters to the source they describe",
+    "The Amendments Register, ready for its first entry"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "A guide to a living codebase has a problem a novel does not: the thing it describes keeps changing. Code gets added, rules get refined, a subsystem gets rebuilt. If the book is not maintained with the same care as the code, it slowly drifts from truth until no one trusts it — and an untrusted guide is worse than none, because it misleads with an air of authority. This short chapter sets out the small set of rules that keep this guide honest over years, and closes with the register where every change to the book will be logged."
+    },
+    {
+      "p": "The approach is deliberately boring, because boring is what survives. There are no clever tools to learn. There is a numbering rule, an amendment rule, a source-of-truth rule, and a freshness habit. Follow those four and the book stays as reliable at version 5.0 as it was on the day it was written."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "Section numbers are permanent and never reshuffled; changes are recorded as dated amendments (AMENDS an existing section, or ADDS a new one) rather than by renumbering; the Markdown chapters are the single source of truth and the Word document is generated from them; and each chapter is anchored to the source files it describes, so a change to that code flags the chapter for review."
+      }
+    },
+    { "h2": "Stable section numbers" },
+    {
+      "p": "The first rule is the simplest and the most important: __a section number, once assigned, never changes__. Chapter 8 is the Access-Control Authority today, and it will be Chapter 8 forever. If a new topic belongs conceptually between 8 and 9, it does not push everything down — it becomes a new, appended section with its own fresh number."
+    },
+    {
+      "p": "The reason is that numbers are how people, other documents, and commit messages point at parts of this book. Someone writes \"see §8\" in a code comment, a colleague bookmarks §16, the amendments register below refers to sections by number. The moment renumbering is allowed, every one of those references silently rots — \"§8\" now points at the wrong chapter, and no one can tell. Permanent numbers make every reference durable. It is the same instinct as the code's migrations: you record change as an addition to a stable history, never by rewriting what the past pointed at."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A 'stable identifier' is a name or number that is promised never to change, so other things can safely point at it. Street addresses work this way — the city adds new house numbers rather than renumbering the whole street every time a house is built, because your friends memorized where you live. Section numbers here are the book's street addresses."
+      }
+    },
+    { "h2": "Amendments, not rewrites" },
+    {
+      "p": "When the code changes in a way the book must reflect, you do not quietly edit a chapter and move on. You record the change as a dated __amendment__, using one of two verbs, and you log it in the register at the end of this chapter."
+    },
+    {
+      "bullets": [
+        "__AMENDS §X__ — you changed something within an existing section. The section keeps its number; the amendment notes what changed and when, so a reader can see the section has evolved and when it last did.",
+        "__ADDS §Z__ — you added an entirely new section for a new subsystem or topic. It gets the next available number and slots in without disturbing anything already numbered."
+      ]
+    },
+    {
+      "p": "This mirrors, on purpose, how the codebase itself grows (Chapter 23) and how its database migrations work (Chapter 7): change is layered on as a dated, traceable addition, never as an invisible rewrite of history. The payoff is accountability. Anyone can open the register and see the book's whole history of change at a glance — what moved, when, and in which section — without diffing the entire document line by line. A reader who last studied §16 a year ago can check the register and know in seconds whether it has changed since."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "Small fixes still get logged",
+        "text": "The register is not only for big revisions. A corrected code excerpt, a clarified callout, a fixed class name — all are amendments too. The point of the discipline is that no change to the book is invisible: if a reader could notice it, the register records it. When in doubt, log it; the cost is one row, and the benefit is a book no one has to take on faith."
+      }
+    },
+    { "h2": "One source of truth: Markdown in, Word out" },
+    {
+      "p": "This guide exists in two forms — an in-repository set of chapter files, and a styled Word document (the navy-and-gold `.docx` that matches the User Manual and Installation Guide). It is essential to understand that these are not two documents to keep in sync by hand. There is __one__ source, and the other form is generated from it."
+    },
+    {
+      "p": "The source of truth is the set of validated chapter files under `docs/programming-guide/chapters/` (this very chapter is one of them), which the build pipeline turns into both the Markdown `PROGRAMMING_GUIDE.md` and the Word document. You never edit the generated Word file directly — any change made there would be erased the next time the document is regenerated. You edit a chapter's source, and the document is rebuilt from it."
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "Never edit the generated document",
+        "text": "The Word .docx and the assembled Markdown are outputs, like a compiled program. Editing them directly is like editing a program's binary instead of its source code — the change looks real until the next build silently overwrites it. All edits go into the chapter source files; the documents are then regenerated. If you see a mistake in the Word file, fix it in the source and rebuild."
+      }
+    },
+    {
+      "p": "This single-source rule is why the whole guide can be trusted to render consistently: every chapter reuses the same shared block types — headings, paragraphs, callouts, code blocks, tables — so the book reads and looks the same throughout, and a fix to the rendering improves every chapter at once. It is the documentation equivalent of the code's shared seam: write once, render everywhere, no divergent copies."
+    },
+    { "h2": "A freshness idea: anchor chapters to their source" },
+    {
+      "p": "The subtle way a code book goes stale is not obvious errors — it is a chapter quietly describing code that has since moved on. The defense is a habit borrowed from how the codebase itself is organized: __each chapter is anchored to the specific source files it documents__. The outline already records these anchors (Chapter 8 points at `AccessContext`, `AccessSnapshot`, `VisibilityQueries`, and `ApiAuthorization`; Chapter 22 points at the `*.Tests` projects; and so on)."
+    },
+    {
+      "p": "That mapping turns staleness from a guessing game into a mechanical check. When a code change touches a file, the anchors tell you which chapter claims to describe that file — and therefore which chapter to review. In practice: a maintainer changing `AccessContext` can look up which chapter is anchored to it (§8), and knows before merging that §8 may now need an amendment. The version-control history of the source and the anchors together answer the question \"which chapters did this change put at risk?\" without anyone having to reread the whole book."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "An 'anchor' here is just a recorded link between a chapter and the source files it explains. A 'diff' is the list of files a change touched. Put the two together and you can cross-reference: this change touched these files, these files are anchored to these chapters, so these chapters need a fresh read. It is a low-tech smoke alarm for documentation drift — it doesn't fix the book, it just tells you where to look."
+      }
+    },
+    {
+      "p": "This is only an idea, not an automated gate, and that is by design — the judgment of whether a code change actually invalidates a chapter belongs to a human. But even as a manual habit it is powerful: it converts \"is the book still accurate?\", an impossible question to answer all at once, into \"did this specific change affect its anchored chapter?\", a question anyone can answer in a minute."
+    },
+    { "h2": "The Amendments Register" },
+    {
+      "p": "Below is the register itself, empty and ready for its first entry. Every future change to this guide gets one row: the date it was made, whether it amended an existing section or added a new one (with the section number), and a short note on what changed. Read top to bottom, it will one day be the complete, honest history of how this book kept pace with the code it describes."
+    },
+    {
+      "table": {
+        "headers": ["Date", "Amends / Adds", "Section", "Change"],
+        "rows": []
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "How to add a row",
+        "text": "Use an ISO date (YYYY-MM-DD). In the second column write AMENDS or ADDS. In the third write the section number (for example §16, or §25 for a brand-new one). In the last, one plain sentence on what changed and why. Keep entries newest-last so the register reads as a timeline, matching the way the code's own history reads."
+      }
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "A guide is only as valuable as it is trusted, and trust is fragile — it survives a hundred accurate chapters and dies on one confidently wrong one. The four rules here exist to protect that trust: stable numbers so references never rot, amendments so every change is visible and dated, a single source so the two output formats can never disagree, and source anchors so drift can be spotted before it misleads anyone. None of it is clever. All of it is durable."
+    },
+    {
+      "p": "Notice that these rules are the same instincts that run through the whole codebase, applied to prose: record change as a traceable addition rather than a silent rewrite (like migrations), keep one source of truth and generate the rest (like the shared UI seam), and make the truth easy to check rather than something to take on faith (like the test suite). A book maintained the way the code is built will age the way the code ages — gracefully, and legibly, long after its authors have moved on."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "Never renumber a section and never edit the generated Word document. When the code changes, edit the chapter source, log a dated row in the Amendments Register (AMENDS the section, or ADDS a new one), and let the document regenerate. When a code change touches a file a chapter is anchored to, reread that chapter before you merge. A book kept honest one small amendment at a time stays worth reading for as long as the code lives."
+      }
+    }
+  ]
+}

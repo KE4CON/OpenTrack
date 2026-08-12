@@ -1,0 +1,130 @@
+{
+  "order": 10,
+  "title": "Queries & Row-Level Security",
+  "subtitle": "How every list, dashboard, report, roadmap, and duplicate-finder in OpenTrack starts from the same visibility filter — so the rules about which issues you may see are applied inside the database itself, in SQL, before a single forbidden row ever travels back to the screen.",
+  "in_this_chapter": [
+    "What 'row-level security' means, and why filtering must happen in the database, not in memory",
+    "The one filter every list starts from: WhereVisibleTo",
+    "The golden order: security first, then filtering, then sorting",
+    "IssueQueries: turning a search form into a database query that only narrows what you may already see",
+    "The dashboard and reports: even the totals are counted over visible rows only",
+    "The roadmap and the duplicate-finder: ACL first, every time",
+    "The one rule that keeps all of it safe"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "A screen full of issues, a dashboard of tallies, a report chart, a project roadmap, a \"you might be filing a duplicate\" hint — these are all __lists__ built from many rows at once. And every one of them faces the same danger: it must show you only the issues you are allowed to see, and it must do so without accidentally counting, or even briefly loading, the ones you are not. This chapter is about the query classes that build those lists, and the single shared filter they all lean on to stay safe."
+    },
+    {
+      "p": "Chapter 8 introduced the two shapes of OpenTrack's permission rules: a per-item yes/no for opening one issue, and a database filter for lists. This chapter is where that list filter goes to work. The query classes here — `IssueQueries`, `SimilarIssueQuery`, `RoadmapQuery`, `DashboardQuery`, `ReportQuery` — all begin from the same starting line, `WhereVisibleTo`, and only then do their own particular job. Get that starting line right and every list in the app is secure by construction."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "Row-level security means the rules decide which individual rows (which issues) you may see, not merely which tables — issue #5 might be visible to you and issue #6 hidden, in the same list. A query is a request for data you are still assembling; it does not run until you ask for the results. When the query runs 'in SQL', the database engine does the filtering and sends back only the allowed rows. When it runs 'in memory', the app pulls every row into itself first and then throws some away — slower, and briefly holding data it should never have loaded."
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "Every list query starts by attaching WhereVisibleTo, which the database turns into a SQL filter, so only the issues you are allowed to see are ever fetched — and each query then adds its own filtering and sorting on top of that already-safe foundation."
+      }
+    },
+    { "h2": "Why the filter has to run inside the database" },
+    {
+      "p": "Imagine a search that matches ten thousand issues, of which you are allowed to see a few hundred. The naive approach would be to load all ten thousand into the app, then loop through and keep only the ones you may see. That is wrong on two counts. It is slow — you have hauled ten thousand rows across for nothing. And it is unsafe in spirit — for a moment, the application is holding thousands of issues the user has no right to, trusting itself not to slip and show one."
+    },
+    {
+      "p": "The right approach is to hand the visibility rule to the database as part of the query, so the database never sends back the forbidden rows at all. That is exactly what `WhereVisibleTo` (from Chapter 8) is built for. Its summary states the performance-critical promise: its predicates \"are written entirely in terms of local id lists (from AccessSnapshot) so EF Core translates them to SQL rather than pulling rows into memory to filter.\" Because the filter is phrased only in terms of simple id lists and plain comparisons — never anything the database cannot understand — EF Core can express the whole rule as a SQL `WHERE` clause. Here is the issue filter again, the shared engine every list in this chapter runs on:"
+    },
+    {
+      "code": "public static IQueryable<Issue> WhereVisibleTo(this IQueryable<Issue> query, AccessSnapshot access)\n{\n    if (access.IsGlobalAdmin)\n        return query;\n\n    var memberIds = access.MemberProjectIds;\n    var developerProjectIds = access.DeveloperProjectIds;\n    var globalDeveloperPlus = access.GlobalAtLeast(UserRole.Developer);\n    var userId = access.UserId;\n\n    return query.Where(i =>\n        (i.Project.IsPublic || memberIds.Contains(i.ProjectId))\n        && (!i.IsPrivate\n            || globalDeveloperPlus\n            || i.ReporterId == userId\n            || i.AssigneeId == userId\n            || developerProjectIds.Contains(i.ProjectId)));\n}"
+    },
+    {
+      "p": "The rest of this chapter is really one idea shown five times: each query class attaches this filter first, and builds its own result on top of a foundation that is already trimmed to exactly what the user may see."
+    },
+    { "h2": "The golden order: security, then filter, then sort" },
+    {
+      "p": "`IssueQueries` builds the main issue list from a search form — project, status, severity, assignee, tag, a text search, and a sort order. The important thing about it is not any single filter but the __order__ in which the pieces stack, which its summary states as a rule: \"Call it AFTER WhereVisibleTo so filtering only ever narrows the rows a user may already see.\""
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Why order is the whole game",
+        "text": "Because a query is assembled in layers and only runs at the end, each `.Where(...)` you add can only shrink the set further — it can never add rows back. So if the very first layer is WhereVisibleTo, everything stacked after it is trapped inside the visible set. Put the visibility filter first and no later search condition — however it is written — can ever surface an issue the user may not see. The safety comes from the sequence, not from remembering to re-check."
+      }
+    },
+    {
+      "p": "The `ApplyFilter` method itself is a tidy list of optional narrowings — each one only added if the user asked for it — followed by the sort. Its search-text handling shows the same care about not leaking through a side channel:"
+    },
+    {
+      "code": "if (!string.IsNullOrWhiteSpace(filter.Text))\n{\n    // Case-insensitive contains: EF translates string.Contains to a case-SENSITIVE match on\n    // SQLite (instr), so lower-case both sides to get the search behaviour users expect. Also\n    // match PUBLIC note text — private notes are deliberately excluded so search can't reveal\n    // that a note the searcher can't read contains their term.\n    var text = filter.Text.Trim().ToLower();\n    query = query.Where(i =>\n        i.Title.ToLower().Contains(text)\n        || i.Description.ToLower().Contains(text)\n        || i.Notes.Any(n => !n.IsPrivate && n.Text.ToLower().Contains(text)));\n}"
+    },
+    {
+      "p": "Notice the `!n.IsPrivate` guard on the note search: text search will match a public note but deliberately not a private one, \"so search can't reveal that a note the searcher can't read contains their term.\" This is the same closed-by-default instinct as everywhere else — a search must not become a way to peek at hidden content. After all the narrowing comes the sort, which always pins sticky issues first and then applies the requested order. Both hosts call `ApplyFilter`, so \"search behaves identically on both surfaces and can't drift.\""
+    },
+    { "h2": "The dashboard: even the totals only count what you may see" },
+    {
+      "p": "A list is the obvious place to worry about visibility, but a dashboard is sneakier: it shows __numbers__ — how many issues are open, how many overdue, a breakdown by severity — and a number can leak just as surely as a row. If the \"open issues\" count included issues in a private project you are not a member of, the count itself would betray that those issues exist. `DashboardQuery` prevents that by starting from the visible set and computing every tally from it. Its summary: \"Everything is scoped through VisibilityQueries first, so a user never sees a tally or a row for an issue they couldn't open directly.\""
+    },
+    {
+      "p": "The very first line establishes the safe foundation, and every count afterward is built from that `visible` starting point — never from the raw table:"
+    },
+    {
+      "code": "var visible = db.Issues.AsNoTracking().WhereVisibleTo(access);\nvar open = visible.Where(i => (int)i.Status < (int)IssueStatus.Resolved);\nvar staleBefore = nowUtc.AddDays(-IssueDefaults.StaleDays);\nvar totalStale = await open.CountAsync(i => i.UpdatedAt < staleBefore, ct);\n\nvar projects = await open\n    .GroupBy(i => new { i.ProjectId, ProjectName = i.Project.Name })\n    .Select(g => new DashboardProjectTally(\n        g.Key.ProjectId,\n        g.Key.ProjectName,\n        g.Count(),\n        g.Count(i => i.DueDate != null && i.DueDate < nowUtc)))\n    .ToListAsync(ct);"
+    },
+    {
+      "p": "Because `open` is derived from `visible`, and every tally — the stale count, the per-project grouping, the severity breakdown, the ten most-recent rows — is derived from `open` or `visible` in turn, there is no path by which a hidden issue can affect a single number on the dashboard. The counting and grouping also happen in the database (`CountAsync`, `GroupBy`), so the app receives finished tallies rather than raw rows. `ReportQuery` follows the same discipline for its charts, opening with `var q = db.Issues.AsNoTracking().WhereVisibleTo(access);` and computing every figure — totals, created-per-month, open-by-status, open-by-severity — over that visible set. Its summary names the habit outright: \"over the issues a user may see (ACL first).\""
+    },
+    { "h2": "Roadmap and duplicate-finder: ACL first, no exceptions" },
+    {
+      "p": "The pattern holds even for features that seem far from a plain issue list. `RoadmapQuery` builds a project's roadmap and changelog from its versions and the issues targeted at each. It guards at two levels — first the project itself, then the issues within it — and both guards route through the access-control authority. It refuses outright if you cannot view the project:"
+    },
+    {
+      "code": "var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);\nif (project is null || !access.For(projectId).CanViewProject(project.IsPublic)) return [];\n\nvar versions = await db.Versions.AsNoTracking()\n    .Where(v => v.ProjectId == projectId)\n    .Select(v => new { v.Id, v.Name, v.IsReleased, v.ReleaseDate })\n    .ToListAsync(ct);\nif (versions.Count == 0) return [];\n\nvar issues = await db.Issues.AsNoTracking().WhereVisibleTo(access)\n    .Where(i => i.ProjectId == projectId && i.FixVersionId != null)\n    .Select(...)\n    .ToListAsync(ct);"
+    },
+    {
+      "p": "So the roadmap's progress bars and changelog counts are computed only from issues the caller may see — \"only issues the caller may see are counted or listed, and a project the caller can't view yields nothing.\" A private issue you cannot see never nudges a version's \"12 of 20 done\" figure."
+    },
+    {
+      "p": "`SimilarIssueQuery`, the helper that warns \"this looks like a duplicate\" while you type a new title, is perhaps the most tempting place to cut a corner — it only wants a few candidate matches — yet it applies the filter first too. Its summary: \"ACL first (only issues the user could open are ever considered), then a coarse word-overlap match ranked in memory.\" The base query it searches from is visibility-filtered before any word-matching happens:"
+    },
+    {
+      "code": "var baseQuery = db.Issues.AsNoTracking().WhereVisibleTo(access);\nif (projectId is { } pid) baseQuery = baseQuery.Where(i => i.ProjectId == pid);\nif (excludeIssueId is { } ex) baseQuery = baseQuery.Where(i => i.Id != ex);\n\n// Union a \"title contains this word\" query per significant word (EF translates each to a LIKE).\nvar candidates = words\n    .Select(w => baseQuery.Where(i => i.Title.ToLower().Contains(w)))\n    .Aggregate((a, b) => a.Union(b));"
+    },
+    {
+      "p": "This matters because a duplicate-finder that ignored the ACL would be an information leak dressed up as a convenience: type a guess at a private issue's title and it would helpfully confirm the match. Building every candidate query on top of `WhereVisibleTo` means the suggestion box can only ever point you at issues you were already allowed to open."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "A fair split of labor",
+        "text": "Notice that these queries do the security and the heavy narrowing in the database (WhereVisibleTo and the word LIKE-matches run as SQL), then do a little final ranking in memory (scoring by how many words overlap). That is a sensible division: the database is the right place to enforce who-may-see and to cut millions of rows down to a handful, and once you hold only that safe handful, a touch of in-memory scoring is cheap and clear. The security is never the part left to memory."
+      }
+    },
+    { "h2": "One filter, many faces" },
+    {
+      "p": "Lay the five classes side by side and the shared spine is unmistakable. The issue list, the dashboard, the reports, the roadmap, and the duplicate-finder each begin by attaching the same visibility filter (`WhereVisibleTo`, or its per-project sibling `CanViewProject`), and only then add their own logic — a search form, a set of tallies, a chart, a version rollup, a fuzzy title match. None of them re-implements \"who may see this issue.\" They all borrow it from the one place that defines it, and they all borrow it __first__."
+    },
+    {
+      "p": "That is what makes the whole surface trustworthy without heroics. A maintainer adding a sixth list next year does not need to reason freshly about privacy; they need to remember one habit — start from `WhereVisibleTo` — and the closed-by-default guarantee comes along for free, applied in SQL, before any forbidden row is ever fetched."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The shape to preserve is \"security is the first layer of every list, and it runs in the database.\" Because a query is assembled in layers that can only narrow the result, putting `WhereVisibleTo` at the bottom means nothing stacked above it — no search term, no grouping, no ranking — can ever surface an issue the user may not see. And because that filter is written in plain id lists and comparisons, it translates to SQL, so forbidden rows are never even fetched, let alone counted or displayed. Lists stay fast and closed by default at the same time."
+    },
+    {
+      "p": "The rules that must not erode: every list, tally, chart, and suggestion starts from `WhereVisibleTo` (or the project-level view check) before it does anything else; visibility filtering stays expressed in local id lists so it runs as SQL, never as an in-memory sweep; searches must not leak through side channels (the private-note exclusion is the model to copy); and numbers are as sensitive as rows — count only over the visible set. When you add a new way to list or summarize issues, do not write a fresh visibility check; attach the shared one, and attach it first."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "Any query that reads more than one issue must begin with WhereVisibleTo, and begin with it before adding filters, groupings, sorts, or ranking. If you ever find yourself filtering for visibility in memory after loading rows — or counting a total off the raw table instead of the visible set — stop and move the filter into the query, first. Security is the foundation layer, it lives in SQL, and every list in the app is only as safe as its first line."
+      }
+    }
+  ]
+}

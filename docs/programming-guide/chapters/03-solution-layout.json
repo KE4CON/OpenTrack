@@ -1,0 +1,156 @@
+{
+  "order": 3,
+  "title": "The Solution Layout: Six Projects & Their Boundaries",
+  "subtitle": "Why one program is split into six projects instead of one big pile of files — what each project holds, and the one rule that keeps the split meaningful: dependencies point inward toward a pure, dependency-free core, so the compiler itself refuses to let the layers tangle.",
+  "in_this_chapter": [
+    "Why split one program into separate projects at all",
+    "The six projects, top to bottom, and what each one contains",
+    "The dependency arrows — which project is allowed to reference which, and which way they point",
+    "The pure core at the bottom that depends on nothing, and why that is the linchpin",
+    "How the ProjectReference lines make the boundaries compiler-enforced, not just polite suggestions",
+    "The three test projects and what each one guards"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "A program the size of __OpenTrack__ could, in principle, be one enormous project with every file thrown in together. It is not. It is deliberately split into six separate projects, each with a job, plus three test projects. This chapter is the map: what lives in each project, and — the part that actually matters — the rules about which project is allowed to lean on which. Those rules are the difference between a codebase that stays understandable for years and one that turns into a knot nobody dares touch."
+    },
+    {
+      "p": "Think of it as a well-run kitchen. The pantry holds raw ingredients and knows nothing about any particular dish. The prep station takes ingredients and does the real work. The dining room plates and serves. Each station depends on the ones deeper in the kitchen, never the other way around — the pantry does not need to know what is on tonight's menu. OpenTrack's six projects are arranged exactly like that: the deepest one knows nothing about the others, and the ones near the surface lean inward on the deeper ones."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "OpenTrack is six projects arranged in layers — a pure Core at the bottom that depends on nothing, Infrastructure and UI in the middle, and three runnable hosts (Web, API, Desktop) on top — with all dependency arrows pointing inward toward Core, a rule the compiler enforces through the ProjectReference lines so the layers physically cannot tangle."
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A project (a .csproj file) is one buildable unit of code that produces one output — a library other projects use, or a runnable program. A \"dependency\" means one project needs another to compile; in C# that need is declared by a ProjectReference line inside the .csproj. A \"layer\" is a project's rank in the stack: deeper layers are more general and know less about the outside world; higher layers are more specific and pull the deeper ones together."
+      }
+    },
+    { "h2": "Why split it up at all" },
+    {
+      "p": "The reason to split is not tidiness for its own sake — it is to make certain mistakes __impossible instead of merely discouraged__. If everything lived in one project, any file could reach any other file. Nothing would stop a screen from reaching straight into the database, or the core business rules from accidentally depending on the web framework. You could write a comment asking people not to, but comments do not stop anyone. Separate projects with controlled references turn those requests into laws the compiler enforces: if Core is not allowed to know about the web, then code in Core that tries to use the web simply will not build."
+    },
+    {
+      "p": "OpenTrack's solution file lists exactly six source projects and three test projects, grouped into two folders:"
+    },
+    {
+      "code": "<Solution>\n  <Folder Name=\"/src/\">\n    <Project Path=\"src/OpenTrack.API/OpenTrack.API.csproj\" />\n    <Project Path=\"src/OpenTrack.Core/OpenTrack.Core.csproj\" />\n    <Project Path=\"src/OpenTrack.Desktop/OpenTrack.Desktop.csproj\" />\n    <Project Path=\"src/OpenTrack.Infrastructure/OpenTrack.Infrastructure.csproj\" />\n    <Project Path=\"src/OpenTrack.UI/OpenTrack.UI.csproj\" />\n    <Project Path=\"src/OpenTrack.Web/OpenTrack.Web.csproj\" />\n  </Folder>\n  <Folder Name=\"/tests/\">\n    <Project Path=\"tests/OpenTrack.API.Tests/OpenTrack.API.Tests.csproj\" />\n    <Project Path=\"tests/OpenTrack.Core.Tests/OpenTrack.Core.Tests.csproj\" />\n    <Project Path=\"tests/OpenTrack.Web.Tests/OpenTrack.Web.Tests.csproj\" />\n  </Folder>\n</Solution>"
+    },
+    { "h2": "The six projects, from the bottom up" },
+    {
+      "p": "Read them from the deepest layer upward — the same way the dependencies point — and each one's job follows naturally from the layer below it."
+    },
+    {
+      "table": {
+        "headers": ["Project", "Layer", "What it holds"],
+        "rows": [
+          ["OpenTrack.Core", "The pure core (bottom)", "The domain itself: entities (Issue, Note, Project, User, ProjectMembership, ...), the fixed menus (Enums like UserRole and IssueStatus), and pure rules — Authorization, Sla math, Validation, Querying types. No database, no web."],
+          ["OpenTrack.Infrastructure", "Data & services (middle)", "Everything that talks to the outside world: the EF Core database (Data), Migrations, plus the per-feature operations (Issues, Sla, Automation, Notifications, Webhooks, Git, Queries, and more). Depends on Core."],
+          ["OpenTrack.UI", "Shared screens (middle)", "The Blazor components and pages both display-hosts render, and the IOpenTrackDataService seam they depend on. Pages, Shared, Services. Depends only on Core."],
+          ["OpenTrack.Web", "Host (top)", "The Blazor Server web app: Program.cs, Components, Endpoints, and the DbOpenTrackDataService that fulfills the seam with direct database access."],
+          ["OpenTrack.API", "Host (top)", "The minimal API for the desktop app: Program.cs, Endpoints, Contracts (the JSON shapes), and the API-side access helpers."],
+          ["OpenTrack.Desktop", "Host (top)", "The MAUI Blazor Hybrid desktop app: MauiProgram.cs, its Services (HttpOpenTrackDataService, auth/token handling), and platform glue."]
+        ]
+      }
+    },
+    {
+      "p": "Notice how each project's contents match its rank. Core holds ideas that are true regardless of how OpenTrack is run — what an issue __is__, who is allowed to see one — and so it holds no database and no web code. The hosts at the top hold the opposite: nothing general, just the specific wiring that turns the shared pieces into one runnable program. Infrastructure and UI sit between, each serving a different kind of consumer — Infrastructure serves the two data-touching hosts, UI serves the two screen-showing hosts."
+    },
+    { "h2": "The dependency arrows: which way they point" },
+    {
+      "p": "The rule that makes the layers real is the direction of the arrows: __every reference points inward, toward Core, and nothing points back out__. You can read the entire dependency graph straight off the `ProjectReference` lines in the six `.csproj` files. Start at the bottom."
+    },
+    {
+      "p": "__Core references nothing internal at all.__ Its `.csproj` pulls in one small identity package and stops; there is not a single `ProjectReference` to another OpenTrack project. That emptiness is the most important fact in the whole layout, and the next section is about why. __Infrastructure references only Core:__"
+    },
+    {
+      "code": "<!-- OpenTrack.Infrastructure.csproj -->\n<ProjectReference Include=\"..\\OpenTrack.Core\\OpenTrack.Core.csproj\" />"
+    },
+    {
+      "p": "__UI also references only Core__ — notably __not__ Infrastructure. The shared screens depend on the domain types and the interface, but they are kept ignorant of the database entirely; that ignorance is what lets the desktop app render them without ever touching EF Core:"
+    },
+    {
+      "code": "<!-- OpenTrack.UI.csproj -->\n<ProjectReference Include=\"..\\OpenTrack.Core\\OpenTrack.Core.csproj\" />"
+    },
+    {
+      "p": "Then the three hosts on top each reference exactly what they need and nothing more. The web host, which shows screens __and__ touches the database, references all three lower projects:"
+    },
+    {
+      "code": "<!-- OpenTrack.Web.csproj -->\n<ProjectReference Include=\"..\\OpenTrack.Infrastructure\\OpenTrack.Infrastructure.csproj\" />\n<ProjectReference Include=\"..\\OpenTrack.Core\\OpenTrack.Core.csproj\" />\n<ProjectReference Include=\"..\\OpenTrack.UI\\OpenTrack.UI.csproj\" />"
+    },
+    {
+      "p": "The API, which touches the database but shows no screens, references Core and Infrastructure but __not__ UI. The desktop app, which shows screens but never touches the database directly, references UI and Core but __not__ Infrastructure:"
+    },
+    {
+      "code": "<!-- OpenTrack.API.csproj -->\n<ProjectReference Include=\"..\\OpenTrack.Core\\OpenTrack.Core.csproj\" />\n<ProjectReference Include=\"..\\OpenTrack.Infrastructure\\OpenTrack.Infrastructure.csproj\" />\n\n<!-- OpenTrack.Desktop.csproj -->\n<ProjectReference Include=\"..\\OpenTrack.UI\\OpenTrack.UI.csproj\" />\n<ProjectReference Include=\"..\\OpenTrack.Core\\OpenTrack.Core.csproj\" />"
+    },
+    {
+      "p": "The absences say as much as the presences. The API does not reference the UI (it has no screens to show). The desktop does not reference Infrastructure (it has no database to touch — it goes through the API instead). A comment in the desktop's own startup makes this deliberate poverty explicit: it registers its role policies inline precisely because \"desktop is a thin client and doesn't reference Infrastructure.\" Each host carries the minimum, and the minimum is a design statement about what that host is allowed to do."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "The arrows, drawn out",
+        "text": "Infrastructure -> Core. UI -> Core. Web -> Core, Infrastructure, UI. API -> Core, Infrastructure. Desktop -> Core, UI. Every arrow points down toward Core; not one points up or sideways in a way that would let a lower layer depend on a higher one. Core is the hub everything reaches for and that reaches for nothing."
+      }
+    },
+    { "h2": "The pure core at the bottom, and why it is the linchpin" },
+    {
+      "p": "The reason all arrows aim at Core is that Core is __pure__: it has no dependency on a database, a web framework, or a network, so anything can safely depend on it without dragging that machinery along. This is the same purity the calibration chapter (§8) celebrated in `AccessContext` — the permission rules live in Core precisely so both the web app and the API can call the identical rules and never drift apart. Purity at the bottom is what makes sharing at the top possible."
+    },
+    {
+      "p": "Purity buys three concrete things. It makes Core __trivially testable__ — you can exercise its rules with no server and no database running, which is exactly what the Core test project does. It makes Core __shareable__ — because it drags nothing heavy behind it, both a full web server and a thin desktop client can reference it freely. And it makes Core __stable__ — the deepest layer changes least, so the thing everything else depends on is the thing least likely to shift underfoot. Keep the bottom pure and the whole tower stays sound."
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "The one move that would rot the layout",
+        "text": "The fastest way to wreck this design is to add a database or web dependency to OpenTrack.Core — a stray ProjectReference to Infrastructure, or an EF Core package. The instant Core depends on the database, it stops being pure: its rules can no longer be tested without a database, and the clean inward-pointing graph gains its first outward arrow. If you ever feel tempted to reach from Core into Infrastructure, the answer is to pass the fact in as a parameter instead — the same trick §8's AccessContext uses to stay pure."
+      }
+    },
+    { "h2": "Why these boundaries are laws, not suggestions" },
+    {
+      "p": "Here is the quiet strength of splitting into projects: the boundaries are enforced by the compiler, not by anyone's good intentions. Because `OpenTrack.UI` does not reference `OpenTrack.Infrastructure`, a screen physically __cannot__ call the database — the types are not even visible to it; the code would fail to compile. Because `OpenTrack.Core` references no other project, nothing in Core can accidentally reach the web. You do not need a reviewer to catch these mistakes, because the mistakes cannot be written down and built in the first place."
+    },
+    {
+      "p": "That is the difference between architecture as a wish and architecture as a fact. A single-project version of OpenTrack could hold the exact same files and the exact same intentions, and it would slowly erode the first time someone in a hurry reached across a boundary that nothing was stopping them from crossing. The six-project split makes the intended shape the __only__ shape that compiles. The `ProjectReference` lines are the load-bearing walls."
+    },
+    { "h2": "The three test projects" },
+    {
+      "p": "Alongside the six source projects sit three test projects, and the choice of which three is itself informative. Each references exactly the one source project it exercises:"
+    },
+    {
+      "table": {
+        "headers": ["Test project", "References", "What it guards"],
+        "rows": [
+          ["OpenTrack.Core.Tests", "OpenTrack.Core", "The pure rules — permissions, SLA math, validation — proven with no database or server, thanks to Core's purity."],
+          ["OpenTrack.API.Tests", "OpenTrack.API", "The API host: its endpoints and the access checks on the network path the desktop app relies on."],
+          ["OpenTrack.Web.Tests", "OpenTrack.Web", "The web host: its endpoints and services, including the database-backed data service."]
+        ]
+      }
+    },
+    {
+      "p": "That the tests concentrate on Core, API, and Web is no accident. Core is where the rules live, so it earns the most direct scrutiny. Web and API are the two hosts that touch the database and enforce access, so each gets its own suite. The shared UI and the thin desktop client, by design, add little logic of their own — they render and forward — so the meaningful behavior they might otherwise be tested for is already tested where it actually lives, one layer down. The test layout mirrors the source layout: guard the depth where the logic is, not the surface where it is merely displayed."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The six-project split is not bureaucracy; it is the mechanism that makes every promise in the previous chapter enforceable. One shared UI can serve two hosts only because UI depends on Core and not on any host. Two hosts can share one set of rules only because those rules live in a pure Core that both can reference without conflict. And none of it can quietly erode, because the boundaries are `ProjectReference` lines the compiler obeys — the intended architecture is the only one that builds."
+    },
+    {
+      "p": "When you extend OpenTrack, let the layers tell you where your code belongs. A rule that is true no matter how the app runs goes in Core, pure. Something that talks to the database or an outside service goes in Infrastructure. A screen goes in UI. Wiring that turns the shared pieces into a runnable program goes in a host. If a piece of code seems to want to live in two layers at once, that is usually a sign it is really two pieces — split it along the seam rather than smearing a dependency across a boundary."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "Keep every dependency arrow pointing inward toward Core, and keep Core pure — no database, no web, no network references, ever. Before adding a ProjectReference, ask whether it points the right way; a reference that makes a lower layer depend on a higher one, or that gives Core a database, is the seam beginning to fail. The layout only protects you for as long as those arrows all point home."
+      }
+    }
+  ]
+}

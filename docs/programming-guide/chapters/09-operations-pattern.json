@@ -1,0 +1,172 @@
+{
+  "order": 9,
+  "title": "The Operations Pattern: one place per action, so Web and API never drift",
+  "subtitle": "The recurring habit that keeps OpenTrack honest — every meaningful action (tag an issue, change a status rule, set an SLA target, link two issues, apply a change to a hundred issues at once) is written exactly once in a static 'Operations' class, permission checks and all, and called identically by both the website and the API so the two surfaces can never enforce different rules.",
+  "in_this_chapter": [
+    "The drift problem this pattern exists to prevent",
+    "The common shape every Operations class shares",
+    "How a read returns nothing you may not see, and a write refuses outright",
+    "TagOperations: the read/edit split and create-on-assign, in one place",
+    "WorkflowOperations and SlaPolicyOperations: manager-gated project settings",
+    "RelationshipOperations: how a private issue's very existence is kept secret",
+    "BulkOperations: applying the same per-item rules to a thousand issues at once",
+    "The unwritten contract these classes all follow"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "OpenTrack does a lot of specific things: it tags an issue, removes a tag, defines which status changes a project allows, sets how many hours a high-priority issue may sit before it breaches its service target, links two issues as duplicates, and applies one change to a whole batch of issues at once. Each of those is an __action__ — a small unit of real work with its own rules about who may do it and what counts as valid. This chapter is about the single habit OpenTrack uses to keep every one of those actions correct: write it once, in a plainly named place, and have everyone call that one copy."
+    },
+    {
+      "p": "The name of the habit is the Operations pattern. For each cluster of related actions there is a class named for it — `TagOperations`, `WorkflowOperations`, `SlaPolicyOperations`, `RelationshipOperations`, `BulkOperations`, `AutomationRuleOperations`, and more — and inside each class the actions are ordinary methods. The website calls them. The API calls the same ones. Neither writes its own version. It is the same anti-drift motive that drives the access-control authority in Chapter 8, applied one level up: not just \"who is allowed?\" written once, but the entire action — validation, permission check, database change, and all — written once."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A static class is a class you never create an instance of — it is just a home for a set of related functions you call directly, like TagOperations.AddAsync(...). 'Drift' is when two copies of the same logic slowly stop matching because someone changed one and forgot the other. An ACL (access-control list) is the set of rules about who may see or change something. 'Idempotent' means doing the same thing twice has the same effect as doing it once — tagging an already-tagged issue changes nothing and reports success."
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "Every action lives once in a static Operations class — permission checks, validation, and database work together — and both the web app and the API call that single copy, so the two front doors can never enforce different rules for the same action."
+      }
+    },
+    { "h2": "The drift problem, and why one copy fixes it" },
+    {
+      "p": "Recall from Chapter 8 that OpenTrack has two front doors: the Blazor Server website, which talks to the database directly, and the API, a separate program the desktop app calls over the network. Both must let a user tag an issue — but with the same rules: you may only tag an issue you can see, and only if you have edit rights on its project. If the website and the API each wrote their own tagging code, the day would come when someone tightened the rule in one and forgot the other, and suddenly the desktop app would let a user tag an issue the website would have refused."
+    },
+    {
+      "p": "The Operations pattern removes the second copy entirely. There is exactly one `TagOperations.AddAsync`, and it contains the whole action — check the issue is visible, check the caller may edit it, find-or-create the tag, link it, save. The website calls it; the API calls it. There is nowhere for a divergent second version to live. `TagOperations`' own summary states the intent directly: it holds \"ACL-aware tag operations on issues, shared by both the Web API and the web/EF data service so the authorization logic exists once.\""
+    },
+    { "h2": "The common shape every Operations class shares" },
+    {
+      "p": "Before looking at individual classes, it helps to see the mold they are all cast from. Almost every method across these classes has the same first three ingredients in its signature, and the same handful of habits in its body. Once you have read one, you can read them all."
+    },
+    {
+      "bullets": [
+        "__It takes the database and the caller's access.__ Nearly every method's first two parameters are `AppDbContext db` and `AccessSnapshot access` — the database to work in, and the caller's full permission picture (the load-once snapshot from Chapter 8).",
+        "__It checks permission before it acts.__ It asks `access.For(projectId)` for the pure per-project decision context and calls a named rule like `CanEditIssue()` or `CanManageProject()` — the same rules from the access-control authority, never a fresh hand-written check.",
+        "__A read that you're not allowed returns empty.__ A list method a user may not see returns `[]` (an empty list), not an error — you simply see nothing.",
+        "__A write you're not allowed throws.__ A create/update/delete a user may not perform throws `UnauthorizedAccessException` with a plain-English reason.",
+        "__A validation problem returns a message string.__ Many write methods return `Task<string?>`: `null` means success, and a non-null string is the human-readable reason it was rejected (a bad name, a duplicate). This cleanly separates 'you are not allowed' (an exception) from 'that input was invalid' (a returned message).",
+        "__It carries a CancellationToken.__ Every async method threads `CancellationToken ct` through, so a request that is abandoned can stop cleanly."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Why 'return empty' for reads but 'throw' for writes",
+        "text": "The split is deliberate. Showing a list is a soft operation — if you may not see something, the honest, quiet answer is an empty list, which also avoids revealing that anything existed to hide. Changing data is a hard operation — if you try to change something you have no right to, that is a genuine error the calling code must handle loudly, so it throws. Reads stay quiet; writes are strict."
+      }
+    },
+    { "h2": "TagOperations: read vs. edit, and create-on-assign" },
+    {
+      "p": "Tags are the simplest full example. Viewing an issue's tags needs only view access to the issue; adding or removing one needs edit access (Updater or higher). Both checks route through the same access-control authority via a tiny private helper at the bottom of the class:"
+    },
+    {
+      "code": "private static bool CanView(AccessSnapshot access, Issue issue) =>\n    access.For(issue.ProjectId).CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId);"
+    },
+    {
+      "p": "The `AddAsync` method shows the full shape in miniature — view gate, edit gate, validation, then the actual work — and it also handles a subtle real-world wrinkle: tags are created the first time they are used (\"create-on-assign\"), and two people might create the same tag at the same instant. Watch how it opens:"
+    },
+    {
+      "code": "public static async Task<string?> AddAsync(AppDbContext db, AccessSnapshot access, int issueId, string tagName, CancellationToken ct = default)\n{\n    var issue = await db.Issues.AsNoTracking().Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == issueId, ct);\n    if (issue is null || !CanView(access, issue)) return \"Issue not found.\";\n    if (!access.For(issue.ProjectId).CanEditIssue())\n        throw new UnauthorizedAccessException(\"Tagging an issue requires the Updater role on its project.\");\n\n    var name = tagName.Trim();\n    if (name.Length == 0) return \"Tag name is required.\";\n    if (name.Length > FieldLimits.TagName) return $\"Tag name must be {FieldLimits.TagName} characters or fewer.\";"
+    },
+    {
+      "p": "Every habit is visible in those few lines: it may-I-see (return a soft \"not found\" if not — never revealing whether the issue exists), then may-I-edit (throw if not), then validate the input (return a message if the name is empty or too long). Only after all three does it touch the database. And when it does, it guards the create-on-assign race explicitly — if a unique-index clash means someone else just created the same tag, it recovers instead of failing:"
+    },
+    {
+      "code": "tag = new Tag { Name = name };\ndb.Tags.Add(tag);\ntry { await db.SaveChangesAsync(ct); }\ncatch (DbUpdateException) // possibly the unique-index race: another request created it\n{\n    db.Entry(tag).State = EntityState.Detached;\n    // If the tag now exists it WAS the race; otherwise this was a different failure — rethrow.\n    tag = await db.Tags.FirstOrDefaultAsync(t => t.Name.ToLower() == lowered, ct);\n    if (tag is null) throw;\n}"
+    },
+    {
+      "p": "The important design point is that this careful logic — the permission gates, the case-insensitive reuse, the race recovery, the idempotent \"already tagged\" check — exists exactly once. When the API's tag endpoint and the website's tag button both call `TagOperations.AddAsync`, they inherit every bit of that care for free, identically."
+    },
+    { "h2": "WorkflowOperations and SlaPolicyOperations: manager-gated settings" },
+    {
+      "p": "Some actions are not about a single issue but about a project's __configuration__ — and those raise the bar to the Manager role. Two examples that mirror each other almost exactly show how consistent the pattern is."
+    },
+    {
+      "p": "`WorkflowOperations` governs which status changes a project allows (defining any transitions makes the project's workflow \"restricted\"; defining none leaves it open). Managing those rules is manager-only, and the class states it: \"Managing rules is Manager-only; the allow-check is used by every issue-status write path so the API, web, board, and bulk actions all enforce the same workflow.\" Its `AddAsync` gates on `CanManageProject()`:"
+    },
+    {
+      "code": "public static async Task<string?> AddAsync(\n    AppDbContext db, AccessSnapshot access, int projectId, IssueStatus from, IssueStatus to, CancellationToken ct = default)\n{\n    if (!access.For(projectId).CanManageProject())\n        throw new UnauthorizedAccessException(\"Managing the workflow requires the Manager role on this project.\");\n    if (from == to) return \"Pick two different statuses.\";\n    if (await db.WorkflowTransitions.AnyAsync(w => w.ProjectId == projectId && w.FromStatus == from && w.ToStatus == to, ct))\n        return \"That transition is already allowed.\";\n    db.WorkflowTransitions.Add(new WorkflowTransition { ProjectId = projectId, FromStatus = from, ToStatus = to });\n    await db.SaveChangesAsync(ct);\n    return null;\n}"
+    },
+    {
+      "p": "That class also exposes a second kind of method — not \"change a setting\" but \"answer a question the rest of the app needs\": `IsAllowedAsync`, which every status-changing code path consults to ask \"is moving this issue from this status to that status permitted?\" Because that one method is the single authority on the answer, the API, the website, the status board, and bulk edits all obey the identical workflow. (We will see `BulkOperations` call it below.)"
+    },
+    {
+      "code": "public static async Task<bool> IsAllowedAsync(\n    AppDbContext db, int projectId, IssueStatus from, IssueStatus to, CancellationToken ct = default)\n{\n    if (from == to) return true;\n    var any = await db.WorkflowTransitions.AsNoTracking().AnyAsync(w => w.ProjectId == projectId, ct);\n    if (!any) return true; // no workflow defined => open\n    return await db.WorkflowTransitions.AsNoTracking()\n        .AnyAsync(w => w.ProjectId == projectId && w.FromStatus == from && w.ToStatus == to, ct);\n}"
+    },
+    {
+      "p": "`SlaPolicyOperations` is cut from the identical cloth for service-target settings (how many hours an issue of a given priority may sit before it breaches). Its summary even names the shared template: it \"Mirrors the other per-project operations classes: reads return an empty list for a non-manager; writes throw.\" Its list method is the reads-return-empty habit in one line:"
+    },
+    {
+      "code": "public static async Task<IReadOnlyList<SlaPolicy>> ListForProjectAsync(\n    Data.AppDbContext db, AccessSnapshot access, int projectId, CancellationToken ct = default)\n{\n    if (!access.For(projectId).CanManageProject()) return [];\n    return await db.SlaPolicies.AsNoTracking()\n        .Where(p => p.ProjectId == projectId)\n        .OrderBy(p => p.Priority)\n        .ToListAsync(ct);\n}"
+    },
+    {
+      "p": "It even folds in a small safety cap of its own — `MaxTargetHours = 100_000` (\"≈ 11 years\"), \"a sanity cap so a fat-fingered target can't overflow date math.\" `AutomationRuleOperations` follows the exact same manager-gated create/update/delete shape, right down to a `Validate` helper that returns a rejection message. Once you have read two of these, the third reads itself — which is precisely the benefit of a consistent pattern."
+    },
+    { "h2": "RelationshipOperations: keeping a private issue's existence secret" },
+    {
+      "p": "Linking issues to one another is where the pattern earns its keep on a genuinely tricky security question. When you view an issue's related issues, the list must never reveal a related issue you are not allowed to see — not even the fact that it exists. `RelationshipOperations` handles this in one place, and its summary spells out the stakes: \"the related-issue list only ever includes issues the viewer may see (so a private issue's existence isn't leaked).\""
+    },
+    {
+      "p": "The read method loads every link touching this issue, then filters each partner through the same `CanView` gate before including it — silently dropping the ones you may not see:"
+    },
+    {
+      "code": "foreach (var r in rels)\n{\n    var viewerIsSource = r.SourceIssueId == issueId;\n    var other = viewerIsSource ? r.TargetIssue : r.SourceIssue;\n    if (!CanView(access, other)) continue; // never leak a private issue's existence\n    items.Add(new RelationshipItem(r.Id, other.Id, other.Title, other.Project.Name,\n        RelationshipLabels.Describe(r.Type, viewerIsSource)));\n}"
+    },
+    {
+      "p": "The same discretion runs through the writes. When adding a link, if the target issue is one you cannot see, the method reports it as simply \"not found\" rather than \"access denied\" — because \"access denied\" would itself confirm the issue exists:"
+    },
+    {
+      "code": "var target = await db.Issues.AsNoTracking().Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == targetIssueId, ct);\n// Report \"not found\" (not \"no access\") so a private issue's existence is never revealed.\nif (target is null || !CanView(access, target)) return $\"Issue #{targetIssueId} not found.\";"
+    },
+    {
+      "p": "And removal applies the same no-existence-signal rule to relationship ids themselves: if you can view neither end of a link, the delete returns a plain `false` (\"treat as not-found\") so \"a denied delete is indistinguishable from a nonexistent id.\" This is delicate, closed-by-default reasoning — exactly the sort of thing you want written once, tested once, and reused everywhere, rather than re-derived in each endpoint that happens to touch relationships."
+    },
+    { "h2": "BulkOperations: the same per-item rules, a thousand times" },
+    {
+      "p": "The most persuasive demonstration of the pattern is bulk editing — applying one action (set status, close, assign, add a tag) to many issues at once. The tempting shortcut would be to check permission once for the batch and then blast the change across every id. `BulkOperations` refuses that shortcut on purpose. Its summary is emphatic: it enforces \"the SAME per-issue authorization as a single edit: an issue the caller can't see, or can't perform this action on, is silently SKIPPED (never a partial leak or a blanket allow).\""
+    },
+    {
+      "p": "So it loops one issue at a time and re-runs every gate for each. It first bounds the batch (`MaxBatch = 1000`, \"so a crafted API request can't submit an unbounded id list\"), then, per issue, checks visibility and the action-specific permission before making any change:"
+    },
+    {
+      "code": "var issue = await db.Issues.Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == id, ct);\nif (issue is null) { skipped++; continue; }\nvar ctx = access.For(issue.ProjectId);\nif (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))\n{ skipped++; continue; }"
+    },
+    {
+      "p": "Then each action type applies its own required permission — and, crucially, reuses the __other__ Operations classes rather than reinventing their rules. A status change consults `WorkflowOperations.IsAllowedAsync`; a tag add calls straight into `TagOperations.AddAsync`, inheriting its edit-check and idempotency:"
+    },
+    {
+      "code": "case BulkActionType.SetStatus when action.Status is { } s:\n    if (!ctx.CanEditIssue()) { skipped++; continue; }\n    if (!await WorkflowOperations.IsAllowedAsync(db, issue.ProjectId, issue.Status, s, ct)) { skipped++; continue; }\n    issue.Status = s; summary = $\"status set to {s}\";\n    break;\n// ...\ncase BulkActionType.AddTag when !string.IsNullOrWhiteSpace(action.Tag):\n    if (!ctx.CanEditIssue()) { skipped++; continue; }\n    // Reuse the tag ACL/create-on-assign logic; it re-checks edit and is idempotent.\n    try { await TagOperations.AddAsync(db, access, id, action.Tag, ct); }\n    catch (UnauthorizedAccessException) { skipped++; continue; }\n    updated++;\n    continue;"
+    },
+    {
+      "p": "This is the pattern feeding on itself, in the best way: `BulkOperations` does not know or duplicate the tagging rules or the workflow rules — it __calls__ the classes that own them. The result is that a bulk change can never do something a one-at-a-time change would have refused, because under the hood a bulk change __is__ a series of one-at-a-time changes through the very same code. Assigning even re-checks that the new assignee is actually a member of the issue's project, exactly as a single assign would. Each changed issue also records its history and fires a notification, \"exactly like an individual edit,\" and the method returns a tidy count of how many were updated versus skipped."
+    },
+    { "h2": "The unwritten contract these classes all follow" },
+    {
+      "p": "Step back and the whole family shares one contract, even though no interface forces it. Every Operations class is static and stateless; every method takes the database and the caller's `AccessSnapshot`; every method checks permission through the shared access-control authority before acting; reads return empty when unauthorized, writes throw, and invalid input comes back as a message; nothing reveals the existence of something you may not see; and higher-level actions reuse lower-level Operations rather than copying them. Learn that contract once and every class in the family is predictable."
+    },
+    {
+      "p": "This is also why the pattern scales. OpenTrack has many of these — tags, workflow, SLA, automation, relationships, bulk, custom fields, checklists, saved filters, preferences, webhooks, time logs, Git integration, public intake — and adding the next feature does not mean inventing a new structure. You write one more `...Operations` class in the same mold, and both hosts pick it up by calling it. The shape is the documentation."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "If Chapter 8 was \"write the permission __rules__ once,\" this chapter is \"write the whole __action__ once.\" The Operations classes are where a feature's real behavior lives — its validation, its permission gates, its database work, its careful handling of races and secrecy — and because that behavior exists in exactly one static method per action, the website and the API cannot enforce different versions of it. There is no second copy to fall out of step."
+    },
+    {
+      "p": "The habits that must not erode: keep each action in one shared Operations method; always take the caller's access and check it through the access-control authority, never with a fresh inline rule; keep the reads-return-empty / writes-throw / invalid-returns-a-message split so callers can react correctly; never leak the existence of something a user may not see; and when a new action naturally builds on an existing one, call the existing Operations class instead of re-deriving its rules. A bulk action that quietly reuses the single-edit rules is the pattern working as intended."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "When you add an action, do not write its logic inside a page or an endpoint. Create (or extend) a static ...Operations class that takes AppDbContext and AccessSnapshot, gate it through the access-control authority, return empty for forbidden reads and throw for forbidden writes, and then call that one method from both hosts. If you ever find the same action implemented twice, you have found the exact drift this pattern exists to prevent — collapse it back to one."
+      }
+    }
+  ]
+}

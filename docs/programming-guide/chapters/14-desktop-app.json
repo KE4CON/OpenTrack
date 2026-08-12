@@ -1,0 +1,168 @@
+{
+  "order": 14,
+  "title": "The Desktop App: MAUI Blazor Hybrid over HTTP",
+  "subtitle": "How OpenTrack.Desktop hosts the exact same shared screens inside a native Windows or Mac window, points them at the API over the network, attaches the login token to every request automatically, lets the user change the server address without recompiling, and bridges a token-based session into Blazor's authorization system.",
+  "in_this_chapter": [
+    "What a MAUI Blazor Hybrid app is — a native window showing the shared web UI",
+    "Plugging the shared data seam into its HTTP body, in one line",
+    "The configurable server address: a bundled default, then a per-machine override",
+    "Two HTTP clients — one that carries the token, one for logging in",
+    "AuthTokenHandler: clipping the bearer token onto every request automatically",
+    "DesktopAuthState and the opaque-token problem — why it calls /api/auth/me",
+    "Bridging a token session into Blazor's [Authorize] and the same four role policies",
+    "Which platforms it targets, and why Linux runs the web app instead"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "`OpenTrack.Desktop` is the native application a user installs on Windows or Mac. Here is the surprising part: it contains almost none of the issue-tracker screens itself. It is a native window whose entire content is the __same shared Blazor UI__ the web app renders — the identical pages, from the identical `OpenTrack.UI` project. The desktop app's real job is to be a good host for those pages on a machine that has no database: give them a window to live in, point them at the API over the network, and make sign-in work without a browser."
+    },
+    {
+      "p": "Picture the shared screens as a stage play and the desktop app as a touring venue. The web host staged the same play in a theater that owns the script library (the database). The desktop app stages that identical play in a small local venue that has no library of its own — so it phones the library (the API) for every fact it needs. The audience sees the same show. This chapter is about the venue: how `MauiProgram.cs` wires the shared pages to the HTTP body, how the token gets onto every call, and how a network login is made to look, to the shared pages, exactly like a browser login."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": ".NET MAUI is Microsoft's toolkit for building native desktop and mobile apps from one C# codebase. A 'Blazor Hybrid' app runs Blazor web components inside a native window using an embedded browser control (a WebView) — so the same web UI shows up as a real application, no browser tab required. 'Over HTTP' means those components fetch their data from a network service (the API) rather than a local database."
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "OpenTrack.Desktop is a MAUI Blazor Hybrid app that renders the shared UI in a native window, plugs the data seam into its HTTP body pointed at a user-configurable API address, attaches the login bearer token to every request via a message handler, and bridges its token-based session into Blazor's authorization so the shared pages' [Authorize] and role policies work completely unchanged."
+      }
+    },
+    { "h2": "The window that hosts the shared pages" },
+    {
+      "p": "The native shell is tiny. A MAUI window contains a single `BlazorWebView`, and that view's root component is the shared UI's router — so the whole application surface is the shared pages:"
+    },
+    {
+      "code": "<BlazorWebView x:Name=\"blazorWebView\" HostPage=\"wwwroot/index.html\">\n    <BlazorWebView.RootComponents>\n        <RootComponent Selector=\"#app\" ComponentType=\"{x:Type components:Routes}\" />\n    </BlazorWebView.RootComponents>\n</BlazorWebView>"
+    },
+    {
+      "p": "Everything else lives in `MauiProgram.cs`, the desktop equivalent of the web and API `Program.cs` files — the recipe that registers services and presses go. It opens by turning on Blazor for MAUI:"
+    },
+    {
+      "code": "builder.Services.AddMauiBlazorWebView();"
+    },
+    { "h2": "Plugging the seam into its HTTP body" },
+    {
+      "p": "This is the counterpart to the web host's one-line seam decision. Where the web host said \"give the pages the database body,\" the desktop host says \"give the pages the HTTP body\" — and hands it a network client to talk through:"
+    },
+    {
+      "code": "// The shared UI's data seam, backed by HTTP calls to OpenTrack.API in the desktop app.\nbuilder.Services.AddScoped<IOpenTrackDataService>(sp =>\n    new HttpOpenTrackDataService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(\"OpenTrackApi\")));"
+    },
+    {
+      "p": "That single registration is the entire data-side difference between this app and the web app. The shared pages ask for `IOpenTrackDataService`; here they receive `HttpOpenTrackDataService`, which — as Chapter 11 showed — turns every menu item into a call to the API. The pages never know. They ask for projects; on the web that was a database query, here it is an HTTP GET, and the screen renders identically either way."
+    },
+    { "h2": "The configurable server address" },
+    {
+      "p": "A desktop app can't hard-code where the server is — one user runs it against `localhost` while developing, another against a little Beelink box on the office LAN. So the API address is layered: a bundled default that ships with the app, which the user can then override in an in-app Settings screen, remembered per machine. The startup code reads the bundled default out of an embedded config file first:"
+    },
+    {
+      "code": "string defaultApiBaseUrl = \"http://localhost:5003\";\nusing (var stream = System.Reflection.Assembly.GetExecutingAssembly()\n    .GetManifestResourceStream(\"OpenTrack.Desktop.wwwroot.appsettings.json\"))\n{\n    if (stream is not null)\n    {\n        var cfg = new ConfigurationBuilder().AddJsonStream(stream).Build();\n        var configured = cfg[\"ApiBaseUrl\"];\n        if (!string.IsNullOrWhiteSpace(configured))\n            defaultApiBaseUrl = configured;\n    }\n}\nvar savedApiBaseUrl = Preferences.Default.Get(ApiEndpoint.PreferenceKey, defaultApiBaseUrl);\nbuilder.Services.AddSingleton(new ApiEndpoint(savedApiBaseUrl));"
+    },
+    {
+      "p": "The bundled file itself is trivial — just the address — and it is included as an embedded resource so it is readable at startup on every platform:"
+    },
+    {
+      "code": "{\n  \"ApiBaseUrl\": \"http://localhost:5003\"\n}"
+    },
+    {
+      "p": "The chosen address is held in a small mutable object, `ApiEndpoint`, and every network client reads it __at the moment the client is created__, so a change on the Settings screen takes effect on the next request with no app restart. Its comment states the design directly:"
+    },
+    {
+      "code": "/// Holds the current OpenTrack.API base address for the desktop client. Every named HttpClient reads\n/// its base address from here at creation time, so changing it (via the in-app Settings page) takes\n/// effect on the next request without an app restart. The value is seeded at startup from the saved\n/// user preference, falling back to the bundled appsettings default.\npublic sealed class ApiEndpoint(string baseUrl)\n{\n    public const string PreferenceKey = \"ApiBaseUrl\";\n    public string BaseUrl { get; set; } = baseUrl;\n}"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "An 'embedded resource' is a file baked into the app's executable, so it is always present regardless of where the app is installed. 'Preferences' is MAUI's per-machine settings store — a small place to remember a user's choice between runs. A 'singleton' is a service the app creates once and shares everywhere, which is why one ApiEndpoint object can hold the address the whole app reads."
+      }
+    },
+    { "h2": "Two HTTP clients: one signed-in, one anonymous" },
+    {
+      "p": "The desktop registers two named network clients, and the split matters. One, `OpenTrackApi`, is the authenticated client used for all data once you're signed in — it has the token-attaching handler wired into it. The other, `OpenTrackApiAnon`, is a plain client with no token, used only to perform the login itself (you can't attach a token you don't have yet). Both read their base address from `ApiEndpoint` at creation:"
+    },
+    {
+      "code": "builder.Services.AddHttpClient(\"OpenTrackApi\", (sp, client) =>\n    {\n        client.BaseAddress = new Uri(sp.GetRequiredService<ApiEndpoint>().BaseUrl);\n    })\n    .AddHttpMessageHandler<AuthTokenHandler>();\n\n// A plain (unauthenticated) client that DesktopAuthState uses to perform login itself.\nbuilder.Services.AddHttpClient(\"OpenTrackApiAnon\", (sp, client) =>\n    {\n        client.BaseAddress = new Uri(sp.GetRequiredService<ApiEndpoint>().BaseUrl);\n    });"
+    },
+    { "h2": "AuthTokenHandler: the token on every request, automatically" },
+    {
+      "p": "This is the piece that lets `HttpOpenTrackDataService` stay identity-agnostic (Chapter 11). The data body never attaches a token; instead a __message handler__ sits in the pipeline of the authenticated client and clips the bearer token onto every outgoing request as it passes through:"
+    },
+    {
+      "code": "public class AuthTokenHandler(DesktopAuthState auth) : DelegatingHandler\n{\n    protected override Task<HttpResponseMessage> SendAsync(\n        HttpRequestMessage request, CancellationToken cancellationToken)\n    {\n        if (!string.IsNullOrEmpty(auth.AccessToken))\n            request.Headers.Authorization = new AuthenticationHeaderValue(\"Bearer\", auth.AccessToken);\n        return base.SendAsync(request, cancellationToken);\n    }\n}"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A 'delegating handler' is a checkpoint in the outgoing-request pipeline: every request passes through it before leaving, so it is the perfect place to add something to all of them at once. Here it adds the Authorization header carrying the bearer token. Because it is automatic, no individual data call has to remember to include the token — which is exactly why the HTTP data body could be written without ever mentioning identity."
+      }
+    },
+    { "h2": "DesktopAuthState and the opaque-token problem" },
+    {
+      "p": "The token is held by `DesktopAuthState`, which drives login and logout and keeps the session in memory. Login posts to the API's anonymous endpoint and stores the returned tokens. But then it hits the wrinkle you met in Chapter 13: the token the API returns is __opaque__ — encrypted, not readable — so the desktop can't learn the user's role from it. Its solution is to immediately call `/api/auth/me` and capture the id, name, and role the API reports back:"
+    },
+    {
+      "code": "AccessToken = tokens.accessToken;\nRefreshToken = tokens.refreshToken;\n\ntry\n{\n    using var meReq = new HttpRequestMessage(HttpMethod.Get, \"/api/auth/me\");\n    meReq.Headers.Authorization =\n        new System.Net.Http.Headers.AuthenticationHeaderValue(\"Bearer\", AccessToken);\n    var meResp = await http.SendAsync(meReq, ct);\n    if (meResp.IsSuccessStatusCode)\n    {\n        var me = await meResp.Content.ReadFromJsonAsync<MeResponse>(cancellationToken: ct);\n        if (me is not null)\n        {\n            UserName = me.name;\n            Role = me.role;\n            UserId = int.TryParse(me.id, out var uid) ? uid : null;\n        }\n    }\n}\ncatch\n{\n    // If /me fails, we're still logged in; role-gated features just won't light up.\n}"
+    },
+    {
+      "p": "A nice touch: login uses a fresh anonymous client per attempt, precisely so it always uses the __current__ server address — the user may have just changed it on the Settings page before signing in. The tokens are kept in memory only; signing out simply clears them. This little class is the desktop's whole notion of \"who is signed in.\""
+    },
+    { "h2": "Bridging the session into Blazor's authorization" },
+    {
+      "p": "The shared pages use Blazor's standard authorization — `[Authorize]` attributes, `<AuthorizeView>` blocks, and the four role policies. Those expect an `AuthenticationStateProvider`. So the desktop provides one, `DesktopAuthenticationStateProvider`, that turns the token session into the claims-based identity Blazor understands — marking the user authenticated when a token is present and carrying the role as a claim:"
+    },
+    {
+      "code": "if (auth.IsSignedIn)\n{\n    var claims = new List<Claim>\n    {\n        new(ClaimTypes.Name, auth.UserName ?? \"user\"),\n        new(ClaimTypes.NameIdentifier, auth.UserId?.ToString() ?? \"0\"),\n    };\n    if (!string.IsNullOrEmpty(auth.Role))\n        claims.Add(new Claim(\"OpenTrack.Role\", auth.Role));\n\n    identity = new ClaimsIdentity(claims, authenticationType: \"opentrack-desktop\");\n}"
+    },
+    {
+      "p": "Its comment names the reason plainly: the Identity login tokens are \"OPAQUE (encrypted), not decodable JWTs, so we can't read claims out of the token itself\" — hence the app carries the role/name it captured from `/api/auth/me` instead. And note the claim it sets: `OpenTrack.Role`, the very same claim name the web and API hosts stamp on. That is what lets the desktop register the __same four role policies__, checked the same way:"
+    },
+    {
+      "code": "builder.Services.AddAuthorizationCore(options =>\n{\n    options.AddPolicy(\"RequireUpdater\", p => p.RequireAssertion(ctx => DesktopRoleCheck(ctx, UserRole.Updater)));\n    options.AddPolicy(\"RequireDeveloper\", p => p.RequireAssertion(ctx => DesktopRoleCheck(ctx, UserRole.Developer)));\n    options.AddPolicy(\"RequireManager\", p => p.RequireAssertion(ctx => DesktopRoleCheck(ctx, UserRole.Manager)));\n    options.AddPolicy(\"RequireAdministrator\", p => p.RequireAssertion(ctx => DesktopRoleCheck(ctx, UserRole.Administrator)));\n});"
+    },
+    {
+      "p": "The comment beside it notes desktop is \"a thin client and doesn't reference Infrastructure,\" so — like the API — it registers these four inline rather than sharing them. `DesktopRoleCheck` is the same parse-and-compare as `WebRoleCheck` and `ApiRoleCheck`. Finally, the session's `Changed` event is wired to the provider so the UI re-evaluates authorization the instant someone signs in or out:"
+    },
+    {
+      "code": "var authState = app.Services.GetRequiredService<DesktopAuthState>();\nvar authProvider = app.Services.GetRequiredService<DesktopAuthenticationStateProvider>();\nauthState.Changed += authProvider.NotifyChanged;"
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The desktop's role check is a convenience, not the gate",
+        "text": "The desktop carries the role and runs the four policies only to light up the right controls locally — hide a button the user can't use, show an admin link to an admin. It is NOT the real security boundary. Every request still goes to the API, which independently re-checks the role policy AND the per-project rules (Chapter 13). A tampered desktop that lied about its role would still be refused by the API. The UI check is courtesy; the server check is law."
+      }
+    },
+    { "h2": "Which platforms, and why not Linux" },
+    {
+      "p": "The project file targets Windows and Mac (Mac Catalyst) only, and the comment explains the reasoning candidly. Android and iOS from the default MAUI template were removed — this is a desktop client, not a mobile app — and Linux is deliberately not a MAUI target because Microsoft doesn't support MAUI on Linux desktop:"
+    },
+    {
+      "code": "<TargetFrameworks Condition=\"$([MSBuild]::IsOSPlatform('windows'))\">net10.0-windows10.0.19041.0</TargetFrameworks>\n<TargetFrameworks Condition=\"$([MSBuild]::IsOSPlatform('osx'))\">net10.0-maccatalyst</TargetFrameworks>"
+    },
+    {
+      "p": "The comment's closing line is the elegant part of the story: \"Linux users run the fully cross-platform web app instead.\" Because the screens are shared, a platform the native app can't reach is not a platform without OpenTrack — a Linux user simply opens the web app in a browser and sees the same UI. Each OS also builds only its own head (a Windows machine builds the Windows head, a Mac the Mac Catalyst head), so neither developer needs the other's workload. Notably, the desktop project references only `OpenTrack.UI` and `OpenTrack.Core` — not Infrastructure — which is exactly why it re-declares the four role policies inline and owns no database code."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The desktop app is the clearest demonstration of what the seam bought. A native window, a token-based login, no database, a configurable server address — and yet the actual application the user interacts with is the same `OpenTrack.UI` the browser shows, unchanged. All the desktop-specific machinery (`ApiEndpoint`, `AuthTokenHandler`, `DesktopAuthState`, `DesktopAuthenticationStateProvider`) exists to make the network world underneath those shared pages look, to the pages, just like the web world: a data service to call, an authenticated user, and the four familiar role policies."
+    },
+    {
+      "p": "The properties to protect: the desktop stays a thin host — it references only UI and Core, owns no rules, and defers every real decision to the API; the token is attached centrally by the handler so the data body stays identity-agnostic; the server address stays user-configurable and read-at-creation so it can change without a restart; and the local role check is understood as cosmetic, with the API as the true gate. Add a desktop-only concern and the discipline is to keep it in the host plumbing, never in a screen — the screens must remain the shared ones."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "Keep OpenTrack.Desktop a host, not a fork of the UI: it renders OpenTrack.UI's pages and nothing else, references only UI and Core, and lets the API enforce security. Attach the token only through AuthTokenHandler (never per-call), read the server address from ApiEndpoint at client-creation time, and keep the OpenTrack.Role claim name and the four role policies identical to the web and API hosts. If a feature seems to need a desktop-only screen, that is a signal it belongs in the shared UI instead."
+      }
+    }
+  ]
+}

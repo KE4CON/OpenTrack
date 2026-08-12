@@ -1,0 +1,124 @@
+{
+  "order": 17,
+  "title": "Automation Rules",
+  "subtitle": "How a project says \"when a new issue matches these conditions, do these things\" — where those rules are stored, how a pure evaluator decides which fire and in what order, and how the engine applies the result to a brand-new issue the instant it is created.",
+  "in_this_chapter": [
+    "What an automation rule is: conditions to match, actions to apply, and a sort order",
+    "Why every condition and action lives on one flat row, and what null means for each",
+    "The pure evaluator: matching against the original issue, last-writer-wins for fields, tags accumulate",
+    "The engine that applies the outcome to the just-saved issue, with two safety rails",
+    "Why automation runs on creation only, and why that removes a whole class of bugs",
+    "The single call site, shared by both hosts, that fires the rules"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "An __automation rule__ is a small standing instruction a project Manager writes once so the software does the routine triage for them: \"when a new issue's title mentions __crash__, tag it __crash__ and set its severity to Major,\" or \"anything filed in the Billing category, assign to Dana.\" Every time a new issue is created, the project's rules get a look at it and quietly apply whatever matches. It is the difference between a Manager hand-sorting every incoming ticket and the mailroom sorting itself."
+    },
+    {
+      "p": "Think of it like the mail-sorting rules you might set in an email program: a list of \"if the message looks like this, then file it there / flag it / forward it.\" You write the rules; the program runs them on each new arrival. OpenTrack's automation is exactly that idea, aimed at newly-created issues, with a fixed little menu of things a rule can look at and a fixed little menu of things it can do."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "Each project holds an ordered list of \"match these conditions, apply these actions\" rules on single flat rows; a pure evaluator tests every rule against the issue's original state and combines the matches (last writer wins for fields, tags accumulate); and one engine, called from the exact same spot in both hosts' create paths, applies the result to the just-saved issue — running on creation only, so a rule can never re-trigger itself."
+      }
+    },
+    { "h2": "A rule, as data" },
+    {
+      "p": "A rule is one row: `AutomationRule`. Its own summary states the shape and the two governing conventions — conditions are ANDed, and null means \"don't care\":"
+    },
+    {
+      "code": "/// A per-project automation rule: \"when a new issue matches these conditions, apply these actions.\"\n/// Conditions are ANDed; a null condition means \"don't care\", so a rule with no conditions matches every\n/// new issue. Actions are applied only when the rule matches; a null action does nothing. All conditions\n/// and actions live on the one row (no child tables) to keep the schema and the editor simple."
+    },
+    {
+      "p": "The fields divide cleanly into three groups — the housekeeping, the conditions (the \"when\"), and the actions (the \"then\"):"
+    },
+    {
+      "code": "public bool IsEnabled { get; set; } = true;\npublic int SortOrder { get; set; }        // rules run in ascending order\n\n// ---- Conditions (all must match; null = ignore) ----\npublic string? WhenTextContains { get; set; }\npublic IssueSeverity? WhenSeverity { get; set; }\npublic IssuePriority? WhenPriority { get; set; }\npublic int? WhenCategoryId { get; set; }\n\n// ---- Actions (applied on match; null = no-op) ----\npublic IssueSeverity? SetSeverity { get; set; }\npublic IssuePriority? SetPriority { get; set; }\npublic IssueStatus? SetStatus { get; set; }\npublic int? AssignToUserId { get; set; }\npublic string? AddTag { get; set; }"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "\"ANDed\" means every stated condition must be true together for the rule to match — title contains 'crash' AND priority is High, not either-or. The question marks (string?, int?) mark each field optional; a null there is the code's way of saying \"this condition is not set — ignore it\" or \"this action is not set — do nothing.\" A rule with all conditions null therefore matches every new issue, which is a feature: it is how you write a blanket rule. \"No child tables\" means the whole rule fits on one database row, so the editor is a single simple form."
+      }
+    },
+    {
+      "p": "Because everything sits on one row, the rule editor (`Automation.razor`) is one flat form, and managing rules follows the same Manager-only pattern as every other per-project setting. `AutomationRuleOperations` handles create/update/delete, refusing non-Managers and validating the input — for instance, it re-checks that a category condition actually belongs to this project, \"defense in depth against a spoofed id,\" the same id-scoping caution seen throughout the codebase."
+    },
+    { "h2": "The pure evaluator: which rules fire, and how they combine" },
+    {
+      "p": "The decision of __which__ rules match and __what__ they collectively want to do is made by a pure function, `AutomationEvaluator.Evaluate`, kept in `OpenTrack.Core` with no database in sight. It is handed the new issue's facts and the list of rule definitions, and it returns an __outcome__ — the net effect. Keeping it pure means the same logic the app runs is the logic the tests drive, with nothing mocked."
+    },
+    {
+      "p": "Three combining conventions, stated in its summary, make the result predictable:"
+    },
+    {
+      "code": "/// Rules are considered in the order given; every rule's conditions are tested against the ORIGINAL\n/// issue state (not the running result), so the outcome doesn't depend on subtle action/condition\n/// interplay. For scalar actions the last matching rule wins; tags accumulate (de-duplicated,\n/// case-insensitive)."
+    },
+    {
+      "p": "That middle point is the important one. Every rule is judged against the issue __as it was created__, never against the half-changed result of earlier rules. So if rule 1 sets priority to High and rule 2's condition is \"when priority is Low,\" rule 2 does __not__ suddenly stop matching just because rule 1 ran first — because rule 2 is tested against the original Low, not the freshly-set High. This removes a whole category of order-dependent surprises. The loop makes it concrete:"
+    },
+    {
+      "code": "foreach (var r in rules)\n{\n    if (!Matches(input, r)) continue;\n    applied.Add(r.Name);\n\n    if (r.SetSeverity is { } s) severity = s;\n    if (r.SetPriority is { } p) priority = p;\n    if (r.SetStatus is { } st) status = st;\n    if (r.AssignToUserId is { } a) assignee = a;\n    if (!string.IsNullOrWhiteSpace(r.AddTag))\n    {\n        var tag = r.AddTag.Trim();\n        if (!tags.Any(t => string.Equals(t, tag, StringComparison.OrdinalIgnoreCase)))\n            tags.Add(tag);\n    }\n}"
+    },
+    {
+      "p": "See the two combining behaviors side by side. For a __scalar__ field like severity, each matching rule simply overwrites the running choice, so the __last__ matching rule wins — which is exactly why `SortOrder` exists and why later rules \"override earlier scalar actions.\" For __tags__, nothing is overwritten; each new tag is added unless it is already present (case-insensitively), so tags __accumulate__. One issue can collect five tags but end with one severity. And `Matches` is just the plain reading of the conditions — a null condition is skipped, a set one must agree:"
+    },
+    {
+      "code": "private static bool Matches(AutomationInput i, AutomationRuleDef r)\n{\n    if (!string.IsNullOrWhiteSpace(r.WhenTextContains))\n    {\n        var needle = r.WhenTextContains.Trim();\n        var inTitle = i.Title?.Contains(needle, StringComparison.OrdinalIgnoreCase) == true;\n        var inDesc = i.Description?.Contains(needle, StringComparison.OrdinalIgnoreCase) == true;\n        if (!inTitle && !inDesc) return false;\n    }\n    if (r.WhenSeverity is { } sev && i.Severity != sev) return false;\n    if (r.WhenPriority is { } pri && i.Priority != pri) return false;\n    if (r.WhenCategoryId is { } cat && i.CategoryId != cat) return false;\n    return true;\n}"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "\"Scalar\" just means a single-value field — an issue has exactly one severity, one priority, one status — so a later rule setting it replaces the earlier choice. A tag is different: an issue can wear many, so tags add up instead of replacing. \"De-duplicated, case-insensitive\" means adding 'Crash' when 'crash' is already there does nothing. A pure function is one that only reads its inputs and returns a value — it touches no database and changes nothing outside itself, which is what makes it trivial to test exhaustively."
+      }
+    },
+    { "h2": "The engine: applying the outcome, with safety rails" },
+    {
+      "p": "The evaluator decides; it does not touch the database. Turning its outcome into real changes on the real issue is the job of `AutomationEngine.RunOnCreateAsync`, in the Infrastructure layer. It loads the project's enabled rules in order, runs the pure evaluator, and — only if the outcome actually changes something — applies the mutations to the tracked issue and saves:"
+    },
+    {
+      "code": "var outcome = AutomationEvaluator.Evaluate(\n    new AutomationInput(issue.Title, issue.Description, issue.Severity, issue.Priority, issue.CategoryId),\n    rules.Select(ToDef));\nif (!outcome.AnyEffect) return outcome.AppliedRuleNames;\n\nvar changed = false;\nif (outcome.Severity is { } sev && issue.Severity != sev) { issue.Severity = sev; changed = true; }\nif (outcome.Priority is { } pri && issue.Priority != pri) { issue.Priority = pri; changed = true; }\nif (outcome.Status is { } st && issue.Status != st) { issue.Status = st; changed = true; }"
+    },
+    {
+      "p": "Two safety rails are worth calling out, because they show the engine being careful with power. Automation runs with __system authority__ — the rules were, after all, authored by a Manager — so it does not re-check the acting user's edit rights. But it will not do something a Manager themselves could not sensibly want. First: it will only auto-assign to someone who is __actually still a member__ of the project, because a member named in an old rule may have been removed since:"
+    },
+    {
+      "code": "if (outcome.AssignToUserId is { } uid && issue.AssigneeId != uid)\n{\n    // Only auto-assign to an actual member of the project (a member may have been removed since\n    // the rule was written — don't assign to someone who can no longer see the project).\n    if (await db.ProjectMemberships.AnyAsync(m => m.ProjectId == issue.ProjectId && m.UserId == uid, ct))\n    {\n        issue.AssigneeId = uid;\n        changed = true;\n    }\n}"
+    },
+    {
+      "p": "Second: adding a tag is done idempotently — get-or-create the tag by name, then link it only if it is not already linked — and even survives two issues racing to create the same brand-new tag at once, catching the unique-index collision and re-reading the winner's row rather than failing. These are the unglamorous details that keep a convenience feature from becoming a source of corruption."
+    },
+    { "h2": "Creation only — and the single shared call site" },
+    {
+      "p": "The most important design decision is stated right in the class summary: automation \"runs on creation only, so a rule's own action can never re-trigger the engine.\" Consider the alternative: if rules also ran on every edit, a rule that sets a status could trip a rule that watches that status, which changes a field a third rule watches, and so on — an infinite cascade, or at best an unpredictable one. By firing __only__ when an issue is first born, and judging against its original state, the whole hall-of-mirrors problem simply cannot arise."
+    },
+    {
+      "p": "And, exactly as with the workflow gate in Chapter 15, the engine is invoked from __one__ place in each host, right after the new issue's first save (so it already has an id), on the same database context the create used. The web data service calls it:"
+    },
+    {
+      "code": "db.Issues.Add(issue);\nawait db.SaveChangesAsync(ct);\n// Apply any project automation rules to the just-created issue (auto-tag/assign/set fields).\nawait AutomationEngine.RunOnCreateAsync(db, issue, ct);"
+    },
+    {
+      "p": "The API host's create endpoint calls the identical `AutomationEngine.RunOnCreateAsync(db, issue, ct)` at the same point in its own flow. Both front doors run the same rules, in the same order, with the same safety rails — there is no second copy of automation logic that could drift. The engine's summary names this on purpose: it is \"called from BOTH hosts' create paths … so the rules and their authorization can't drift (mirrors `WorkflowOperations`).\""
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "Automation is a textbook example of the codebase's favorite split: a pure decision-maker and a thin do-er. `AutomationEvaluator` decides which rules match and combines them by clear, order-stable conventions, with no database anywhere near it — so it is exhaustively testable. `AutomationEngine` takes that verdict and touches the world, adding just the guardrails a database-touching layer must (assign only to real members, tag idempotently). And the feature is deliberately scoped to creation-time, which trades away edit-time automation for the far more valuable property that rules can never chain into themselves."
+    },
+    {
+      "p": "The rules that must not erode: keep the evaluator pure and matching against the __original__ issue state (that is what makes order predictable and testing honest); keep scalar-last-wins and tags-accumulate as the two combining rules; keep the safety rails in the engine (membership-checked assignment, idempotent tagging); and keep automation firing from one shared call site per host, on creation only. If someone ever asks for edit-time automation, that is not a small tweak — it is a decision to re-open the re-triggering problem this design closed, and it must be made deliberately, not slipped in."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "Put any new matching or combining logic in the pure AutomationEvaluator and cover it with tests; put anything that touches the database — a new action type, a new safety check — in AutomationEngine. Never add a second place that runs the rules, and do not quietly extend automation to fire on edits: that reopens the self-triggering cascade the creation-only rule was built to prevent."
+      }
+    }
+  ]
+}

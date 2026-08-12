@@ -1,0 +1,164 @@
+{
+  "order": 23,
+  "title": "How This Codebase Is Meant to Grow",
+  "subtitle": "The single most important chapter for anyone extending OpenTrack: how a new feature travels from a database table all the way to the screen, following the grain the codebase already runs in — and the handful of load-bearing rules that must never erode, no matter how the app grows.",
+  "in_this_chapter": [
+    "The grain of the codebase: the path every feature already follows",
+    "Adding a feature end to end, as a checklist of layers",
+    "Why the entity comes first, and the migration right after",
+    "The Operations class: one place per action, so Web and API never drift",
+    "The data-service seam: how one feature reaches both hosts at once",
+    "The four load-bearing rules that must never erode",
+    "The tell-tale signs you are fighting the design instead of following it"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "Every long-lived program eventually gets a feature its author never imagined. The question that decides whether the program ages gracefully or rots is not __what__ that feature is, but __how__ it gets added. If each new feature is bolted on wherever was convenient, the code slowly turns into a thicket where nothing can be changed safely. If instead every feature follows the same well-worn path, the code stays legible for decades. This chapter describes that path for __OpenTrack__, so the next person to extend it can add with the grain instead of against it."
+    },
+    {
+      "p": "The earlier chapters each described one layer. This chapter is the synthesis: it walks a single imaginary feature through all of them in order, and then names the rules that hold the whole shape together. Read it as a map you keep beside you the first few times you add something — not because the steps are hard, but because doing them in the right order, in the right place, is the entire difference between growth and decay."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "A new feature travels a fixed path — entity, then migration, then an Operations class that holds the logic once, then the shared data-service seam, then both hosts, then the UI, then a test — and four rules keep that path honest: pure rules live in Core, each action has exactly one Operations home, every access decision routes through the one authority, and Web and API are always fed by shared code, never divergent copies."
+      }
+    },
+    { "h2": "The grain of the codebase" },
+    {
+      "p": "Before the steps, the shape. OpenTrack is built as a stack of layers, each allowed to depend only on the ones beneath it (Chapter 3). Wood has a grain; so does this code. When you plane wood along the grain, it goes smoothly; across it, it splinters. The layers are the grain here, and a feature added __along__ them slots in cleanly:"
+    },
+    {
+      "bullets": [
+        "__OpenTrack.Core__ — the entities (plain data shapes like `Issue`, `Project`, `Tag`) and the pure rules (permissions, SLA math). No database, no web. This is the bedrock everything sits on.",
+        "__OpenTrack.Infrastructure__ — the database (`AppDbContext`), the migrations, and the __Operations__ classes that actually read and write rows while checking permissions.",
+        "__OpenTrack.UI__ — the shared screens, and the `IOpenTrackDataService` interface: the single seam both hosts plug into.",
+        "__OpenTrack.Web__ and __OpenTrack.API__ — the two hosts (the browser app and the desktop-facing service), each a thin adapter that wires the shared code to its own front door.",
+        "__OpenTrack.Desktop__ — the desktop app, which reaches the API over HTTP through the same seam."
+      ]
+    },
+    {
+      "p": "Every feature already in the app — tags, workflow, SLA policies, automation rules, relationships, webhooks, git integration — was built by pouring it down this stack in the same order. The proof is in the folder listing: `OpenTrack.Infrastructure` holds `TagOperations`, `WorkflowOperations`, `SlaPolicyOperations`, `AutomationRuleOperations`, `RelationshipOperations`, `WebhookOperations`, `GitIntegrationOperations`, and more — one Operations class per subsystem, each following the identical shape. Your new feature is simply the next one in that list."
+    },
+    { "h2": "Adding a feature, end to end" },
+    {
+      "p": "Here is the whole journey as an ordered checklist. To make it concrete, imagine a small new feature — say, letting a project define a list of __milestones__ an issue can be tagged to. The steps are the same for anything larger."
+    },
+    {
+      "steps": [
+        "__Entity first.__ Add a plain data class in `OpenTrack.Core/Entities/` (a `Milestone` with an id, a project id, a name). This is just the shape of the data — no behavior. Wire it into `AppDbContext` as a `DbSet` so Entity Framework knows about the table.",
+        "__Migration next.__ Generate a migration so the database gains the new table. The schema change is recorded as code in `OpenTrack.Infrastructure/Migrations`, so every existing database can be upgraded in place and every new one is built correctly. Never hand-edit the live database; let the migration be the single record of the change.",
+        "__Pure rules, if any, in Core.__ If the feature needs a decision that is really just logic — who may edit a milestone, or how a due date is computed — write it as a pure method in Core (an `AccessContext` permission, or a small calculator), so it can be unit-tested with no database, exactly like the SLA calculator.",
+        "__Operations class — the logic's one home.__ Add `MilestoneOperations` in `OpenTrack.Infrastructure/Milestones/`. This is where the reading and writing of rows lives, and where every action first asks the access authority whether the caller is allowed. This class is the feature's brain; the hosts will only call into it.",
+        "__Data-service seam.__ Add the feature's methods to the `IOpenTrackDataService` interface in `OpenTrack.UI/Services/`. This is the single doorway both hosts share. Implement it once against the database (`DbOpenTrackDataService`, calling your `MilestoneOperations`) and once over HTTP (`HttpOpenTrackDataService`, calling the API endpoint).",
+        "__Both hosts.__ Expose the feature at each front door: an endpoint in `OpenTrack.API/Endpoints/` for the desktop app, and the Web host's wiring. Each host only gathers the caller's identity and delegates to the shared Operations code — it writes no rules of its own.",
+        "__UI.__ Build the screen in `OpenTrack.UI` once. Because it talks only to `IOpenTrackDataService`, the exact same screen runs in the browser and in the desktop app, each backed by its own implementation of the seam.",
+        "__Test.__ Add a test in the same commit — a pure test if the logic is pure, an in-memory-SQLite test if it touches rows — proving the new rule holds and the access checks bite."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "An entity is a plain C# class that mirrors one database table — a row's worth of fields. A migration is a recorded, replayable description of a schema change (add this table, add that column), stored as code so any database can be brought up to date. A seam is a deliberate joint in the code — here, an interface — where two implementations can be swapped without the callers noticing. An endpoint is one addressable operation on a host (a URL the desktop app can call)."
+      }
+    },
+    { "h2": "Why entity first, then migration" },
+    {
+      "p": "The order is not a style preference; it is causality. The entity defines the shape of the data, and the migration is the record of teaching the database that shape. If you wrote logic before the data existed, you'd be building on air; if you changed the live database by hand before recording a migration, the next person's fresh database wouldn't match yours and the app would break for them in ways that never reproduce on your machine."
+    },
+    {
+      "p": "Doing it in order — entity, then migration — means the schema change is captured __as code__, reviewable in the same pull request as the feature, and replayable on every deployment. The database is never a mystery that drifted out of sync with the source; it is always exactly what the migrations say it is. This is the discipline that lets a second developer clone the repo, run the app, and get a database identical to yours without a single manual step."
+    },
+    { "h2": "The Operations class: one place per action" },
+    {
+      "p": "The single most important habit in this codebase is that __each action has exactly one home__, and that home is an Operations class in `OpenTrack.Infrastructure`. The logic for adding a tag lives in `TagOperations` and nowhere else; the logic for a workflow transition lives in `WorkflowOperations` and nowhere else. Read the summary comment on `TagOperations` and the intent is stated outright — the operations are \"shared by both the Web API and the web/EF data service so the authorization logic exists once.\""
+    },
+    {
+      "p": "Look at the shape of an Operations method and you see the pattern every one of them follows: load what you need, check access through the authority, then act. From `TagOperations.AddAsync`:"
+    },
+    {
+      "code": "public static async Task<string?> AddAsync(AppDbContext db, AccessSnapshot access, int issueId, string tagName, CancellationToken ct = default)\n{\n    var issue = await db.Issues.AsNoTracking().Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == issueId, ct);\n    if (issue is null || !CanView(access, issue)) return \"Issue not found.\";\n    if (!access.For(issue.ProjectId).CanEditIssue()) return \"...\";\n    // ...only now does it create/reuse the tag and save...\n}"
+    },
+    {
+      "p": "Every Operations method takes the `AccessSnapshot` as an argument and asks it — through `access.For(projectId)` — whether the caller may do the thing, before doing it. This is the reason the codebase can promise that Web and API never diverge: the rule and the action live together, once, and both hosts call that one place. If instead each host reimplemented \"add a tag,\" the day would come when one enforced edit-access and the other forgot. Keeping the logic in a single Operations class makes that class of bug impossible by construction, the same way Chapter 8 makes permission-drift impossible."
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "The smell that means you're doing it wrong",
+        "text": "If you find yourself writing the same query or the same 'is this allowed?' check in both a Web endpoint and an API endpoint, stop — you are about to grow a second, divergent copy of a rule. The correct move is to put that logic in one Operations class and have both hosts call it. Two copies of a rule is not two features; it is one future bug waiting for someone to update only one of them."
+      }
+    },
+    { "h2": "The data-service seam: one feature, both hosts" },
+    {
+      "p": "The bridge that lets a single feature light up in both the browser and the desktop app is the `IOpenTrackDataService` interface in `OpenTrack.UI/Services/`. It is a list of everything the shared UI can ask for, with no hint of __how__ the answer is fetched. There are exactly two implementations of it, and they are the two hosts' whole personalities:"
+    },
+    {
+      "bullets": [
+        "`DbOpenTrackDataService` (in `OpenTrack.Web`) answers by going straight to the database — it builds an `AccessSnapshot` and calls the Operations classes directly.",
+        "`HttpOpenTrackDataService` (in `OpenTrack.Desktop`) answers by calling the API over HTTP — the API host, on the other end, builds its own `AccessSnapshot` and calls the very same Operations classes."
+      ]
+    },
+    {
+      "p": "Because the shared screens depend only on the interface, they neither know nor care which implementation is behind it. Add your feature's methods to `IOpenTrackDataService`, implement them in both places, and the identical UI works in both apps. This is the seam that turns \"build it once\" from an aspiration into a mechanical fact: the UI is written once, the rules live once in Operations, and only the thin fetch-the-data adapters differ between hosts."
+    },
+    { "h2": "The four rules that must never erode" },
+    {
+      "p": "If the whole chapter compressed to four sentences, these are them. They are the load-bearing walls. You may add rooms, but you may not knock these out — every one of them, removed, reintroduces a class of bug the architecture was specifically built to prevent."
+    },
+    {
+      "table": {
+        "headers": ["The rule", "What it prevents", "Where it lives"],
+        "rows": [
+          ["Pure rules stay in Core, database-free", "Untestable logic; rules you can't verify without a running server", "OpenTrack.Core — AccessContext, SlaCalculator"],
+          ["One Operations place per action", "The same action drifting apart between hosts", "OpenTrack.Infrastructure — *Operations.cs"],
+          ["Every access decision routes through the one authority", "Scattered, inconsistent permission checks that leak", "AccessContext / AccessSnapshot / VisibilityQueries"],
+          ["Web and API are fed by shared code, never divergent copies", "Two front doors slowly enforcing different behavior", "IOpenTrackDataService + shared Operations"]
+        ]
+      }
+    },
+    {
+      "p": "These four are not independent good ideas that happen to coexist; they reinforce each other. Pure rules in Core are what make the single authority testable. The single authority is what the one Operations place calls. The one Operations place is what both hosts share through the seam. Pull any one thread and the others start to fray — remove the seam and the Operations classes sprout host-specific copies; scatter the access checks and the pure authority stops being the single source of truth. Preserve them together, or not at all."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Where each rule is proved elsewhere in this book",
+        "text": "These are not new claims — they are the recurring spine of the guide. The pure-rules principle is Chapter 6; the access authority is Chapter 8; the Operations pattern is Chapter 9; the data-service seam is Chapter 11; and the tests that keep them all honest are Chapter 22. This chapter only gathers them into the single workflow you follow when you add something new."
+      }
+    },
+    { "h2": "How to tell you're fighting the design" },
+    {
+      "p": "You rarely break the architecture on purpose. It erodes through small, reasonable-seeming shortcuts under deadline pressure. The defense is to recognize the warning signs early — each one is the codebase telling you that you have wandered across the grain:"
+    },
+    {
+      "bullets": [
+        "You're writing an `if (user.Role >= ...)` check inside a page or an endpoint. __Stop__ — that rule belongs in `AccessContext`, and the endpoint should call it.",
+        "You're copying a query from the Web host into the API host (or vice versa). __Stop__ — that logic belongs in one Operations class both hosts call.",
+        "You're reaching for the database from inside a Core class. __Stop__ — Core is pure by design; the data-fetching belongs one layer up, in Infrastructure.",
+        "You changed a table by hand and the app works on your machine but not a colleague's. __Stop__ — you skipped a migration; the schema change must be recorded as code.",
+        "You built a screen that only works in the browser, or only in the desktop app. __Stop__ — a screen that talks to `IOpenTrackDataService` works in both; if yours doesn't, it reached around the seam."
+      ]
+    },
+    {
+      "p": "None of these is a catastrophe caught early. Each is simply a nudge back onto the path. The architecture is forgiving as long as you notice the nudge and follow it; it becomes unforgiving only when a hundred un-noticed nudges have accumulated into a codebase where the rules live everywhere and nowhere."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The goal of this whole design is not elegance for its own sake. It is that the tenth feature should be as easy to add as the first, and the maintainer who arrives after the author is gone should be able to extend the app confidently by pattern-matching against what already exists. Every subsystem in the app was built by walking the same steps — entity, migration, Operations, seam, both hosts, UI, test — which means every subsystem is also a worked example you can copy. `TagOperations` shows you how the next Operations class should look; `VisibilityQueryTests` shows you how to test one."
+    },
+    {
+      "p": "Growth, done this way, does not increase risk in proportion to size. Because the rules live in one place each, the app can double in features without doubling in danger: there is still one authority to reason about, still one Operations home per action, still one seam feeding both hosts. That is the quiet promise the architecture makes to the future — you can keep building, for years, without the ground shifting under you, as long as you build along the grain."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "When you add a feature, find the closest existing feature and copy its shape end to end — entity, migration, Operations class, seam method, both hosts, one UI, one test. Never introduce a rule that lives in two places, never let a host grow its own copy of logic, and never route an access decision around the one authority. If your change makes the app easier to reason about, you followed the grain; if it adds a place where the truth could disagree with itself, you crossed it."
+      }
+    }
+  ]
+}

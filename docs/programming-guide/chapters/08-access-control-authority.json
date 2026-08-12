@@ -1,0 +1,146 @@
+{
+  "order": 8,
+  "title": "The Access-Control Authority",
+  "subtitle": "The single set of rules that decides who may see and touch each project and issue — written once, in pure code with no database, and consulted identically by both the web app and the Web API so the two can never disagree about who is allowed to do what.",
+  "in_this_chapter": [
+    "Why the permission rules live in one pure place instead of scattered across screens and endpoints",
+    "The one idea that drives everything: your effective role on a project",
+    "The rules themselves — who can view, create, edit, assign, and see private things",
+    "The two shapes of the same rules: a per-item yes/no, and a database filter for lists",
+    "How a signed-in user's whole access picture is loaded once per request",
+    "How the web app and the API both call the exact same rules — the anti-drift design",
+    "Why the list filter runs inside the database, not in memory",
+    "What 'closed by default' means for a private issue, in the real source"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "__OpenTrack__ is an issue tracker that many people share. Some projects are open to everyone signed in; some are private to a handful of members. Some individual issues are marked private inside an otherwise-visible project. Every time the software shows a list of issues, opens one issue, or lets someone edit or assign one, it has to answer a question first: __is this person allowed?__ The access-control authority is the one place in the whole codebase that answers that question."
+    },
+    {
+      "p": "Picture it as the building's security desk. Every request to see or change something — open project #4, list my issues, edit issue #812, read this private note — walks past the same desk and gets a yes or a no from the same rulebook. There is not one rulebook for the website and a different one for the phone app. There is one rulebook, and this chapter is about how it is written, why it was written as one shared thing, and how the code physically routes both the web app and the Application Programming Interface (API — the behind-the-scenes service the desktop app talks to) through it."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "The permission rules live in one small, pure class (AccessContext) that knows nothing about databases or the web, so the web app and the API both call the identical rules and cannot drift apart — and the rules are arranged so a private thing is hidden unless you are explicitly entitled to see it."
+      }
+    },
+    { "h2": "Why one pure rulebook, consulted by two surfaces" },
+    {
+      "p": "OpenTrack has two front doors. The __web app__ (what you open in a browser) reads and writes the database directly. The __API__ (what the Windows and Mac desktop apps call over the network) is a separate program. That is two completely different pieces of code that must nonetheless enforce the exact same permissions. If they were written separately, the day would come when someone tightened a rule on the website and forgot the API — and a private issue would quietly leak to the desktop app. The whole design exists to make that impossible."
+    },
+    {
+      "p": "The fix is to write the rules in one place that neither front door owns. That place is `AccessContext`, and it lives in the deepest, most dependency-free project, `OpenTrack.Core`. Its own summary comment states the intent directly: it is \"the single source of truth for every per-project access decision,\" kept \"deliberately pure (no EF, no HTTP) so both the web/EF data service and the Web API endpoints call the exact same rules — they cannot drift — and so the whole matrix is unit-testable.\""
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A class is a bundle of related data and the operations on it. 'Pure' here means the class does no input/output — it never reads a file, a database, or the network; you hand it plain facts and it returns an answer, which makes it trivial to test. EF (Entity Framework) is the library that turns C# code into database queries. An enum is a fixed menu of named choices (here, the roles). A record struct is a small, immutable value holder: once built, its fields never change."
+      }
+    },
+    { "h2": "The one idea: your effective role" },
+    {
+      "p": "Everything rests on a single concept: your __effective role__ on a given project. A person has a __global role__ (their account-wide rank) and, if they have been added to a project, a __per-project role__ on it. The effective role is simply the higher of the two. This is the classic MantisBT model: a global Developer is a Developer everywhere, while someone whose global role is only Reporter can still be a Manager on the one project they were made a Manager of."
+    },
+    {
+      "p": "`AccessContext` is a three-field value — the user's id, their global role, and their optional project role — and the effective-role rule is one line:"
+    },
+    {
+      "code": "public readonly record struct AccessContext(int UserId, UserRole GlobalRole, UserRole? ProjectRole)\n{\n    /// <summary>The higher of the global role and the (optional) per-project role.</summary>\n    public UserRole EffectiveRole =>\n        ProjectRole is { } pr && (int)pr > (int)GlobalRole ? pr : GlobalRole;\n\n    /// <summary>Global administrators bypass per-project scoping entirely.</summary>\n    public bool IsGlobalAdmin => (int)GlobalRole >= (int)UserRole.Administrator;\n\n    /// <summary>True when the user is an explicit member of the project in question.</summary>\n    public bool HasProjectMembership => ProjectRole is not null;\n\n    private bool AtLeast(UserRole role) => (int)EffectiveRole >= (int)role;\n}"
+    },
+    {
+      "p": "The roles are an ordered ladder — an enum whose numeric values climb from Reporter up through Updater, Developer, Manager, to Administrator. Because they are ordered, every rule can be written as a plain comparison: `AtLeast(UserRole.Developer)` just asks \"is your effective role at least Developer?\" That one tiny helper, `AtLeast`, is the vocabulary the entire rulebook is written in. Get the ladder right once, and every rule below reads like English."
+    },
+    { "h2": "The rules themselves" },
+    {
+      "p": "With `EffectiveRole` and `AtLeast` in hand, the actual permissions are a list of small, named questions. Each is one line, each returns a clean yes/no, and each is named for exactly what it decides. A few of the project-level and issue-level ones:"
+    },
+    {
+      "code": "// ---- Project ----\npublic bool CanViewProject(bool projectIsPublic) =>\n    IsGlobalAdmin || projectIsPublic || HasProjectMembership;\n\npublic bool CanManageProject() => AtLeast(UserRole.Manager);   // categories, versions, members\n\n// ---- Issue ----\npublic bool CanCreateIssue(bool projectIsPublic) =>\n    CanViewProject(projectIsPublic) && AtLeast(UserRole.Reporter);\n\npublic bool CanEditIssue()   => AtLeast(UserRole.Updater);\npublic bool CanAssignIssue() => AtLeast(UserRole.Developer);"
+    },
+    {
+      "p": "Read them and the design philosophy is visible in the shape: viewing a project is generous (public, or a member, or an admin), while every action that changes something demands a minimum rank. Nothing here reaches for a database or a web request; you hand each method plain facts — is the project public? — and it returns a boolean. That purity is exactly what lets a single unit test drive the entire permission matrix through every role, with no server running."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Why booleans in, boolean out",
+        "text": "AccessContext never asks 'is this project public?' by looking it up — it is told, as a parameter. That is the whole trick behind its purity. The messy job of fetching the project's public flag, the issue's reporter, and so on belongs to the layer that has the database; AccessContext only judges. Judgment and data-fetching are kept apart on purpose."
+      }
+    },
+    { "h2": "Closed by default: the private-issue rule" },
+    {
+      "p": "The most safety-critical rule is who may see a __private__ issue. The rule is written so that privacy is the strong default: a private issue is hidden from everyone except the small set of people who are explicitly entitled to it."
+    },
+    {
+      "code": "/// <summary>\n/// A private issue is visible only to its reporter, its assignee, and users with Developer+\n/// authority on the project (in addition to the project itself being viewable).\n/// </summary>\npublic bool CanViewIssue(bool projectIsPublic, bool issueIsPrivate, int reporterId, int? assigneeId) =>\n    CanViewProject(projectIsPublic)\n    && (!issueIsPrivate\n        || reporterId == UserId\n        || assigneeId == UserId\n        || AtLeast(UserRole.Developer));"
+    },
+    {
+      "p": "Notice the structure. First you must be able to see the project at all. Then, if the issue is private, you are allowed through only if one of three specific things is true: you filed it, it is assigned to you, or your effective role is Developer or higher. If none of those hold, the private issue does not exist as far as you are concerned. The default answer — the answer you get unless you clear a specific bar — is no. The matching rule for private notes (`CanViewNote`) follows the identical shape: author, or Developer+, or it stays hidden."
+    },
+    { "h2": "Two shapes of the same rules" },
+    {
+      "p": "There is a practical wrinkle. `AccessContext.CanViewIssue` judges __one__ issue when you already hold its facts — perfect for opening a single issue. But a list screen may match ten thousand issues, and you cannot load ten thousand rows into memory just to ask `CanViewIssue` about each one; that would be slow and would defeat the database. Lists need the same rules expressed as a __filter__ the database itself can apply. So the same policy exists in two shapes, and keeping them agreeing is the subtle heart of this chapter."
+    },
+    {
+      "p": "The second shape needs the user's whole access picture at once — not one project's role, but every project they belong to. That picture is `AccessSnapshot`, loaded a single time per request. From the raw membership rows it precomputes two id lists that the filters will need: every project the user is a member of, and the subset where their role alone is Developer-or-higher (so they may see private issues there)."
+    },
+    {
+      "code": "public sealed class AccessSnapshot\n{\n    /// <summary>Ids of every project the user is a member of (any role).</summary>\n    public IReadOnlyList<int> MemberProjectIds { get; }\n\n    /// <summary>Ids of projects where the user's membership role alone grants Developer+ (private issues).</summary>\n    public IReadOnlyList<int> DeveloperProjectIds { get; }\n\n    /// <summary>Builds the pure per-project decision context for one project.</summary>\n    public AccessContext For(int projectId) =>\n        new(UserId, GlobalRole, _projectRoles.TryGetValue(projectId, out var role) ? role : null);\n}"
+    },
+    {
+      "p": "That `For(projectId)` method is the bridge between the two shapes: from the loaded snapshot it hands back a pure `AccessContext` for any single project, so single-item checks and list filters are fed from the very same source of truth. Load once, judge many."
+    },
+    { "h2": "Why the list filter runs inside the database" },
+    {
+      "p": "The list shape lives in `VisibilityQueries`, a set of filters you attach to a query. Its summary says the two surfaces \"enforce identical row-level security,\" and — the performance-critical part — the predicates are \"written entirely in terms of local id lists so EF Core translates them to SQL rather than pulling rows into memory to filter.\""
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "An IQueryable is a query you are still building — it has not run yet. A predicate is the 'where' condition inside it. EF Core reads that condition and translates it into real database SQL, so the filtering happens in the database engine and only the rows you are allowed to see ever travel back. 'Row-level security' just means the rules decide which individual rows (issues) you can see, not merely which tables."
+      }
+    },
+    {
+      "code": "public static IQueryable<Issue> WhereVisibleTo(this IQueryable<Issue> query, AccessSnapshot access)\n{\n    if (access.IsGlobalAdmin)\n        return query;\n\n    var memberIds = access.MemberProjectIds;\n    var developerProjectIds = access.DeveloperProjectIds;\n    var globalDeveloperPlus = access.GlobalAtLeast(UserRole.Developer);\n    var userId = access.UserId;\n\n    return query.Where(i =>\n        (i.Project.IsPublic || memberIds.Contains(i.ProjectId))\n        && (!i.IsPrivate\n            || globalDeveloperPlus\n            || i.ReporterId == userId\n            || i.AssigneeId == userId\n            || developerProjectIds.Contains(i.ProjectId)));\n}"
+    },
+    {
+      "p": "Read the `Where` condition beside `AccessContext.CanViewIssue` from earlier and you will see they are the same rule, twice: the project must be public or one you belong to, and a private issue is allowed only if you are a global Developer+, its reporter, its assignee, or a Developer+ member of that project. One is phrased for a single row you already hold; the other is phrased so the database can apply it to millions. They must stay in lockstep — and because both are grounded in the same roles ladder and the same `AccessSnapshot`, changing the policy means changing this shared understanding in one small neighborhood of code, not hunting across the app."
+    },
+    { "h2": "How both front doors reach the same rules" },
+    {
+      "p": "Now the anti-drift payoff. On the web side, `DbOpenTrackDataService` builds an `AccessSnapshot` for the signed-in user and calls `WhereVisibleTo` on its queries and `AccessContext` on its single-item checks. On the API side, a tiny helper does the identical load, pointedly documented as using \"the exact same rules as the web/EF path\":"
+    },
+    {
+      "code": "// OpenTrack.API/ApiAuthorization.cs\npublic static class ApiAccess\n{\n    public static async Task<AccessSnapshot?> LoadAsync(\n        ClaimsPrincipal user, AppDbContext db, CancellationToken ct = default)\n    {\n        var identity = user.GetAccessIdentity();\n        return identity is null ? null : await AccessSnapshot.LoadAsync(db, identity.Value, ct);\n    }\n}"
+    },
+    {
+      "p": "Both hosts load the same `AccessSnapshot` from the same `ProjectMemberships` table and pass it to the same `VisibilityQueries` and `AccessContext`. Neither host contains a single hand-written permission rule of its own; they only gather the caller's identity and then defer to the shared authority. That is the mechanism that makes drift not merely unlikely but structurally hard: there is nowhere for a second, divergent copy of the rules to live."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The global-admin fast path, stated plainly",
+        "text": "Every layer short-circuits for a global Administrator: AccessContext.IsGlobalAdmin returns true, and both WhereVisibleTo filters simply return the unfiltered query. Admins bypass per-project scoping by design. This is deliberate and load-bearing — it is also the one rule to be most careful around when editing, because it is the widest grant in the system."
+      }
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "If a future maintainer preserves only one thing about this subsystem, preserve the shape: the rules are pure, they live in Core with no database or web dependency, and every surface is fed by them rather than reimplementing them. The per-item `AccessContext` and the list-level `VisibilityQueries` are two expressions of one policy, kept honest by a shared roles ladder and a shared `AccessSnapshot`. That is what lets a single test suite prove the whole matrix, and what keeps the browser and the desktop app from ever disagreeing about who can see an issue."
+    },
+    {
+      "p": "The rules that must never erode: permissions stay pure and database-free (so they stay testable and shareable); a private thing is hidden unless the viewer is explicitly entitled (closed by default); list filters stay expressed in local id lists so they run as SQL, not in memory; and no host grows its own private copy of a permission check. Add a feature that exposes data someday and the safe move is not to write a fresh access check in your endpoint — it is to route it through the authority that already exists."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "If you ever find yourself writing a fresh 'is this user allowed?' check inside a page or an endpoint, stop. That is the exact scattering this design was built to prevent. Add the rule to AccessContext (for a single item) or VisibilityQueries (for a list), keep the two in agreement, and call them from both hosts — one rulebook, always, closed until the rules prove open."
+      }
+    }
+  ]
+}

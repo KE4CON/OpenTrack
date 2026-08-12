@@ -1,0 +1,138 @@
+{
+  "order": 16,
+  "title": "Service-Level Agreements & Escalation",
+  "subtitle": "How a project sets a resolve-by target for each priority, how the software works out whether an open issue is on-track, at-risk, or already breached, and how a quiet background scanner escalates a breach exactly once so nobody is nagged and nobody is missed.",
+  "in_this_chapter": [
+    "What a service-level agreement is here, and why the targets are stored per project and per priority",
+    "The pure clock: turning created-time plus a target into on-track, at-risk, or breached",
+    "The 80% at-risk threshold, and why it lives in one named constant",
+    "The status board: the same clock, run only over issues you are allowed to see",
+    "The background breach scanner, a hosted service that runs on its own with no logged-in user",
+    "The 'notify once' stamp, and the careful case where it deliberately does not stamp"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "A __service-level agreement__ — SLA for short — is a promise about speed: \"we will resolve a high-priority issue within eight hours, a normal one within three days.\" OpenTrack lets a project Manager set such a target for each priority, then does two things with it. It shows a live __status board__ of everything that has missed, or is about to miss, its target; and it runs a quiet background job that, when an issue actually blows past its deadline, notifies the right people — once."
+    },
+    {
+      "p": "Picture a kitchen during a dinner rush. Every order has a ticket, and every ticket has a promised time. A good expediter does two jobs: at a glance they can see which tickets are running late (the board), and when one goes truly overdue they call it out to the cook and the manager — but they call it out __once__, not every thirty seconds, because a constant alarm is an ignored alarm. This chapter is those two jobs, in code."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "SLA targets are stored per project and per priority; a single pure calculator turns an issue's created-time plus its target into on-track / at-risk / breached; the status board runs that calculator over only the issues you may see; and a background scanner escalates each real breach exactly once by stamping the issue after it notifies."
+      }
+    },
+    { "h2": "Where the targets live, and who may set them" },
+    {
+      "p": "A target is a plain number of hours attached to one project and one priority: \"in project 4, an Urgent issue should be resolved within 8 hours.\" Setting them is Manager-only and follows the same pattern as every other per-project setting — reads return an empty list for a non-manager; writes throw. `SlaPolicyOperations.SetAsync` both sets and clears a target: passing null or zero hours removes that priority's row entirely."
+    },
+    {
+      "code": "public static async Task<string?> SetAsync(\n    Data.AppDbContext db, AccessSnapshot access, int projectId, IssuePriority priority, int? hours, CancellationToken ct = default)\n{\n    if (!access.For(projectId).CanManageProject())\n        throw new UnauthorizedAccessException(\"Managing SLA targets requires the Manager role on this project.\");\n    if (hours > MaxTargetHours) return $\"Target must be {MaxTargetHours} hours or fewer.\";\n\n    var existing = await db.SlaPolicies.FirstOrDefaultAsync(p => p.ProjectId == projectId && p.Priority == priority, ct);\n    if (hours is null or <= 0)\n    {\n        if (existing is not null) { db.SlaPolicies.Remove(existing); await db.SaveChangesAsync(ct); }\n        return null;\n    }\n    ...\n}"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A priority is how urgent an issue is (Low, Normal, High, Urgent…), one of the fixed enum menus from Chapter 5. \"Per project and per priority\" means the targets are a small grid: each project has at most one target row per priority. AccessSnapshot is the loaded picture of what the current user is allowed to do (Chapter 8); CanManageProject() asks whether they are a Manager here. The odd-looking hours is null or <= 0 is C# pattern-matching for \"no target or a nonsense one\" — the signal to clear the row."
+      }
+    },
+    {
+      "p": "There is one small piece of defensive engineering worth noticing: a `MaxTargetHours` cap of 100,000 hours (about eleven years). Its own comment explains why — it is a \"sanity cap so a fat-fingered target can't overflow date math.\" A target is used later to compute a due-date by adding hours to a timestamp, and an absurd number could overflow that arithmetic; the cap makes the impossible input simply impossible."
+    },
+    { "h2": "The pure clock: on-track, at-risk, or breached" },
+    {
+      "p": "The actual judgement — is this issue fine, getting close, or late? — is not tangled up with the database at all. It lives in `SlaCalculator`, a pure class in `OpenTrack.Core` with no database and no network, so the board, the background scanner, and the tests all compute the answer the exact same way. It is handed plain facts and returns a verdict. First, the four possible verdicts:"
+    },
+    {
+      "code": "public enum SlaStatus\n{\n    NotTracked = 0, // no target applies, or the clock has stopped\n    OnTrack = 1,    // comfortably within target\n    AtRisk = 2,     // past the at-risk threshold but not yet past the deadline\n    Breached = 3,   // past the deadline and still open\n}"
+    },
+    {
+      "p": "And the calculation itself. Give it the issue's priority, when it was created, whether it is still open, the current time, and the target hours for that priority; it hands back the verdict and the due-by instant:"
+    },
+    {
+      "code": "public static SlaAssessment Evaluate(\n    IssuePriority priority, DateTime createdAtUtc, bool isOpen, DateTime nowUtc, int? targetHours)\n{\n    // No target for this priority, or the clock has stopped -> nothing to track.\n    if (!isOpen || targetHours is not > 0) return SlaAssessment.NotTracked;\n\n    var dueUtc = createdAtUtc.AddHours(targetHours.Value);\n    var atRiskUtc = createdAtUtc.AddHours(targetHours.Value * SlaDefaults.AtRiskFraction);\n\n    var status = nowUtc >= dueUtc ? SlaStatus.Breached\n        : nowUtc >= atRiskUtc ? SlaStatus.AtRisk\n        : SlaStatus.OnTrack;\n    return new SlaAssessment(status, dueUtc);\n}"
+    },
+    {
+      "p": "Read it plainly. If the issue is closed or has no target, there is nothing to track — done. Otherwise the deadline is created-time plus the target, and the __at-risk__ moment is created-time plus a fraction of the target. Then it is a two-step comparison against the clock: past the deadline is __Breached__, past the at-risk mark is __AtRisk__, and anything earlier is __OnTrack__. The whole model is: only __open__ issues have a running clock — resolving an issue stops it. That is why the calculator also exposes a tiny helper, `IsOpen`, defining \"open\" as any status below `Resolved`."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "The 80% threshold, named once",
+        "text": "The at-risk line is not a magic number sprinkled through the code — it is one named constant, SlaDefaults.AtRiskFraction = 0.8. \"At risk\" therefore means 80% of the promised time has elapsed and the issue is still open: the yellow zone before the red. Because it is defined in exactly one place, a team that wants an earlier warning (say 0.7) changes it once and every screen and scanner agrees. That is the point of naming a number instead of typing it."
+      }
+    },
+    { "h2": "The status board: the same clock, safely scoped" },
+    {
+      "p": "The board is the expediter's at-a-glance view: every open issue that is at-risk or breached, breached first, each list ordered most-overdue-first. It is built by `SlaBoard.BuildAsync`, and its single most important design choice is the __order__ of its steps: it applies the access filter __first__, before anything else, so the board can only ever show issues the caller is already allowed to see."
+    },
+    {
+      "code": "// Only open issues have a running clock.\nvar open = await db.Issues.AsNoTracking()\n    .WhereVisibleTo(access)\n    .Where(i => (int)i.Status < (int)IssueStatus.Resolved)\n    .Select(i => new { i.Id, i.ProjectId, ProjectName = i.Project.Name, i.Title, i.Priority,\n        AssigneeName = i.Assignee != null ? i.Assignee.UserName : null, i.CreatedAt })\n    .ToListAsync(ct);"
+    },
+    {
+      "p": "That `WhereVisibleTo(access)` is the row-level security filter from Chapter 8, running inside the database. So even though the board is a cross-project view, a user never sees a late issue in a project they have no business seeing. With the visible open issues in hand, the board loads only the targets for the projects actually in play, then runs the same pure calculator over each one and keeps only the ones that are at-risk or breached:"
+    },
+    {
+      "code": "targets.TryGetValue((i.ProjectId, i.Priority), out var hours);\nvar a = SlaCalculator.Evaluate(i.Priority, i.CreatedAt, isOpen: true, nowUtc, hours == 0 ? null : hours);\nif (a.Status is SlaStatus.AtRisk or SlaStatus.Breached && a.DueUtc is { } due)\n    rows.Add(new SlaBoardRow(i.Id, i.ProjectId, i.ProjectName ?? \"\", i.Title, i.Priority,\n        i.AssigneeName, i.CreatedAt, due, a.Status));"
+    },
+    {
+      "p": "The due-date math — created plus target hours — is done here in memory rather than in the database, and the class comment says why plainly: it \"isn't worth expressing in SQL.\" The __filtering__ that must be efficient (which issues can you see) runs in the database; the small __arithmetic__ over the already-narrowed list runs in C#. The `Sla.razor` page then simply renders the two lists, with a friendly \"Nothing is breaching or at risk right now\" when both are empty."
+    },
+    { "h2": "The background scanner: escalation with no one at the keyboard" },
+    {
+      "p": "The board is passive — it only shows you something when you open it. But a breach that nobody is looking at still needs to raise its hand. That is the job of `SlaScanner`, a __background service__ that runs on a timer inside the web host, with no signed-in user at all. It is registered once at startup and then runs for the life of the app:"
+    },
+    {
+      "code": "// OpenTrack.Web/Program.cs\nbuilder.Services.AddHostedService<OpenTrack.Web.Services.SlaScanner>();"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A background service (or hosted service) is code that runs on its own schedule inside the app, separate from any web request — like a night-shift worker who keeps going after the customers leave. Because there is no logged-in user driving it, it is a \"trusted system actor\": it queries the database directly without the per-user access filter, precisely because there is no user to filter for. A DbContextFactory hands it a fresh, short-lived database connection for each tick so its long-running loop never clings to one stale connection."
+      }
+    },
+    {
+      "p": "It wakes on a fifteen-minute interval (after a one-minute startup delay to let migrations settle), and each tick is best-effort: any error is logged and the loop simply continues to the next interval — a single bad scan never kills the scanner. On each tick it loads the SLA targets, and if no project has any, it does nothing at all. Then it gathers __candidates__: open issues, in SLA-enabled projects, that have __not already been escalated__:"
+    },
+    {
+      "code": "// Candidate open issues in SLA-enabled projects that haven't been escalated yet.\nvar candidates = await db.Issues.AsNoTracking()\n    .Where(i => projectIds.Contains(i.ProjectId)\n                && (int)i.Status < (int)IssueStatus.Resolved\n                && i.SlaBreachNotifiedAt == null)\n    .Select(i => new { i.Id, i.ProjectId, i.Priority, i.CreatedAt, i.AssigneeId })\n    .ToListAsync(ct);"
+    },
+    {
+      "p": "That last condition, `SlaBreachNotifiedAt == null`, is the whole \"notify once\" mechanism. `SlaBreachNotifiedAt` is a timestamp field on the issue itself; while it is empty, the issue is a candidate; once the scanner escalates, it will be stamped, and from then on the candidate query skips it. The scanner then runs the same pure `SlaCalculator.Evaluate` over each candidate and keeps only the truly breached ones."
+    },
+    { "h2": "Notify once — and the case where it deliberately does not stamp" },
+    {
+      "p": "For each breached issue, the scanner assembles the recipients — the assignee, plus every Manager of the project — writes each of them one notification, and stamps the issue with the current time so the next tick will pass it by:"
+    },
+    {
+      "code": "foreach (var uid in recipients)\n    db.Notifications.Add(new Notification\n    {\n        UserId = uid, IssueId = issue.Id,\n        Text = \"SLA breached — this issue has passed its resolution target.\",\n        CreatedAt = now,\n    });\nissue.SlaBreachNotifiedAt = now;"
+    },
+    {
+      "p": "But there is a subtle, considerate exception, and it is the most instructive line in the whole file. What if a breached issue has __nobody__ to escalate to yet — no assignee, and the project has no Managers? If the scanner stamped it anyway, it would be marked \"already notified\" forever, and a Manager added tomorrow would never learn the issue had breached. So in that one case it deliberately leaves the stamp empty, letting the issue come back around next tick:"
+    },
+    {
+      "code": "// If there's nobody to escalate to yet (no assignee and no managers), leave the issue\n// un-stamped so it's re-evaluated next tick — otherwise a later-added assignee/manager would\n// never be notified about an already-breached issue.\nif (recipients.Count == 0) continue;"
+    },
+    {
+      "p": "This is the difference between \"notify once\" and \"notify once someone is actually there to be notified.\" The stamp does not mean \"we tried\"; it means \"we successfully told someone.\" Getting that distinction right is what keeps the feature from silently dropping the very breaches that most need a human — the orphaned ones."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The SLA subsystem is a clean split between judgement and plumbing. The judgement — on-track, at-risk, breached — is one pure calculator in Core, so the passive board and the active scanner can never disagree about what \"breached\" means, and a single unit test can prove the whole thing with no server running. The plumbing differs by context: the board scopes its data with the per-user access filter because a user is present, while the scanner runs with system authority because none is. And the one number that defines \"at-risk\" lives in exactly one named constant."
+    },
+    {
+      "p": "The rules that must not erode: the SLA verdict stays pure and database-free (so it stays shared and testable); the board keeps applying the visibility filter before it computes anything; the at-risk fraction stays a single named constant, never a scattered literal; and escalation stays idempotent — driven by the `SlaBreachNotifiedAt` stamp — while never stamping a breach that reached no one. Change the cadence, add a channel, tune the threshold: do it in these small, single-purpose places and every surface follows."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "If you extend SLA behavior, compute the verdict only through SlaCalculator — never re-derive \"is it breached?\" inline — and if you touch the scanner, preserve the meaning of SlaBreachNotifiedAt: stamp it only after a real recipient was notified, and leave it null when there was no one to tell. A stamp is a promise that a human heard the alarm, not merely that the alarm fired."
+      }
+    }
+  ]
+}

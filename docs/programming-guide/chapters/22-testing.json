@@ -1,0 +1,210 @@
+{
+  "order": 22,
+  "title": "Testing: the xUnit Suite and How to Add to It",
+  "subtitle": "The automated test suite that proves the rules still hold — what it covers and why those particular things, the arrange-act-assert shape every test follows, and how to add your own, whether the thing you're testing is a pure calculation or needs a throwaway database.",
+  "in_this_chapter": [
+    "What the test suite is, and why an issue tracker needs one at all",
+    "The three test projects and the line between them",
+    "The two kinds of test: pure logic vs. real-database behavior",
+    "A real pure test read line by line — the SLA calculator",
+    "A real database-backed test read line by line — visibility filtering",
+    "xUnit's vocabulary in plain words: [Fact], [Theory], [InlineData], Assert",
+    "The in-memory SQLite trick that makes database tests fast and disposable",
+    "What is deliberately covered — and the rule for adding to it"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "A __test suite__ is a second, smaller program whose only job is to run the real program in tiny pieces and check that each piece still does what it is supposed to. You run it, and in a few seconds it either says \"all green\" or points at the exact line where something broke. __OpenTrack__ ships with 184 such checks, spread across three test projects, and this chapter is about what they guard, how they are written, and how to add one when you change or add a feature."
+    },
+    {
+      "p": "Think of it as a set of tripwires strung across the parts of the code most likely to hurt someone if they silently changed. Who can see a private issue? Does the service-level-agreement clock turn red at the right moment? Does an imported file map its fields correctly? Each tripwire is a small, fast, repeatable check. When a future edit trips one, you learn immediately, at your desk, instead of a user learning later, in production."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "The suite concentrates on the code where a quiet mistake would be expensive — the access-control matrix, the row-level visibility filter, the SLA math, the workflow gate, the importers, and the git webhook — and it splits into pure tests (hand it facts, check the answer) and database tests (spin up a throwaway SQLite database, act, check the rows), all written in xUnit's simple arrange-act-assert shape."
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "xUnit is the testing library (the framework) that finds and runs the tests and reports pass/fail. A test is just a normal method that xUnit runs. An assertion is the line that states what must be true — if it isn't, the test fails. A regression is a bug that sneaks back into code that used to work; a regression test is a tripwire placed exactly where a past bug lived so it can never return unnoticed."
+      }
+    },
+    { "h2": "Why test these things, and not everything" },
+    {
+      "p": "You could try to test every line of a program, but that is a poor use of effort — much of an app is plumbing that either obviously works or obviously doesn't the moment you run it. The suite instead aims at the places where a mistake is both __easy to make__ and __hard to notice__. A permission rule that accidentally flips from \"no\" to \"yes\" doesn't crash; it just leaks. An SLA threshold that's off by a hair doesn't error; it just quietly mis-colors every ticket. That silent-but-serious category is exactly where automated checks earn their keep."
+    },
+    {
+      "p": "That is why the heaviest testing sits on the security and correctness core: the access-control matrix (`AccessControlTests`), the shared row-level visibility filter (`VisibilityQueryTests`), the pure SLA calculator (`SlaCalculatorTests`), the per-project workflow gate (`WorkflowTests`), the file importers (`MantisImportTests`, `CsvIssueImportTests`, `GitHubIssueImportTests`), and the git webhook's signature and reference parsing (`GitSignatureTests`, `GitRefParserTests`). These are the subsystems where the rest of this book has said, again and again, \"this must be right.\" The tests are how \"must be right\" is kept honest over time."
+    },
+    { "h2": "The three test projects and the line between them" },
+    {
+      "p": "The suite is split into three projects, and the split is not arbitrary — it mirrors the layering of the app itself. Each test project references exactly the part of the app it is allowed to test, so a test can only reach for the layers that layer is allowed to reach for."
+    },
+    {
+      "table": {
+        "headers": ["Test project", "References", "What it tests"],
+        "rows": [
+          ["OpenTrack.Core.Tests", "OpenTrack.Core", "Pure logic with no database: the ACL matrix, SLA math, importers, git-ref parsing, markdown safety, custom-field validation"],
+          ["OpenTrack.API.Tests", "OpenTrack.API (and through it, Infrastructure)", "Behavior that needs a real database: the visibility filter, workflow, tags, bulk, notifications, the git signature check"],
+          ["OpenTrack.Web.Tests", "OpenTrack.Web", "The web host's model wiring: the EF runtime model and the design-time factory"]
+        ]
+      }
+    },
+    {
+      "p": "The reason the pure tests live in `OpenTrack.Core.Tests` and the database tests in `OpenTrack.API.Tests` is the same reason the whole codebase keeps pure rules in Core (Chapter 6): a test with no database is trivially fast and needs nothing running. Notice what the `OpenTrack.Core.Tests` project file pulls in — just the test framework, no database at all:"
+    },
+    {
+      "code": "<ItemGroup>\n  <PackageReference Include=\"coverlet.collector\" Version=\"6.0.4\" />\n  <PackageReference Include=\"Microsoft.NET.Test.Sdk\" Version=\"17.14.1\" />\n  <PackageReference Include=\"xunit\" Version=\"2.9.3\" />\n  <PackageReference Include=\"xunit.runner.visualstudio\" Version=\"3.1.4\" />\n</ItemGroup>\n\n<ItemGroup>\n  <ProjectReference Include=\"..\\..\\src\\OpenTrack.Core\\OpenTrack.Core.csproj\" />\n</ItemGroup>"
+    },
+    {
+      "p": "The `OpenTrack.API.Tests` project file adds one thing the Core tests never need — the SQLite database driver — because its tests actually create databases:"
+    },
+    {
+      "code": "<PackageReference Include=\"Microsoft.EntityFrameworkCore.Sqlite\" Version=\"10.0.10\" />"
+    },
+    { "h2": "The two kinds of test" },
+    {
+      "p": "Almost every test in the suite is one of two shapes, and learning to tell them apart is most of what you need to write your own."
+    },
+    {
+      "bullets": [
+        "__Pure tests__ — you hand a function some plain facts and check the answer it returns. No database, no network, nothing to set up or clean up. These are the fastest and the ones to reach for whenever the logic you're testing doesn't actually need stored data.",
+        "__Database-backed tests__ — you build a tiny, throwaway database in memory, put a few rows in it, run a real operation against it, and then check what changed. Slower, but the only honest way to test code whose whole job is to query or modify stored rows."
+      ]
+    },
+    {
+      "p": "The design goal that keeps the pure category large is the same one from Chapter 8: the rules that matter most were written __pure__ on purpose, precisely so they could be tested without a server. The more logic lives in pure form, the more of the suite gets to be the fast, simple kind."
+    },
+    { "h2": "A pure test, read line by line" },
+    {
+      "p": "Here is a complete pure test from `SlaCalculatorTests`. The SLA calculator decides whether a ticket is on track, at risk, or breached, purely from a target time and how much time has elapsed — no database in sight. Watch the shape: a small helper sets up the inputs, then each test states one expectation."
+    },
+    {
+      "code": "private static readonly DateTime Created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);\n\nprivate static SlaAssessment Eval(int? targetHours, double hoursElapsed, bool isOpen = true) =>\n    SlaCalculator.Evaluate(IssuePriority.High, Created, isOpen, Created.AddHours(hoursElapsed), targetHours);\n\n[Fact]\npublic void OnTrack_BeforeAtRiskThreshold()\n{\n    // 10h target -> at-risk at 8h. At 5h we're comfortably on track.\n    var a = Eval(10, 5);\n    Assert.Equal(SlaStatus.OnTrack, a.Status);\n    Assert.Equal(Created.AddHours(10), a.DueUtc);\n}"
+    },
+    {
+      "p": "Read it as three beats — the pattern every test in the suite follows, whether it says so out loud or not:"
+    },
+    {
+      "steps": [
+        "__Arrange__ — set up the inputs. Here that's `Eval(10, 5)`: a ten-hour target, five hours elapsed. The `Eval` helper exists only to spare each test from restating the fixed bits (the creation time, the priority).",
+        "__Act__ — run the thing under test. `SlaCalculator.Evaluate(...)` runs inside `Eval` and hands back an assessment.",
+        "__Assert__ — state what must be true. `Assert.Equal(SlaStatus.OnTrack, a.Status)` says the status must be OnTrack; if the calculator returned anything else, the line fails and names the mismatch."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "[Fact] marks a method as a test that takes no inputs — a single, self-contained case. Assert.Equal(expected, actual) checks that two values match; there are siblings like Assert.True, Assert.False, Assert.Null, Assert.Empty, Assert.Single (exactly one item), and Assert.Throws (the code must throw a specific error). 'Arrange, act, assert' is just the habit of writing every test in those three beats, in that order."
+      }
+    },
+    {
+      "p": "Notice what makes this test trustworthy: it depends on nothing but its own inputs. Run it on any machine, in any order, a thousand times, and it gives the same answer, in milliseconds. That reliability is the direct reward for keeping `SlaCalculator` pure. The same file also pins the boundaries that are easy to get wrong — that the clock stops when a ticket is closed, and that a missing target means \"not tracked\" rather than \"instantly breached\":"
+    },
+    {
+      "code": "[Fact]\npublic void ClosedIssue_IsNotTracked_EvenIfPastDeadline()\n{\n    // 24h target, 100h elapsed, but the issue is no longer open -> clock stopped.\n    Assert.Equal(SlaStatus.NotTracked, Eval(24, 100, isOpen: false).Status);\n}"
+    },
+    { "h2": "One test, many cases: [Theory]" },
+    {
+      "p": "Sometimes you want to check the same rule against a table of inputs. Writing ten near-identical `[Fact]` methods would be noise. xUnit's `[Theory]` solves this: you write the test once with parameters, then feed it rows with `[InlineData]`. The access-control tests lean on this to sweep a rule across every role in one place. Here is the private-issue-visibility idea expressed as a theory, from `AccessControlTests`:"
+    },
+    {
+      "code": "[Theory]\n[InlineData(UserRole.Reporter, false)]\n[InlineData(UserRole.Updater, true)]\n[InlineData(UserRole.Developer, true)]\npublic void EditIssue_RequiresUpdater(UserRole effective, bool allowed)\n    => Assert.Equal(allowed, Ctx(effective).CanEditIssue());"
+    },
+    {
+      "p": "That is three tests in four lines. Each `[InlineData]` row becomes its own independently-reported case: a Reporter is refused, an Updater and a Developer are allowed. If someone later loosened `CanEditIssue` so a Reporter could edit, the first row — and only the first row — would light up red, telling you precisely which case broke. This is the same file that pins the security-critical rules the whole app rests on, each named for exactly what it protects:"
+    },
+    {
+      "code": "[Fact]\npublic void PrivateIssue_IsHidden_FromOrdinaryProjectMembers()\n{\n    // A Reporter member of a public project cannot see a private issue they neither reported nor own.\n    var ctx = Ctx(UserRole.Reporter, UserRole.Reporter);\n    Assert.False(ctx.CanViewIssue(projectIsPublic: true, issueIsPrivate: true, reporterId: Someone, assigneeId: Someone));\n}"
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "Read the summary comment first",
+        "text": "Every test class opens with a /// <summary> that states, in one or two sentences, exactly what it guards — for example AccessControlTests notes it holds 'regression tests for audit findings C1, C2, and H3.' When you touch a subsystem, read that summary before its tests: it tells you what promises you must not break, and which past bugs must never come back."
+      }
+    },
+    { "h2": "A database-backed test, read line by line" },
+    {
+      "p": "Some behavior cannot be tested with plain inputs, because the behavior __is__ a database query. The row-level visibility filter from Chapter 8 is the prime example: its entire job is to translate an access snapshot into a SQL `WHERE` clause and return only the rows a user may see. To test that honestly you need real rows in a real relational database. `VisibilityQueryTests` builds one — in memory, from scratch, for the duration of the test class."
+    },
+    {
+      "p": "The setup runs once when the test class is constructed. It opens an in-memory SQLite connection, tells Entity Framework to create the tables, and seeds a deliberately tricky little world: a public project and a private one, four users, and four issues covering every combination of public/private issue in public/private project."
+    },
+    {
+      "code": "public VisibilityQueryTests()\n{\n    _connection = new SqliteConnection(\"DataSource=:memory:\");\n    _connection.Open();\n    _options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options;\n\n    using var db = new AppDbContext(_options);\n    db.Database.EnsureCreated();\n\n    db.Users.AddRange(/* owner1, owner2, a reporter member, an outsider */);\n    db.Projects.AddRange(\n        new Project { Id = PublicProject, Name = \"Public\", IsPublic = true, OwnerId = U_Owner1 },\n        new Project { Id = PrivateProject, Name = \"Private\", IsPublic = false, OwnerId = U_Owner2 });\n    // ...memberships and four issues (public/private x public/private)...\n    db.SaveChanges();\n}"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "'In-memory SQLite' is a genuine SQLite database that lives entirely in RAM instead of a file — 'DataSource=:memory:' is the address that means 'nowhere on disk.' It behaves like the real database (real tables, real SQL, real foreign keys) but vanishes when the connection closes. EnsureCreated() builds the tables from the entity model. The class constructor runs fresh for every test method, so each test gets its own clean, seeded database — no test can pollute another."
+      }
+    },
+    {
+      "p": "With the world seeded, a small helper runs the actual thing under test — the shared `WhereVisibleTo` filter — as a given user, and returns the ids that survived the filter:"
+    },
+    {
+      "code": "private async Task<(int[] projects, int[] issues)> VisibleTo(int userId, UserRole globalRole)\n{\n    await using var db = new AppDbContext(_options);\n    var access = await AccessSnapshot.LoadAsync(db, new AccessIdentity(userId, globalRole));\n    var projects = await db.Projects.WhereVisibleTo(access).Select(p => p.Id).OrderBy(i => i).ToArrayAsync();\n    var issues = await db.Issues.WhereVisibleTo(access).Select(i => i.Id).OrderBy(i => i).ToArrayAsync();\n    return (projects, issues);\n}"
+    },
+    {
+      "p": "And each test is one crisp claim about who sees what. This one pins the whole point of the private-issue rule — an outsider gets the public project and only its public issue, and nothing more:"
+    },
+    {
+      "code": "[Fact]\npublic async Task Outsider_SeesOnlyPublicProjectAndItsPublicIssues()\n{\n    var (projects, issues) = await VisibleTo(U_Outsider, UserRole.Reporter);\n    Assert.Equal(new[] { PublicProject }, projects);\n    // NOT the private issue in the public project, and nothing in the private project.\n    Assert.Equal(new[] { I_PublicInPublic }, issues);\n}"
+    },
+    {
+      "p": "The arrange-act-assert shape is still here, just larger: __arrange__ was the seeded database in the constructor, __act__ is `VisibleTo(...)` running the real filter, __assert__ is the two `Assert.Equal` checks on the surviving ids. Because the filter runs against a real SQLite database, the test proves the rule survives translation into actual SQL — not just that a C# method returns the right boolean. That is the whole reason this test earns the extra cost of a database."
+    },
+    { "h2": "Cleaning up: IDisposable" },
+    {
+      "p": "A test that opens a database connection must close it, or connections would pile up across a run. xUnit's convention is that if a test class implements `IDisposable`, its `Dispose` method runs after each test. `VisibilityQueryTests` uses exactly that to drop the in-memory database:"
+    },
+    {
+      "code": "public sealed class VisibilityQueryTests : IDisposable\n{\n    // ...constructor seeds, tests run...\n    public void Dispose() => _connection.Dispose();\n}"
+    },
+    {
+      "p": "When the connection closes, the whole in-memory database evaporates — no files to delete, no state carried to the next test. Combined with the constructor running fresh each time, this gives every database test a clean room to work in. The `WorkflowTests` class follows the same pattern (seed a project and an issue in the constructor, `Dispose` the connection at the end), which is worth reading next if you want a second worked example that both seeds data and runs a real operation against it."
+    },
+    { "h2": "How to add a test" },
+    {
+      "p": "When you change or add a feature, adding a matching test is a short, mechanical process. The only real decision is which of the two shapes you need — and that follows from a single question: does the thing you're testing touch stored data?"
+    },
+    {
+      "steps": [
+        "Decide the shape. If your logic takes plain inputs and returns an answer (a calculation, a parser, a permission rule), write a __pure__ test in `OpenTrack.Core.Tests`. If it queries or changes rows, write a __database__ test in `OpenTrack.API.Tests`.",
+        "For a pure test: add a class named `<Thing>Tests`, open it with a one-line `/// <summary>` of what it guards, then write `[Fact]` methods (or a `[Theory]` with `[InlineData]` rows when the same rule spans several inputs). Arrange the inputs, call the function, assert the result.",
+        "For a database test: implement `IDisposable`, open an in-memory SQLite connection in the constructor, `EnsureCreated()`, seed just the rows your case needs, run the real operation, assert on what changed, and `Dispose` the connection.",
+        "Name each test for the behavior it protects, not the method it calls — `PrivateIssue_IsHidden_FromOrdinaryProjectMembers` tells a future reader what breaks if it goes red, where `TestCanViewIssue3` tells them nothing.",
+        "Run the suite (`dotnet test`) and watch it go green. If you're fixing a bug, write the failing test first, watch it go red, then fix the code and watch it turn green — that proves the test actually catches the bug."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "A test that never fails is worse than no test",
+        "text": "A test only protects you if it would actually fail when the behavior breaks. Before trusting a new test, make it fail on purpose once — break the code, or invert the assertion — and confirm it goes red. A test that stays green no matter what is a false comfort; it looks like coverage but guards nothing."
+      }
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The suite is not trying to test everything. It is trying to test the things where a silent mistake would be expensive — permissions, visibility, SLA timing, workflow gates, imports, and the git webhook — and to do so in a form that stays fast and repeatable. Purity is what makes that possible: because the highest-stakes rules were written with no database, most of the highest-stakes tests are the fast, simple kind, and the database tests are reserved for behavior that genuinely lives in SQL."
+    },
+    {
+      "p": "The payoff compounds over the life of the project. Every regression test is a lesson from a past bug, frozen so the bug cannot come back unnoticed. The access-control tests literally carry audit finding codes in their summaries, so the fixes for those findings can never quietly regress. Years from now, a maintainer who has never met the original author can change code with confidence, because the tripwires will tell them the instant they break a promise the app has always kept."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "Every change to guarded behavior gets a test in the same commit — a new rule gets a test that proves it, a bug fix gets a test that fails before the fix and passes after. Keep pure logic in Core so its tests can stay database-free, reach for in-memory SQLite only when the behavior truly is a query, and name each test for the promise it protects. The suite is only as trustworthy as the discipline that keeps it complete."
+      }
+    }
+  ]
+}
