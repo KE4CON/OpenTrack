@@ -668,18 +668,31 @@ CHAPTERS = [
             "Optional power features: SLA targets, automation, Git, public intake + QR",
         ],
         "blocks": [
+            {"p": "You now have a working server \u2014 nice work. There are only **two things you actually need to "
+                  "do** here: create a project, and add the people who'll use it. Everything else on this page is "
+                  "optional; turn it on only if you want it."},
             {"h1": "Create your first project"},
             {"steps": [
-                "Sign in as the administrator.",
-                "Go to **Projects \u2192 New project**, give it a name (e.g. the name of the software or system you're "
-                "tracking bugs for), and save.",
-                "Open the project and add a couple of **categories** and, if you use them, **versions** under "
-                "**Settings**.",
+                "Sign in with the administrator account you registered earlier.",
+                "In the menu on the **left side of the screen**, click **Projects**, then click the **New project** "
+                "button.",
+                "Give it a **name** (usually the software, system, or thing you're tracking bugs for) and click "
+                "**Create**. That's the minimum \u2014 you have a project now.",
+                "Optional: open the project, click **Settings**, and add a few **categories** (buckets like "
+                "\u201cUser Interface\u201d or \u201cDatabase\u201d) and, if you track releases, **versions**.",
             ]},
-            {"h1": "Add people and roles"},
-            {"p": "Invite the people who'll use OpenTrack and give each the right **role** on each project. Roles "
-                  "range from **Reporter** (can file issues) up through **Manager** (can configure the project) and "
-                  "**Administrator** (runs the whole instance)."},
+            {"h1": "Add the people who'll use it"},
+            {"p": "Everyone needs their own account, and you give each person a **role** on each project \u2014 the "
+                  "role decides what they're allowed to do."},
+            {"steps": [
+                "Have each person open your server's web address in a browser and click **Register** to make an "
+                "account (or you can do it for them).",
+                "Open the project, click **Members**, type the person's **email**, pick a **role**, and click "
+                "**Add**.",
+            ]},
+            {"p": "Roles go from **Reporter** (can file issues), up through **Developer** (can be assigned work), "
+                  "**Manager** (can change the project's settings), and **Administrator** (runs everything). A good "
+                  "rule: give each person the **lowest** role that still lets them do their job."},
             {"h1": "Optional power features"},
             {"p": "None of these are required, but they're what make OpenTrack shine. Turn on the ones you want, "
                   "per project, under the project's **Settings**:"},
@@ -693,10 +706,10 @@ CHAPTERS = [
                 ],
                 "widths": [1.7, 3.1, 1.7],
             }},
-            {"callout": {"kind": "note", "label": "EACH HAS ITS OWN GUIDE",
-                         "text": "The full how-to for the public trouble-ticket intake is in "
-                                 "docs/guides/PUBLIC_TICKETS.md, and AI is in docs/guides/AI_ASSIST.md. The upcoming "
-                                 "**User Manual** covers every feature in depth."}},
+            {"callout": {"kind": "note", "label": "DON'T WORRY ABOUT THESE YET",
+                         "text": "You do **not** need any of these to start using OpenTrack — skip them for now "
+                                 "and come back if you ever want them. The **User Manual** explains each one, step "
+                                 "by step, when you're ready."}},
         ],
     },
 
@@ -710,34 +723,41 @@ CHAPTERS = [
             "Updating OpenTrack and a quick troubleshooting checklist",
         ],
         "blocks": [
-            {"h1": "Turn on automatic backups"},
-            {"p": "OpenTrack can write a **consistent snapshot** of the database on a schedule (safe to run while "
-                  "the app is live). Set these system environment variables on the server and restart the web app:"},
+            {"callout": {"kind": "tip", "label": "THE EASIEST BACKUP — ANYONE CAN DO IT",
+                         "text": "At any time, sign in and click **Backup & export** in the left menu to download a "
+                                 "full copy of your data. No setup, no typing — just click and save the file "
+                                 "somewhere safe (do it before any big change). The automatic option below is "
+                                 "nicer, but this one click is the simplest safety net."}},
+            {"h1": "Turn on automatic backups (optional, a bit technical)"},
+            {"p": "For hands-off safety, OpenTrack can also write a **snapshot** of the database on a schedule "
+                  "(safe while the app is running). This one is more technical: set these system environment "
+                  "variables on the server and restart the web app. Not comfortable with that? The one-click "
+                  "export above is plenty."},
             {"table": {
                 "headers": ["Setting", "Value", "Meaning"],
                 "rows": [
                     ["`OpenTrack__Backup__Enabled`", "`true`", "Turn backups on"],
                     ["`OpenTrack__Backup__IntervalHours`", "`24`", "How often (hours)"],
-                    ["`OpenTrack__Backup__Directory`", "`D:\\OpenTrackData\\backups`", "Where snapshots go"],
+                    ["`OpenTrack__Backup__Directory`", "(leave blank)", "Where snapshots go — blank means a `backups` folder next to your database"],
                     ["`OpenTrack__Backup__Retention`", "`14`", "How many to keep"],
                 ],
                 "widths": [2.7, 1.9, 1.9],
             }},
-            {"p": "Snapshots are named like `opentrack-20260812-013000.db`. Keeping them on **D:** puts your app "
-                  "*and* its backups on the drive that survives a Windows reinstall."},
+            {"p": "Snapshots are named like `opentrack-20260812-013000.db` and land in your data folder (right "
+                  "next to the database) unless you set a different folder above."},
 
             {"h1": "How to restore"},
             {"steps": [
                 "Stop the web app and API.",
-                "Copy the snapshot you want over the live database, e.g. copy "
-                "`D:\\OpenTrackData\\backups\\opentrack-YYYYMMDD-HHMMSS.db` to "
-                "`D:\\OpenTrackData\\opentrack.db` (replacing it).",
+                "In your data folder, find the snapshot you want (a file named like "
+                "`opentrack-YYYYMMDD-HHMMSS.db`) and **copy it over** the live `opentrack.db`, replacing it.",
                 "Start the web app and API again. You're back to that point in time.",
             ]},
-            {"callout": {"kind": "warning", "label": "BACK UP OFF THE BEELINK TOO",
-                         "text": "Scheduled snapshots protect against mistakes and corruption, but they're on the "
-                                 "same machine. For real safety, periodically copy the `backups` folder to another "
-                                 "drive or a cloud folder \u2014 so a dead server doesn't take your data with it."}},
+            {"callout": {"kind": "warning", "label": "KEEP A COPY OFF THE SERVER",
+                         "text": "Snapshots protect against mistakes and corruption, but they sit on the **same "
+                                 "machine**. For real safety, every so often copy a snapshot (or a one-click "
+                                 "export) to another drive or a cloud folder \u2014 so if the whole server ever dies, "
+                                 "your data doesn't die with it."}},
 
             {"h1": "Updating OpenTrack"},
             {"p": "Easiest: **re-run the setup script** from Chapter 2 (`Install-OpenTrackServer.ps1`). It pulls "
@@ -750,11 +770,11 @@ CHAPTERS = [
             {"table": {
                 "headers": ["Symptom", "Check this"],
                 "rows": [
-                    ["Another device can't reach the server", "Firewall rules added (Ch. 2 Step G); using the right **SERVER-IP** and port; both devices on the same network"],
-                    ["Web app loads on the server but not elsewhere", "Programs started with `0.0.0.0` URLs, not `localhost`"],
-                    ["Desktop app can't connect", "Its server address points at the **API** port (5003), not the web port"],
-                    ["\u2728 AI button missing", "`OpenTrack__Ai__Enabled=true` and the model/endpoint set; app restarted"],
-                    ["Server didn't come back after reboot", "The two scheduled tasks exist and set the port (Ch. 2 Step I)"],
+                    ["Another device can't reach the server", "You're using the server's **actual number** (not the words \u201cSERVER-IP\u201d) with the right port; both devices are on the same network; the firewall was opened for both ports"],
+                    ["Web app loads on the server but not on other devices", "The server must listen on `0.0.0.0`, not `localhost` (the setup script does this automatically \u2014 re-run it if unsure)"],
+                    ["Desktop app can't connect", "Its server address must end in the **API** port **:5003**, not the web port :5035"],
+                    ["\u2728 AI button is missing", "AI wasn't turned on \u2014 re-run the setup script and answer **Yes** to the local-AI question (or set it up in Chapter 3)"],
+                    ["Server didn't come back after a reboot", "The auto-start didn't register \u2014 just re-run the setup script; it puts it back"],
                 ],
                 "widths": [2.4, 4.1],
             }},
