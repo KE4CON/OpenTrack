@@ -75,6 +75,11 @@ builder.Services.AddOpenTrackEmailAndNotifications();
 builder.Services.AddOpenTrackAi(builder.Configuration);
 // Background SLA-breach escalation (the always-on web host owns this periodic job).
 builder.Services.AddHostedService<OpenTrack.Web.Services.SlaScanner>();
+// Scheduled database backups (opt-in via OpenTrack:Backup).
+var backupOptions = new OpenTrack.Infrastructure.Backup.BackupOptions();
+builder.Configuration.GetSection(OpenTrack.Infrastructure.Backup.BackupOptions.Section).Bind(backupOptions);
+builder.Services.AddSingleton(backupOptions);
+builder.Services.AddHostedService<OpenTrack.Web.Services.BackupScheduler>();
 
 // Rate-limit the public trouble-ticket endpoints, per client IP, to blunt spam/abuse.
 builder.Services.AddRateLimiter(options =>

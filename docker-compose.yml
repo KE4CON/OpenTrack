@@ -1,0 +1,21 @@
+# OpenTrack — one-command run with a persistent data volume and scheduled backups on.
+# Usage:  docker compose up -d   →  open http://localhost:8080
+services:
+  opentrack:
+    build: .
+    image: opentrack:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - opentrack-data:/data          # SQLite database + backups live here (survives rebuilds)
+    environment:
+      - ConnectionStrings__Default=Data Source=/data/opentrack.db;Cache=Shared
+      # Scheduled database backups (daily, keep 14) written next to the DB on the volume.
+      - OpenTrack__Backup__Enabled=true
+      - OpenTrack__Backup__Directory=/data/backups
+      - OpenTrack__Backup__IntervalHours=24
+      - OpenTrack__Backup__Retention=14
+    restart: unless-stopped
+
+volumes:
+  opentrack-data:
