@@ -1,0 +1,83 @@
+@page "/projects/{Id:int}/intake-poster"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+@inject NavigationManager Nav
+@using QRCoder
+
+<PageTitle>Field intake poster</PageTitle>
+
+@if (project is null)
+{
+    <p><em>Loading&hellip;</em></p>
+}
+else if (!canManage)
+{
+    <div class="alert alert-warning">You need the Manager role on this project to view its intake poster.</div>
+}
+else
+{
+    <div class="no-print d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <a class="btn btn-outline-secondary btn-sm" href="projects/@Id/settings">Back to settings</a>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ Print</button>
+    </div>
+
+    @if (!project.PublicIntakeEnabled)
+    {
+        <div class="alert alert-warning no-print">
+            Public intake is currently <strong>off</strong> for this project, so this QR code won't accept
+            reports yet. Turn it on under <a href="projects/@Id/settings">Settings → Public trouble-ticket
+            intake</a>, then print this page.
+        </div>
+    }
+
+    <div class="text-center intake-poster">
+        <h1 class="display-6 mb-1">Spot a problem?</h1>
+        <p class="fs-4 mb-4">Scan to report it — @project.Name</p>
+
+        <div class="d-inline-block p-3 bg-white border rounded">
+            @((MarkupString)qrSvg)
+        </div>
+
+        <p class="fs-5 mt-4 mb-1">Or open this link:</p>
+        <p class="fs-6"><code class="user-select-all">@intakeUrl</code></p>
+        <p class="text-muted">No account needed — it takes less than a minute.</p>
+    </div>
+}
+
+<style>
+    .intake-poster { max-width: 40rem; margin: 0 auto; }
+    .intake-poster svg { width: 260px; height: 260px; }
+    @@media print {
+        .intake-poster { margin-top: 2rem; }
+        .intake-poster svg { width: 360px; height: 360px; }
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private ProjectDetail? project;
+    private bool canManage;
+    private string intakeUrl = "";
+    private string qrSvg = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        project = await Data.GetProjectAsync(Id);
+        canManage = (await Data.GetProjectMemberDetailsAsync(Id)).Count > 0;
+        if (project is not null && canManage)
+        {
+            intakeUrl = $"{Nav.BaseUri}report/{Id}";
+            qrSvg = BuildQrSvg(intakeUrl);
+        }
+    }
+
+    private static string BuildQrSvg(string text)
+    {
+        using var generator = new QRCodeGenerator();
+        using var data = generator.CreateQrCode(text, QRCodeGenerator.ECCLevel.M);
+        return new SvgQRCode(data).GetGraphic(6);
+    }
+}

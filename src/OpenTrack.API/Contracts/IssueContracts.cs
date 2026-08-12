@@ -29,7 +29,8 @@ public record IssueDetailDto(
     int? AffectsVersionId, string? AffectsVersionName,
     int? FixVersionId, string? FixVersionName,
     Guid RowVersion,
-    IReadOnlyList<IssueNoteDto> Notes);
+    IReadOnlyList<IssueNoteDto> Notes,
+    double? Latitude = null, double? Longitude = null);
 
 public record IssueNoteDto(int Id, string AuthorName, string Text, bool IsPrivate, DateTime CreatedAt);
 
@@ -53,7 +54,8 @@ public record CreateIssueRequest(
     string Title, string Description, string? StepsToReproduce,
     string? ExpectedBehavior, string? ActualBehavior, int? CategoryId,
     IssueSeverity Severity, IssuePriority Priority, IssueReproducibility Reproducibility,
-    DateTime? DueDate, int? AffectsVersionId, int? FixVersionId);
+    DateTime? DueDate, int? AffectsVersionId, int? FixVersionId,
+    double? Latitude = null, double? Longitude = null);
 
 public record UpdateIssueRequest(
     string Title, string Description, string? StepsToReproduce,

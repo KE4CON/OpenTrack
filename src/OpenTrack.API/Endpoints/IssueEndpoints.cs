@@ -99,7 +99,8 @@ public static class IssueEndpoints
                 issue.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
                     .OrderBy(n => n.CreatedAt)
                     .Select(n => new IssueNoteDto(n.Id, n.Author.UserName ?? "unknown", n.Text, n.IsPrivate, n.CreatedAt))
-                    .ToList()));
+                    .ToList(),
+                issue.Latitude, issue.Longitude));
         });
 
         group.MapPost("/projects/{projectId:int}/issues", async (int projectId, CreateIssueRequest req, ClaimsPrincipal user, AppDbContext db, NotificationDispatch notifications, CancellationToken ct) =>
@@ -121,6 +122,7 @@ public static class IssueEndpoints
                 ActualBehavior = req.ActualBehavior, CategoryId = req.CategoryId,
                 Severity = req.Severity, Priority = req.Priority, Reproducibility = req.Reproducibility,
                 DueDate = req.DueDate, AffectsVersionId = req.AffectsVersionId, FixVersionId = req.FixVersionId,
+                Latitude = req.Latitude, Longitude = req.Longitude,
                 ReporterId = access.UserId, Status = IssueStatus.New,
                 CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
             };
