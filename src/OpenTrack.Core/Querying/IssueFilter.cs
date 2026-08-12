@@ -40,4 +40,8 @@ public static class IssueDefaults
 {
     /// <summary>How long an open issue can sit untouched before it's considered stale.</summary>
     public const int StaleDays = 30;
+
+    /// <summary>Defensive upper bound on rows the issue list materializes in one query, so a very large
+    /// project can't balloon memory. Well above any normal on-screen list.</summary>
+    public const int MaxListRows = 5000;
 }

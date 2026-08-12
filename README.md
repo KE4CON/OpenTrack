@@ -67,7 +67,7 @@ Targeting full parity with MantisBT:
 git clone https://github.com/KE4CON/OpenTrack.git
 cd OpenTrack
 docker compose up -d
-# OpenTrack will be available at http://localhost:5000
+# OpenTrack will be available at http://localhost:8080
 ```
 
 ### Standalone

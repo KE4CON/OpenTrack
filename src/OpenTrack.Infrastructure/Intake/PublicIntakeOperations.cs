@@ -42,6 +42,9 @@ public static class PublicIntakeOperations
         title = Truncate(title, FieldLimits.IssueTitle);
 
         name = Blank(name) ? null : Truncate(name!.Trim(), FieldLimits.IntakeName);
+        // Cap the free-text description — this is an UNAUTHENTICATED endpoint, so an anonymous submitter
+        // could otherwise store a multi-megabyte body (bounded only by Kestrel's request limit).
+        description = Blank(description) ? null : Truncate(description!, FieldLimits.IntakeDescription);
         email = Blank(email) ? null : email!.Trim();
         if (email is not null && (!email.Contains('@') || email.Length > FieldLimits.IntakeEmail))
             return new IntakeResult(null, "Enter a valid email address, or leave it blank.");

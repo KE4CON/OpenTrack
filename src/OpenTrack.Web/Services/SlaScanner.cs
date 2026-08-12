@@ -83,6 +83,11 @@ public sealed class SlaScanner(IDbContextFactory<AppDbContext> dbFactory, ILogge
                 .Select(m => m.UserId).ToListAsync(ct);
             foreach (var mid in managerIds) recipients.Add(mid);
 
+            // If there's nobody to escalate to yet (no assignee and no managers), leave the issue
+            // un-stamped so it's re-evaluated next tick — otherwise a later-added assignee/manager would
+            // never be notified about an already-breached issue.
+            if (recipients.Count == 0) continue;
+
             foreach (var uid in recipients)
                 db.Notifications.Add(new Notification
                 {

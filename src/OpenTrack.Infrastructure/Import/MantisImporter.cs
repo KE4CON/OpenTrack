@@ -48,6 +48,9 @@ public static class MantisImporter
         var users = await db.Users.AsNoTracking()
             .Where(u => u.UserName != null)
             .ToDictionaryAsync(u => u.UserName!.ToLower(), u => u.Id, ct);
+        // MantisBT import is a global-Manager+ migration (a trusted admin action); mapping historical
+        // Mantis authors to matching OpenTrack accounts is its intended behavior, so it maps by username
+        // (unlike the per-project generic importer, which restricts to members).
         int? MapUser(string? name) =>
             name is not null && users.TryGetValue(name.ToLowerInvariant(), out var id) ? id : null;
 

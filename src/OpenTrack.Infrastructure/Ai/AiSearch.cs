@@ -37,8 +37,11 @@ public static class AiSearch
         "'nobody has touched' mean stale=true (open issues no one has updated recently). Put free-text " +
         "keywords (words that should appear in the title/description) into 'text'. Match 'project' to one " +
         "of the provided project names exactly, or omit it. Respond ONLY via the tool.\n\n" +
-        $"Request: {query}\n" +
+        $"Request: {AiText.Cap(query, MaxQueryChars)}\n" +
         $"Projects: {(projectNames.Count == 0 ? "(any)" : string.Join(", ", projectNames))}";
+
+    /// <summary>Max characters of the user's search text fed to the model.</summary>
+    public const int MaxQueryChars = 500;
 
     public static object BuildInputSchema(IReadOnlyList<string> projectNames)
     {

@@ -24,12 +24,16 @@ public static class AiTriage
     public const string ToolDescription = "Return the suggested triage for the issue.";
 
     /// <summary>The instruction sent to the model.</summary>
+    /// <summary>Max characters of user text fed to the model, to bound token cost per call.</summary>
+    public const int MaxTitleChars = 500;
+    public const int MaxDescriptionChars = 4000;
+
     public static string BuildPrompt(string title, string? description, IReadOnlyList<string> categories) =>
         "You are triaging a new software issue for a bug tracker. Given the summary and details, " +
         "suggest a severity, a priority, the single best-fitting category from the provided list " +
         "(or omit it if none fit), and up to 5 short lower-case tags. Respond ONLY via the tool.\n\n" +
-        $"Summary: {title}\n" +
-        $"Details: {(string.IsNullOrWhiteSpace(description) ? "(none)" : description)}\n" +
+        $"Summary: {AiText.Cap(title, MaxTitleChars)}\n" +
+        $"Details: {(string.IsNullOrWhiteSpace(description) ? "(none)" : AiText.Cap(description, MaxDescriptionChars))}\n" +
         $"Available categories: {(categories.Count == 0 ? "(none)" : string.Join(", ", categories))}";
 
     /// <summary>The JSON-schema object describing the tool's input. Identical for both providers

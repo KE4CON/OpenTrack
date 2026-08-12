@@ -39,7 +39,8 @@ public static class BulkOperations
     {
         int updated = 0, skipped = 0;
 
-        var distinct = issueIds.Distinct().ToList();
+        // Tolerate a missing/omitted id list (e.g. an API request without "issueIds") rather than throwing.
+        var distinct = (issueIds ?? []).Distinct().ToList();
         if (distinct.Count > MaxBatch)
         {
             skipped += distinct.Count - MaxBatch;

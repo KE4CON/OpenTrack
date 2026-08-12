@@ -72,3 +72,36 @@ To actually send email, set `OpenTrack:Email:Enabled` to `true` and fill in your
 A mail failure never blocks registration or password reset — it is logged and the flow continues.
 (OpenTrack uses the framework's built-in SMTP client rather than MailKit, whose current releases pull
 in a dependency with an unpatched security advisory.)
+
+## First administrator (bootstrap)
+
+By default the **first account you register becomes the administrator**. If you'd
+rather set the administrator out-of-band (so it never depends on who registers
+first), set these before the first run — the web host promotes or creates that
+account to Administrator at startup:
+
+```
+OpenTrack__BootstrapAdmin__Email=admin@example.com
+OpenTrack__BootstrapAdmin__Password=<a strong password>
+```
+
+Prefer environment variables or user-secrets over committing the password. This is
+honored by the web host (the API host shares the same database, so the account
+works there too).
+
+## Scheduled backups
+
+The server can write periodic, consistent snapshots of the SQLite database (using
+`VACUUM INTO`, which is safe while the app is running). It's **off by default**;
+turn it on with:
+
+```
+OpenTrack__Backup__Enabled=true
+OpenTrack__Backup__IntervalHours=24        # how often
+OpenTrack__Backup__Directory=              # blank = a "backups" folder next to the DB
+OpenTrack__Backup__Retention=14            # keep the newest N snapshots
+```
+
+Snapshots are named `opentrack-YYYYMMDD-HHMMSS.db`. To **restore**, stop the
+server, copy a chosen snapshot over the live `opentrack.db`, and start again. (The
+Docker Compose file enables this by default — see `docs/DOCKER.md`.)
