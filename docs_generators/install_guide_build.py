@@ -161,17 +161,63 @@ CHAPTERS = [
                 "chmod +x install-opentrack-server.sh",
                 "./install-opentrack-server.sh",
             ]},
-            {"p": "Watch it work. When it finishes, it prints the **web address** to open and how to create the "
-                  "**first administrator** \u2014 skip to \u201cCreate the first administrator\u201d below."},
-            {"callout": {"kind": "tip", "label": "CHANGE PORTS, DATA LOCATION, OR ADD AI",
-                         "text": "To change anything \u2014 the ports, where the database lives (for example put it on "
-                                 "a D: drive), or to install the local AI at the same time \u2014 copy "
-                                 "`opentrack-server.sample.conf` to `opentrack-server.conf`, edit the values, and add "
-                                 "`-ConfigFile .\\opentrack-server.conf` to the command. For example set "
-                                 "`DataDir = D:\\OpenTrackData` to keep data on the D: drive, or `InstallAi = true` "
-                                 "to also set up the free local AI (Chapter 3). On Windows add the `-InstallAi` "
-                                 "switch; on a Mac use `--install-ai` (and `--config` instead of `-ConfigFile`). The "
-                                 "same settings file works for both."}},
+            {"p": "The script first **asks you a few simple questions** \u2014 where to keep the data, whether to "
+                  "install the local AI now, and whether to set up the first administrator \u2014 each with a sensible "
+                  "default you accept by just pressing **Enter**. Then it does everything automatically. When it "
+                  "finishes, it prints the **web address** to open."},
+            {"callout": {"kind": "note", "label": "THE QUESTIONS IT ASKS",
+                         "text": "In order: **where to keep the database** \u2014 on Windows it first asks whether the "
+                                 "PC has a **second drive** and, if so, suggests putting the data there (so it "
+                                 "survives a Windows reinstall); **install the free local AI?** (default No); **set "
+                                 "up the first administrator now?** (default Yes \u2014 then it asks for an email and "
+                                 "password); and **use the standard ports?** (default Yes). It shows a summary and "
+                                 "asks you to confirm before changing anything. Accept every default and you'll have "
+                                 "a working server \u2014 you just register the first account afterward."}},
+            {"h2": "Optional: an unattended install (settings file)"},
+            {"p": "Because the script **asks** about the data location, the local AI, and the first administrator, "
+                  "most people never need this. But if you'd rather **not** be asked \u2014 for a hands-off install, or "
+                  "to set up several servers the same way \u2014 you can put all the answers in a small **settings "
+                  "file** and the script will skip the questions and just run. The same file works on both Windows "
+                  "and a Mac."},
+            {"steps": [
+                "In the `scripts` folder, **make a copy** of the file `opentrack-server.sample.conf` and name the "
+                "copy `opentrack-server.conf`. (Copy, don't rename \u2014 keep the original sample as a reference.)",
+                "**Open** `opentrack-server.conf` in any plain-text editor: **Notepad** on Windows, or **TextEdit** "
+                "on a Mac.",
+                "**Change only the line(s) you care about** and leave the rest exactly as they are. Each line is "
+                "`Setting = Value`. The most common changes:",
+            ]},
+            {"table": {
+                "headers": ["If you want to\u2026", "Change this line to\u2026"],
+                "rows": [
+                    ["Keep the database on the **D: drive** (Windows)", "`DataDir = D:\\OpenTrackData`"],
+                    ["Keep the database in a **specific folder** (Mac)", "`DataDir = /Users/Shared/OpenTrack`"],
+                    ["Use a different **browser** port (default 5035)", "`WebPort = 5035`"],
+                    ["Use a different **desktop-app** port (default 5003)", "`ApiPort = 5003`"],
+                    ["**Install the free local AI** at the same time", "`InstallAi = true`"],
+                    ["**Set the first administrator** automatically", "`AdminEmail = you@example.com` (and `AdminPassword = a-strong-password`)"],
+                ],
+                "widths": [3.3, 3.2],
+            }},
+            {"steps": [
+                "**Save** the file.",
+                "**Run the script the same way as before, but add your settings file** at the end. On **Windows**:",
+            ]},
+            {"code": [
+                "cd C:\\OpenTrack\\OpenTrack\\scripts",
+                "powershell -ExecutionPolicy Bypass -File .\\Install-OpenTrackServer.ps1 -ConfigFile .\\opentrack-server.conf",
+            ]},
+            {"steps": [
+                "On a **Mac**:",
+            ]},
+            {"code": [
+                "cd ~/OpenTrack/OpenTrack/scripts",
+                "./install-opentrack-server.sh --config ./opentrack-server.conf",
+            ]},
+            {"callout": {"kind": "tip", "label": "SHORTCUT IF YOU ONLY WANT THE AI",
+                         "text": "If the **only** thing you want to change is turning on the local AI, you don't "
+                                 "even need the settings file \u2014 just add `-InstallAi` on Windows (or `--install-ai` "
+                                 "on a Mac) to the end of the normal command from the previous section."}},
             {"h2": "What the script set up"},
             {"bullets": [
                 "The **two server programs** built and running \u2014 the **web app** on port **5035** (browsers) and "

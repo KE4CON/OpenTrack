@@ -16,6 +16,10 @@
 #
 # Re-run anytime to UPDATE: it pulls the latest code, rebuilds, and restarts.
 #
+# Run it with NO options and it interactively asks a few plain questions (data location, local AI,
+# first administrator, ports), each with a default you accept by pressing Enter. Pass any flag or
+# --config (or --non-interactive / -y) and it skips the questions and runs unattended.
+#
 # Usage:
 #   ./install-opentrack-server.sh                 # sensible defaults
 #   ./install-opentrack-server.sh --config ./opentrack-server.conf
@@ -46,6 +50,7 @@ AdminPassword=""
 RequireHttps="false"
 AutoStart="launchd"     # or "none"
 SkipPrereqs="false"
+NonInteractive="false"
 ConfigFile=""
 
 STEP=0
@@ -54,6 +59,20 @@ ok()    { printf '    \033[32mOK  %s\033[0m\n' "$1"; }
 info()  { printf '    -   %s\n' "$1"; }
 warn()  { printf '    \033[33m!   %s\033[0m\n' "$1"; }
 fail()  { printf '\n\033[31mERROR: %s\033[0m\n' "$1" >&2; exit 1; }
+
+# Interactive prompt helpers (used only when the script is run bare, with no flags/config).
+ask() {   # $1 prompt  $2 default -> echoes the answer
+    local a
+    read -r -p "$1 [$2]: " a || true
+    if [ -z "$a" ]; then printf '%s' "$2"; else printf '%s' "$a"; fi
+}
+ask_yesno() {   # $1 prompt  $2 default(y|n) -> returns 0 for yes
+    local suffix a
+    if [ "$2" = "y" ]; then suffix="[Y/n]"; else suffix="[y/N]"; fi
+    read -r -p "$1 $suffix: " a || true
+    [ -z "$a" ] && a="$2"
+    case "$a" in y|Y|yes|YES) return 0 ;; *) return 1 ;; esac
+}
 
 # --------------------------------------------------------------------- arg parse
 apply_config_file() {
@@ -85,6 +104,10 @@ for ((i=0; i<${#args[@]}; i++)); do
 done
 [ -n "$ConfigFile" ] && apply_config_file "$ConfigFile"
 
+# Any argument at all means the user is being explicit -> skip the interactive wizard.
+EXPLICIT="false"; [ ${#args[@]} -gt 0 ] && EXPLICIT="true"
+INTERACTIVE="false"
+
 while [ $# -gt 0 ]; do
     case "$1" in
         --config)         shift 2;;   # already handled
@@ -103,6 +126,7 @@ while [ $# -gt 0 ]; do
         --require-https)  RequireHttps="true"; shift;;
         --no-autostart)   AutoStart="none"; shift;;
         --skip-prereqs)   SkipPrereqs="true"; shift;;
+        --non-interactive|-y) NonInteractive="true"; shift;;
         -h|--help)
             grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
         *) fail "Unknown option: $1 (use --help)";;
@@ -113,6 +137,31 @@ done
 
 # sudo passthrough (root already? then no sudo needed)
 if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo"; fi
+
+# If run bare (no flags, no --config) at a terminal, walk the user through a few plain questions.
+if [ "$NonInteractive" != "true" ] && [ "$EXPLICIT" != "true" ] && [ -t 0 ]; then
+    echo
+    echo "Let's set up your OpenTrack server. I'll ask a few quick questions."
+    echo "Press Enter to accept the default shown in [brackets]."
+    echo
+    echo "First, where should your data (the OpenTrack database) be kept?"
+    echo "  Tip: keep it on a drive you back up. You can point it at an external drive"
+    echo "  (usually under /Volumes) if you'd rather not use the internal disk."
+    DataDir="$(ask 'Where should the database and data be kept?' "$DataDir")"
+    if ask_yesno 'Install the free local AI on this machine now? (needs about 16 GB of memory)' n; then
+        InstallAi="true"
+        AiModel="$(ask '  Which AI model?' "$AiModel")"
+    fi
+    if ask_yesno 'Set up the first administrator account now?' y; then
+        AdminEmail="$(ask '  Administrator email' "$AdminEmail")"
+        read -r -s -p "  Administrator password (typing is hidden): " AdminPassword || true; echo
+    fi
+    if ! ask_yesno 'Use the standard ports (browser 5035, desktop app 5003)?' y; then
+        WebPort="$(ask '  Browser (web) port' "$WebPort")"
+        ApiPort="$(ask '  Desktop-app (API) port' "$ApiPort")"
+    fi
+    INTERACTIVE="true"
+fi
 
 DbPath="$DataDir/opentrack.db"
 ConnString="Data Source=$DbPath;Cache=Shared"
@@ -132,6 +181,13 @@ echo "  Web (browser) : http://$BindAddress:$WebPort"
 echo "  API (desktop) : http://$BindAddress:$ApiPort"
 echo "  Local AI      : $([ "$InstallAi" = "true" ] && echo "yes ($AiModel via Ollama)" || echo "no")"
 echo "  Auto-start    : $AutoStart"
+
+if [ "$INTERACTIVE" = "true" ]; then
+    echo
+    if ! ask_yesno "Proceed with the install above?" y; then
+        echo "Cancelled - nothing was changed."; exit 0
+    fi
+fi
 
 # 1 ------------------------------------------------------------------- prereqs
 step "Checking prerequisites (.NET 10 SDK and Git)"
