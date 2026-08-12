@@ -28,6 +28,8 @@ CHAPTERS = [
             "Web app vs. desktop app — and pointing the desktop app at your server",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Open OpenTrack in a web browser (or the desktop app), sign in — or click **Register** the first time — and you're in. There's a menu down the **left** and your work in the **middle**. That's the whole layout."}},
             {"h1": "What OpenTrack is"},
             {"p": "OpenTrack is a **self-hosted issue and bug tracker** — a private, organized place to record "
                   "problems (bugs, tasks, feature requests, support tickets), decide what matters most, assign the "
@@ -120,6 +122,8 @@ CHAPTERS = [
             "Jumping from the dashboard straight into the work",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "The **Dashboard** is your home screen. Across every project it shows how many issues are **open**, **overdue**, and **stale** (forgotten), with links to jump straight to them."}},
             {"h1": "What the dashboard is for"},
             {"p": "The **Dashboard** is your home base — the first thing to open at the start of a session. It "
                   "gathers, in one place, a summary of everything you're allowed to see across **all** your "
@@ -166,6 +170,8 @@ CHAPTERS = [
             "Where the rest of a project's settings live",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "A **project** holds issues. To make one: click **Projects** on the left, then **New project**, give it a name, and click **Create**. Optionally add **categories** and **versions** under its **Settings**."}},
             {"h1": "What a project is"},
             {"p": "A **project** is a container for issues — usually one piece of software, one system, one product, "
                   "or one area of responsibility. Every issue belongs to exactly one project, and access is granted "
@@ -223,6 +229,8 @@ CHAPTERS = [
             "Adding, changing, and removing members",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Open a project, click **Members**, type someone's email, pick a **role**, and click **Add**. The role decides what they can do — from **Reporter** (file issues) up to **Administrator** (runs everything)."}},
             {"h1": "How access works"},
             {"p": "OpenTrack grants access by **role**, and — except for the Administrator — roles are assigned "
                   "**per project**. So the same person can be a Developer on one project, a Manager on another, and "
@@ -276,6 +284,8 @@ CHAPTERS = [
             "The fast lane: Quick-capture, and catching duplicates before you file",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Open a project, click **New Issue**, type a **title** and **description**, set the severity and priority, and click **Submit**. Done — a bug is filed. In a hurry? Use **Quick-capture**."}},
             {"h1": "Filing a good issue"},
             {"p": "A well-written issue saves everyone time later. You don't have to fill in every field — only a "
                   "**title** and **description** are required — but the more context you give, the faster it gets "
@@ -368,6 +378,8 @@ CHAPTERS = [
             "The actions along the top",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Everything about one issue lives on its own page: its status and key details up top, then the description, notes, attachments, links to related issues, and a full history below."}},
             {"h1": "The top of the page"},
             {"p": "Opening an issue shows its **number** (a permanent identifier you can quote, like #123), its "
                   "title, and its project at the top. Just below sits a compact panel of the fields that describe "
@@ -426,6 +438,8 @@ CHAPTERS = [
             "Assigning work, and resolving with the right resolution",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Click **Edit** to change any field, move the issue through its statuses (New → … → Resolved → Closed), assign it to a person, and choose a **resolution** when it's finished."}},
             {"h1": "Editing an issue"},
             {"steps": [
                 "On the issue page, select **Edit**.",
@@ -488,6 +502,8 @@ CHAPTERS = [
             "Tagging issues, and linking related issues together",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "On an issue you can add **Notes** to discuss it, upload **Attachments**, add **Tags** to label it, and add **Relationships** to link it to other issues."}},
             {"h1": "Notes — the discussion"},
             {"p": "**Notes** are the running conversation on an issue: questions, findings, decisions, “tried X, "
                   "didn't work.” Keeping the discussion on the issue (rather than in chat or email) means the whole "
@@ -536,6 +552,8 @@ CHAPTERS = [
             "Defining them (Managers) and filling them in (everyone)",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Need to track something extra (like a Customer or Environment)? A **Manager** adds the field under **Settings → Custom fields**, and then everyone fills it in on each issue."}},
             {"h1": "Why custom fields exist"},
             {"p": "The built-in fields (severity, priority, category, and so on) fit most work, but every team has "
                   "something extra it always wants to record. **Custom fields** let a Manager add those to a "
@@ -567,6 +585,8 @@ CHAPTERS = [
             "Saving filters, sharing them by link, and the keyboard command palette",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Click **Issues**, set the filters (project, status, severity, or a text search) and click **Search**. Save a filter you use a lot, or press **Ctrl+K** to jump anywhere fast."}},
             {"h1": "The issue list"},
             {"p": "Select **Issues** in the left navigation to see every issue you're allowed to view, across "
                   "projects. A filter bar runs along the top — this is where most day-to-day finding happens."},
@@ -613,6 +633,8 @@ CHAPTERS = [
             "Moving an issue between columns",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "The **Board** shows a project's issues as cards in columns by status. Move a card to the next column to change its status — a visual to-do wall."}},
             {"h1": "A visual way to see the work"},
             {"p": "The **Board** (often called a *Kanban* board, a Japanese term for a visual work-tracking card "
                   "wall) shows a project's issues as **cards arranged in columns by status** — for example New, "
@@ -638,6 +660,8 @@ CHAPTERS = [
             "Logging time against an issue",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Click **Monitor** on an issue to be told when it changes. Check **Notifications** on the left for updates. Record the minutes you spend in the issue's **Time log**."}},
             {"h1": "Monitor an issue"},
             {"p": "**Monitoring** (sometimes called *watching*) means “tell me when this changes.” Select "
                   "**Monitor** on any issue and you'll be notified of new notes, status changes, and edits."},
@@ -673,6 +697,8 @@ CHAPTERS = [
             "The status board, the badges, and automatic escalation",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "A **Manager** sets a deadline (in hours) for each priority. OpenTrack then flags every issue **On track**, **At risk**, or **Breached**, and the **SLA status** page lists what needs attention right now."}},
             {"h1": "What an SLA is"},
             {"p": "A **Service-Level Agreement (SLA)** is simply a promise about how quickly issues get dealt with "
                   "— for example, “urgent problems are resolved within 24 hours.” OpenTrack lets a Manager set a "
@@ -713,6 +739,8 @@ CHAPTERS = [
             "Building a rule: conditions and actions",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "A **Manager** can set **when a new issue looks like this, do that** rules under **Settings → Automation** — so routine sorting (set priority, assign, add a tag) happens by itself."}},
             {"h1": "What automation does"},
             {"p": "An **automation rule** runs the moment a **new issue is created** in the project. If the issue "
                   "matches the rule's **conditions**, the rule's **actions** are applied automatically. It's a way "
@@ -746,6 +774,8 @@ CHAPTERS = [
             "Adding the allowed transitions",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "By default an issue can jump to any status. A **Manager** can limit which status changes are allowed under **Settings → Workflow**, to keep issues moving in order."}},
             {"h1": "Controlling how issues move"},
             {"p": "Out of the box, an issue can jump to any status — the **workflow is open**. Some teams want more "
                   "discipline: a bug shouldn't go straight from New to Closed without being Confirmed and Resolved "
@@ -776,6 +806,8 @@ CHAPTERS = [
             "Reading the Reports charts",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Put a **Fix version** on issues and OpenTrack builds a **Roadmap** (what's coming) and a **Changelog** (what shipped). **Reports** shows charts of your issues over time."}},
             {"h1": "Roadmap and Changelog"},
             {"p": "When issues carry a **Fix version** (set on the issue, from the project's version list), "
                   "OpenTrack builds two automatic views for the project — no extra bookkeeping required:"},
@@ -811,6 +843,8 @@ CHAPTERS = [
             "Working offline in the field",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Build a reusable checklist for a project (paste a whole list, or add items one at a time), then work down it tapping **Pass**, **Fail**, or **N/A**. A **Fail** becomes a tracked issue in one tap."}},
             {"h1": "What a bug-hunt checklist is for"},
             {"p": "A **bug-hunt checklist** is a reusable list of things to check on a project — the sweep you do "
                   "before a release, a Quality Assurance (QA) pass, or a routine inspection. Instead of trying to "
@@ -891,6 +925,8 @@ CHAPTERS = [
             "Printing a Quick Response (QR) code poster",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Turn on **public intake** so people **without an account** can report a problem — through a link or a scannable **QR** poster. Their reports arrive as normal issues for you to handle."}},
             {"h1": "What public intake is"},
             {"p": "**Public trouble-ticket intake** lets people who have **no OpenTrack account** submit a problem "
                   "to a project through a simple “Report a problem” web page. It's perfect for a helpdesk, a "
@@ -933,6 +969,8 @@ CHAPTERS = [
             "Turning on automatic scheduled backups",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Moving in? **Import** issues from MantisBT, a spreadsheet, Jira, or GitHub. Your data is always yours: click **Backup & export** to download it anytime, and you can turn on automatic backups."}},
             {"h1": "Importing issues"},
             {"p": "Moving to OpenTrack from another tracker? You don't have to retype anything. OpenTrack imports "
                   "issues from several sources. You need the **Manager** role on the project you're importing "
@@ -994,6 +1032,8 @@ CHAPTERS = [
             "Getting an API key, the settings to enter, cost, and privacy",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "If your administrator turns it on, extra **✨** buttons appear: suggest an issue's triage, search in plain English, and summarize a long thread. Every result is a **suggestion you can change**."}},
             {"h1": "What it is"},
             {"p": "OpenTrack can optionally use an **artificial intelligence (AI)** language model to speed up a few "
                   "chores. It is **off by default** and only ever runs when someone turns it on and points it at a "
@@ -1104,6 +1144,8 @@ CHAPTERS = [
             "Sending change notifications to Slack, Discord, or your own service",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "Connect a **GitHub** repository so a commit that says **fixes #123** links to (and can resolve) that issue. Add a **Slack** or **Discord** webhook to get pinged when issues change."}},
             {"h1": "Git integration — how it works"},
             {"p": "When you connect a **GitHub** code repository to a project, OpenTrack watches for commits (saved "
                   "changes to your code) whose message mentions an issue, and links the two automatically. This "
@@ -1164,6 +1206,8 @@ CHAPTERS = [
             "Working offline, attaching your location, and scan-to-report",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "OpenTrack installs on a tablet or phone like an app (no app store), keeps working through brief network drops for checklists, can stamp your **GPS** location on an issue, and accepts QR-scanned reports."}},
             {"h1": "Install it like an app (PWA)"},
             {"p": "OpenTrack is a **Progressive Web App (PWA)** — a website modern enough to install and run like a "
                   "regular app, with its own icon and a full-screen window (no browser bars). There's nothing to "
@@ -1201,6 +1245,8 @@ CHAPTERS = [
             "Administrator tasks: users, first admin, email, and encryption",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "QUICK VERSION",
+                         "text": "**Print / PDF** an issue from its page. Set your personal defaults under **Preferences**. **Administrators** manage user accounts and roles."}},
             {"h1": "Print or save an issue as a PDF"},
             {"steps": [
                 "On an issue, select **Print / PDF**.",
