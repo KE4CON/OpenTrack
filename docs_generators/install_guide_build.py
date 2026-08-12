@@ -40,7 +40,7 @@ CHAPTERS = [
             {"table": {
                 "headers": ["Piece", "Runs on", "Who uses it"],
                 "rows": [
-                    ["**Server** (web app + API + database)", "Your **mini-PC** (always on)", "Everything connects to it"],
+                    ["**Server** (web app + API + database)", "Your **mini-PC or Mac mini** (always on)", "Everything connects to it"],
                     ["**Desktop app**", "A **Windows** PC and/or a **Mac**", "You, day to day, as a native app"],
                     ["**Browser / tablet access**", "Any phone, tablet, Linux laptop, Raspberry Pi", "Anyone, through a web browser"],
                     ["**AI assistant** (optional)", "The server (local) or the cloud", "Adds \u2728 smart triage & search"],
@@ -64,23 +64,26 @@ CHAPTERS = [
             {"h1": "What you'll need"},
             {"h2": "Hardware: the server (any small always-on computer)"},
             {"p": "The server can be **any always-on computer** that meets the modest requirements below \u2014 a "
-                  "mini-PC (the author uses a Beelink EQi12, but any brand works), a small desktop, or even a spare "
-                  "laptop. It just needs to stay powered on and on your network. This guide runs Windows on it."},
+                  "Windows mini-PC (the author uses a Beelink EQi12, but any brand works), a small desktop, a spare "
+                  "laptop, or a **Mac mini**. It just needs to stay powered on and on your network. This guide sets "
+                  "it up on **Windows or macOS** — pick whichever you have."},
             {"table": {
                 "headers": ["", "Minimum", "Recommended"],
                 "rows": [
                     ["**CPU** (processor)", "Any modern 2-core 64-bit", "Quad-core or better \u2014 especially if you run the local AI on it"],
                     ["**RAM** (memory)", "4 GB", "8 GB \u2014 or **16\u201324 GB** if you'll run the local AI here"],
                     ["**Storage**", "128 GB SSD (solid-state drive)", "A **second drive** (or partition) for the data, so it survives a Windows reinstall"],
-                    ["**OS** (operating system)", "Windows 10/11 (64-bit)", "Windows 11"],
+                    ["**OS** (operating system)", "Windows 10/11 (64-bit) **or** macOS 13+", "Windows 11, or macOS on Apple Silicon"],
                     ["**Network**", "Wi-Fi", "**Wired Ethernet** \u2014 steadier for an always-on server"],
                 ],
                 "widths": [1.1, 2.3, 3.1],
             }},
-            {"callout": {"kind": "note", "label": "PICK ANY BRAND",
+            {"callout": {"kind": "note", "label": "WINDOWS PC OR MAC MINI — EITHER WORKS",
                          "text": "There's nothing special about a Beelink \u2014 it's just a quiet, low-power mini-PC "
                                  "that's easy to leave on. Any machine meeting the specs above works the same way. "
-                                 "More RAM only matters if you also host the optional local AI (Chapter 3)."}},
+                                 "A **Mac mini (Apple Silicon)** is an excellent choice too, and its unified "
+                                 "memory makes the optional local AI (Chapter 3) notably faster. More RAM only "
+                                 "matters if you also host that local AI."}},
             {"h2": "The other devices (all optional)"},
             {"bullets": [
                 "A **Windows PC** and/or a **Mac** for the native desktop app (optional \u2014 you can use only the "
@@ -111,15 +114,98 @@ CHAPTERS = [
 
     # 2 -------------------------------------------------------------------------------
     {
-        "title": "Set Up the Server (Your Mini-PC)",
-        "subtitle": "Prepare Windows, put the data on the D: drive, build OpenTrack, and run it for the whole network.",
+        "title": "Set Up the Server (Windows or a Mac)",
+        "subtitle": "Run one setup script that installs, builds, and starts the whole server — with by-hand steps as a fallback.",
         "in_this_chapter": [
-            "Prepare Windows and the two drives (app on C:, data on D:)",
-            "Install the free .NET tools and download OpenTrack",
-            "Build and run the server so the whole LAN can reach it",
-            "Open the firewall, auto-start at boot, and create the first administrator",
+            "The easy way: run the one-command setup script",
+            "Change ports, the data location, or add the AI with a settings file",
+            "Create the first administrator",
+            "The by-hand alternative, step by step, if you'd rather not use the script",
         ],
         "blocks": [
+            {"h1": "The easy way: one setup script"},
+            {"p": "Almost everything in this chapter is automated by a **setup script** that ships with OpenTrack "
+                  "— a PowerShell script for **Windows** (`Install-OpenTrackServer.ps1`) and a bash script for "
+                  "**macOS** (`install-opentrack-server.sh`), both in the `scripts` folder. Either one installs the "
+                  "tools it needs (the .NET 10 Software Development Kit and Git), downloads and builds OpenTrack, "
+                  "points the web app and the API at one shared database, sets up networking, and registers both "
+                  "programs to start automatically at boot. You run it once; re-run it anytime to update."},
+            {"callout": {"kind": "note", "label": "WHAT YOU NEED FIRST",
+                         "text": "A Windows 10/11 **or** macOS 13+ machine, an internet connection, and about 10\u201315 minutes. The "
+                                 "script needs elevated rights (it runs as **Administrator** on Windows, or asks "
+                                 "for your password for `sudo` on a Mac) to set up networking and auto-start. It "
+                                 "installs the .NET SDK and Git for you if they're missing."}},
+            {"h2": "On Windows"},
+            {"steps": [
+                "Get the OpenTrack code onto the server: on the project's GitHub page click the green **Code** "
+                "button \u2192 **Download ZIP**, then unzip it (for example to `C:\\OpenTrack`). Or, if you already "
+                "have Git, `git clone https://github.com/KE4CON/OpenTrack.git`.",
+                "Open **PowerShell as Administrator**: right-click the Start button \u2192 **Terminal (Admin)** (or "
+                "**Windows PowerShell (Admin)**).",
+                "Go to the `scripts` folder inside the code you just unzipped, and run the setup script:",
+            ]},
+            {"code": [
+                "cd C:\\OpenTrack\\OpenTrack\\scripts",
+                "powershell -ExecutionPolicy Bypass -File .\\Install-OpenTrackServer.ps1",
+            ]},
+            {"h2": "On a Mac"},
+            {"steps": [
+                "Get the OpenTrack code onto the Mac the same way \u2014 **Download ZIP** from the GitHub **Code** "
+                "button and unzip it (into your home folder, say), or `git clone` it if you have Git.",
+                "Open the **Terminal** app (Applications \u2192 Utilities \u2192 Terminal).",
+                "Go to the `scripts` folder, make the script executable, and run it. It asks for your password "
+                "once, for the always-on setup:",
+            ]},
+            {"code": [
+                "cd ~/OpenTrack/OpenTrack/scripts",
+                "chmod +x install-opentrack-server.sh",
+                "./install-opentrack-server.sh",
+            ]},
+            {"p": "Watch it work. When it finishes, it prints the **web address** to open and how to create the "
+                  "**first administrator** \u2014 skip to \u201cCreate the first administrator\u201d below."},
+            {"callout": {"kind": "tip", "label": "CHANGE PORTS, DATA LOCATION, OR ADD AI",
+                         "text": "To change anything \u2014 the ports, where the database lives (for example put it on "
+                                 "a D: drive), or to install the local AI at the same time \u2014 copy "
+                                 "`opentrack-server.sample.conf` to `opentrack-server.conf`, edit the values, and add "
+                                 "`-ConfigFile .\\opentrack-server.conf` to the command. For example set "
+                                 "`DataDir = D:\\OpenTrackData` to keep data on the D: drive, or `InstallAi = true` "
+                                 "to also set up the free local AI (Chapter 3). On Windows add the `-InstallAi` "
+                                 "switch; on a Mac use `--install-ai` (and `--config` instead of `-ConfigFile`). The "
+                                 "same settings file works for both."}},
+            {"h2": "What the script set up"},
+            {"bullets": [
+                "The **two server programs** built and running \u2014 the **web app** on port **5035** (browsers) and "
+                "the **API** on port **5003** (desktop apps).",
+                "**One shared database** in your data folder (default `C:\\OpenTrack\\data` \u2014 change it with "
+                "`DataDir`).",
+                "On Windows, the **Firewall** opened for both ports so other devices can connect (a Mac on a "
+                "trusted network needs nothing here).",
+                "Both programs **registered to start at boot** — a scheduled task on Windows, a launchd service on "
+                "a Mac — and started now.",
+                "The **local AI** as well, if you asked for it.",
+            ]},
+            {"h1": "Create the first administrator"},
+            {"steps": [
+                "On any computer on the network, open the web address the script printed: "
+                "**http://SERVER-IP:5035**.",
+                "Choose **Register** and create your account \u2014 the **first** account registered becomes the "
+                "**Administrator**. Do this soon, before anyone else.",
+            ]},
+            {"callout": {"kind": "tip", "label": "OR SET THE ADMIN AUTOMATICALLY",
+                         "text": "Put `AdminEmail` and `AdminPassword` in the settings file and the script hands "
+                                 "those to the server, which creates/promotes that account to Administrator at "
+                                 "startup \u2014 so you never rely on \u201cfirst to register wins.\u201d"}},
+            {"h1": "Updating later"},
+            {"p": "To update OpenTrack, just **re-run the same script**. It pulls the latest code, rebuilds both "
+                  "programs, and restarts them. Your database and settings are untouched."},
+
+            {"h1": "The by-hand alternative (optional)"},
+            {"callout": {"kind": "note", "label": "YOU CAN SKIP THIS",
+                         "text": "The steps below do the same work as the script, by hand, and are written for "
+                                 "**Windows** (on a Mac the script does the equivalent using Homebrew and launchd). "
+                                 "You only need them if you want to understand or customize the setup, or the script "
+                                 "doesn't fit your environment. If the script worked, you're done \u2014 go on to "
+                                 "Chapter 3 (AI) or Chapter 4 (desktop app)."}},
             {"h1": "Step A \u2014 Prepare Windows and the drives"},
             {"p": "If your server has a **second drive** (or you can make a second partition), keep **Windows and "
                   "the app on C:** and put **your data on D:**. That way, if you ever have to reinstall Windows, "
@@ -202,7 +288,6 @@ CHAPTERS = [
             ]},
             {"p": "Leave both windows running. On the server itself, open a browser to "
                   "**http://localhost:5035** \u2014 you should see the OpenTrack sign-in page."},
-            {"screenshot": "The OpenTrack web app sign-in / register page on first run"},
 
             {"h1": "Step G \u2014 Open the Windows Firewall"},
             {"p": "So other devices on your network can reach the two ports, allow them through the firewall. In an "
@@ -262,6 +347,11 @@ CHAPTERS = [
             "The cloud option (Claude / OpenAI) if you prefer",
         ],
         "blocks": [
+            {"callout": {"kind": "tip", "label": "THE SETUP SCRIPT CAN DO ALL OF THIS",
+                         "text": "If you ran Chapter 2's setup script with `InstallAi = true` (or the `-InstallAi` "
+                                 "switch), the local AI below is already installed and turned on — you can skip "
+                                 "this chapter. The steps here are the by-hand version, and the place to look if you "
+                                 "want the cloud option instead."}},
             {"h1": "What the AI adds"},
             {"p": "With **AI (artificial intelligence)** turned on, OpenTrack gains a **\u2728 Suggest with AI** button on the New-issue page "
                   "(it fills in severity, priority, category, and tags from what you typed) and an **\u2728 Ask in "
@@ -305,7 +395,6 @@ CHAPTERS = [
                 "Open **New Issue** in the web app \u2014 you should now see the **\u2728 Suggest with AI** button. Type a "
                 "title and click it to confirm the model responds.",
             ]},
-            {"screenshot": "The New Issue page showing the \u2728 Suggest with AI button"},
 
             {"h1": "Prefer the cloud instead?"},
             {"p": "You can point OpenTrack at cloud Claude or OpenAI instead of local Ollama. Set "
@@ -378,7 +467,6 @@ CHAPTERS = [
                 "Sign in with the account you created on the server. You're in \u2014 same projects and issues as the "
                 "web app, in a native window.",
             ]},
-            {"screenshot": "The Windows desktop app Settings showing the server address field"},
             {"callout": {"kind": "tip", "label": "THE ADDRESS IS REMEMBERED PER MACHINE",
                          "text": "Each computer stores its own server address, so you set it once. If the server's "
                                  "address ever changes, just update it here."}},
@@ -443,7 +531,6 @@ CHAPTERS = [
                 "**http://SERVER-IP:5003**.",
                 "Sign in with your account. Done \u2014 the Mac now shows the same data as everything else.",
             ]},
-            {"screenshot": "The macOS desktop app running, connected to the server"},
         ],
     },
 
@@ -474,7 +561,6 @@ CHAPTERS = [
                 "screen**.",
                 "Launch it from the new icon \u2014 it opens full-screen, like an installed app.",
             ]},
-            {"screenshot": "OpenTrack added to an iPad home screen, opened full-screen"},
             {"callout": {"kind": "tip", "label": "GREAT FOR RUNNING A CHECKLIST",
                          "text": "The tablet PWA is ideal for walking a project's bug-hunt checklist \u2014 you can "
                                  "check items off even if the Wi-Fi hiccups, and it syncs when you're back online."}},
@@ -498,12 +584,10 @@ CHAPTERS = [
                 "Open the project and add a couple of **categories** and, if you use them, **versions** under "
                 "**Settings**.",
             ]},
-            {"screenshot": "Creating a new project"},
             {"h1": "Add people and roles"},
             {"p": "Invite the people who'll use OpenTrack and give each the right **role** on each project. Roles "
                   "range from **Reporter** (can file issues) up through **Manager** (can configure the project) and "
                   "**Administrator** (runs the whole instance)."},
-            {"screenshot": "The project members / roles screen"},
             {"h1": "Optional power features"},
             {"p": "None of these are required, but they're what make OpenTrack shine. Turn on the ones you want, "
                   "per project, under the project's **Settings**:"},
@@ -564,12 +648,11 @@ CHAPTERS = [
                                  "drive or a cloud folder \u2014 so a dead server doesn't take your data with it."}},
 
             {"h1": "Updating OpenTrack"},
-            {"steps": [
-                "In `C:\\OpenTrack\\OpenTrack`, pull the latest code: `git pull`.",
-                "Re-publish both programs (Chapter 2, Step D).",
-                "Restart the web app and API. The database upgrades itself automatically on first start \u2014 no "
-                "manual database steps.",
-            ]},
+            {"p": "Easiest: **re-run the setup script** from Chapter 2 (`Install-OpenTrackServer.ps1`). It pulls "
+                  "the latest code, rebuilds both programs, and restarts them \u2014 the database upgrades itself on "
+                  "first start, with no manual database steps."},
+            {"p": "By hand instead: in your OpenTrack folder run `git pull`, re-publish both programs (Chapter 2's "
+                  "manual Step D), and restart the web app and API."},
 
             {"h1": "Quick troubleshooting"},
             {"table": {
