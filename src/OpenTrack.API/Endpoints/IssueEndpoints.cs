@@ -15,9 +15,11 @@ using OpenTrack.API.Contracts;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
 using OpenTrack.Core.Querying;
+using OpenTrack.Core.Validation;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Automation;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Infrastructure.Issues;
 using OpenTrack.Core.Bulk;
 using OpenTrack.Infrastructure.Bulk;
 using OpenTrack.Infrastructure.CustomFields;
@@ -115,14 +117,20 @@ public static class IssueEndpoints
             if (!ctx.CanViewProject(project.IsPublic)) return Results.NotFound();
             if (!ctx.CanCreateIssue(project.IsPublic)) return Results.Forbid();
 
+            var title = (req.Title ?? "").Trim();
+            if (title.Length == 0) return Results.BadRequest(new { error = "Title is required." });
+            if (title.Length > FieldLimits.IssueTitle) title = title[..FieldLimits.IssueTitle];
+            // Drop category/version ids that don't belong to this project (cross-project id smuggling).
+            var (catId, avId, fvId) = await IssueScope.SanitizeAsync(db, projectId, req.CategoryId, req.AffectsVersionId, req.FixVersionId, ct);
+
             var issue = new Issue
             {
-                ProjectId = projectId, Title = req.Title, Description = req.Description,
+                ProjectId = projectId, Title = title, Description = req.Description ?? "",
                 StepsToReproduce = req.StepsToReproduce, ExpectedBehavior = req.ExpectedBehavior,
-                ActualBehavior = req.ActualBehavior, CategoryId = req.CategoryId,
+                ActualBehavior = req.ActualBehavior, CategoryId = catId,
                 Severity = req.Severity, Priority = req.Priority, Reproducibility = req.Reproducibility,
-                DueDate = req.DueDate, AffectsVersionId = req.AffectsVersionId, FixVersionId = req.FixVersionId,
-                Latitude = req.Latitude, Longitude = req.Longitude,
+                DueDate = req.DueDate, AffectsVersionId = avId, FixVersionId = fvId,
+                Latitude = GeoValidation.Latitude(req.Latitude), Longitude = GeoValidation.Longitude(req.Longitude),
                 ReporterId = access.UserId, Status = IssueStatus.New,
                 CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
             };
@@ -164,8 +172,14 @@ public static class IssueEndpoints
                 !await WorkflowOperations.IsAllowedAsync(db, issue.ProjectId, originalStatus, req.Status, ct))
                 return Results.BadRequest($"Changing status from {originalStatus} to {req.Status} isn't allowed by this project's workflow.");
 
-            issue.Title = req.Title;
-            issue.Description = req.Description;
+            var newTitle = (req.Title ?? "").Trim();
+            if (newTitle.Length == 0) return Results.BadRequest(new { error = "Title is required." });
+            if (newTitle.Length > FieldLimits.IssueTitle) newTitle = newTitle[..FieldLimits.IssueTitle];
+            // Scope category/version ids to this project (cross-project id smuggling).
+            var (uCat, uAv, uFv) = await IssueScope.SanitizeAsync(db, issue.ProjectId, req.CategoryId, req.AffectsVersionId, req.FixVersionId, ct);
+
+            issue.Title = newTitle;
+            issue.Description = req.Description ?? "";
             issue.StepsToReproduce = req.StepsToReproduce;
             issue.ExpectedBehavior = req.ExpectedBehavior;
             issue.ActualBehavior = req.ActualBehavior;
@@ -174,10 +188,10 @@ public static class IssueEndpoints
             issue.Priority = req.Priority;
             issue.Reproducibility = req.Reproducibility;
             issue.Resolution = req.Resolution;
-            issue.CategoryId = req.CategoryId;
+            issue.CategoryId = uCat;
             issue.DueDate = req.DueDate;
-            issue.AffectsVersionId = req.AffectsVersionId;
-            issue.FixVersionId = req.FixVersionId;
+            issue.AffectsVersionId = uAv;
+            issue.FixVersionId = uFv;
 
             // Privileged fields: ignore (keep existing) unless the caller is authorized, so a crafted
             // request body cannot escalate past what the UI exposes for the caller's role.

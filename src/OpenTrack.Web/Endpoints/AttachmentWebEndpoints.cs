@@ -82,8 +82,13 @@ public static class AttachmentWebEndpoints
             return Results.File(stream, attachment.ContentType, fileDownloadName: attachment.FileName);
         });
 
-        group.MapPost("/{id:int}/delete", async (int id, HttpContext http, AppDbContext db, IAttachmentStorage storage, CancellationToken ct) =>
+        group.MapPost("/{id:int}/delete", async (int id, HttpContext http, AppDbContext db, IAttachmentStorage storage, Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery, CancellationToken ct) =>
         {
+            // This POST reads no form-bound parameter, so UseAntiforgery doesn't auto-validate it — do it
+            // explicitly (the delete form on the issue page carries an <AntiforgeryToken/>).
+            try { await antiforgery.ValidateRequestAsync(http); }
+            catch (Microsoft.AspNetCore.Antiforgery.AntiforgeryValidationException) { return Results.BadRequest("Invalid antiforgery token."); }
+
             var access = await LoadAccess(http, db, ct);
             if (access is null) return Results.Unauthorized();
             var attachment = await db.IssueAttachments.Include(a => a.Issue).ThenInclude(i => i.Project)

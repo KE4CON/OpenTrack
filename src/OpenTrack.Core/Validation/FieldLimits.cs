@@ -36,5 +36,7 @@ public static class FieldLimits
     public const int WebhookUrl = 500;
     public const int IntakeName = 100;
     public const int IntakeEmail = 200;
+    /// <summary>Cap for the free-text description on the UNAUTHENTICATED public intake form.</summary>
+    public const int IntakeDescription = 10000;
     public const int TimeLogNote = 500;
 }

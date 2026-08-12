@@ -55,8 +55,12 @@ public static class ImportWebEndpoints
         // Generic issue import (CSV / Jira CSV / GitHub JSON) into a chosen existing project. The Import
         // page posts projectId + source + file; the shared IssueImporter enforces the per-project Manager
         // requirement and dedups on re-import.
-        group.MapPost("/issues", async (HttpContext http, AppDbContext db, CancellationToken ct) =>
+        group.MapPost("/issues", async (HttpContext http, AppDbContext db, Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery, CancellationToken ct) =>
         {
+            // Reads the form manually, so UseAntiforgery doesn't auto-validate — do it explicitly.
+            try { await antiforgery.ValidateRequestAsync(http); }
+            catch (Microsoft.AspNetCore.Antiforgery.AntiforgeryValidationException) { return Results.BadRequest("Invalid antiforgery token."); }
+
             var identity = http.User.GetAccessIdentity();
             if (identity is null) return Results.Unauthorized();
 

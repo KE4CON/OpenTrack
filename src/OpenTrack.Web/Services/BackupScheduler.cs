@@ -32,7 +32,7 @@ public sealed class BackupScheduler(IConfiguration config, BackupOptions options
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            try { BackupOnce(stoppingToken); }
+            try { await BackupOnceAsync(stoppingToken); }
             catch (OperationCanceledException) { break; }
             catch (Exception ex) { logger.LogWarning(ex, "Scheduled backup failed; will retry next interval."); }
 
@@ -40,7 +40,7 @@ public sealed class BackupScheduler(IConfiguration config, BackupOptions options
         }
     }
 
-    private void BackupOnce(CancellationToken ct)
+    private async Task BackupOnceAsync(CancellationToken ct)
     {
         var connString = config.ResolveOpenTrackConnectionString();
         var dbPath = new SqliteConnectionStringBuilder(connString).DataSource;
@@ -52,15 +52,14 @@ public sealed class BackupScheduler(IConfiguration config, BackupOptions options
 
         var dest = Path.Combine(dir, BackupRetention.FileName(DateTime.UtcNow));
 
-        using (var conn = new SqliteConnection(connString))
+        await using (var conn = new SqliteConnection(connString))
         {
-            conn.Open();
-            using var cmd = conn.CreateCommand();
+            await conn.OpenAsync(ct);
+            await using var cmd = conn.CreateCommand();
             // VACUUM INTO takes a string literal, not a parameter; escape single quotes in the path.
             cmd.CommandText = $"VACUUM INTO '{dest.Replace("'", "''")}'";
-            cmd.ExecuteNonQuery();
+            await cmd.ExecuteNonQueryAsync(ct);
         }
-        ct.ThrowIfCancellationRequested();
 
         // Prune older backups beyond the retention count.
         var names = Directory.GetFiles(dir).Select(Path.GetFileName).Where(n => n is not null).Cast<string>();

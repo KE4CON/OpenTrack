@@ -58,7 +58,9 @@ public static class GitIntegrationOperations
             db.GitIntegrations.Add(config);
         }
         config.Enabled = enabled;
-        config.WebhookSecret = string.IsNullOrWhiteSpace(webhookSecret) ? null : webhookSecret.Trim();
+        // Store the secret EXACTLY as entered (no Trim): GitHub signs over the exact bytes you paste into
+        // its webhook Secret field, so trimming here would silently break verification for a padded secret.
+        config.WebhookSecret = string.IsNullOrWhiteSpace(webhookSecret) ? null : webhookSecret;
         config.AutoResolve = autoResolve;
         await db.SaveChangesAsync(ct);
         return null;
@@ -93,6 +95,7 @@ public static class GitIntegrationOperations
         var now = DateTime.UtcNow;
         var linked = 0;
         var resolvedIssueIds = new List<int>();
+        var seen = new HashSet<(int IssueId, string Sha)>();
 
         foreach (var c in commits)
         {
@@ -106,18 +109,29 @@ public static class GitIntegrationOperations
                 var issue = await db.Issues.FirstOrDefaultAsync(i => i.Id == r.IssueId && i.ProjectId == projectId, ct);
                 if (issue is null) continue;
 
-                if (!await db.IssueCommitLinks.AnyAsync(l => l.IssueId == issue.Id && l.Sha == c.Sha, ct))
+                // Consider a (issue, sha) already linked if it's in the DB OR was added earlier in THIS
+                // push (the change tracker isn't visible to AnyAsync) — prevents a crafted payload with a
+                // duplicate commit from violating the unique index and aborting the whole push.
+                var key = (issue.Id, c.Sha);
+                var alreadyLinked = seen.Contains(key)
+                    || await db.IssueCommitLinks.AnyAsync(l => l.IssueId == issue.Id && l.Sha == c.Sha, ct);
+                var newlyLinked = false;
+                if (!alreadyLinked)
                 {
                     db.IssueCommitLinks.Add(new IssueCommitLink
                     {
                         IssueId = issue.Id, Sha = c.Sha, Message = firstLine,
                         Author = c.Author, Url = c.Url, Closing = r.Closing, CommittedAt = c.CommittedAt,
                     });
+                    seen.Add(key);
                     linked++;
+                    newlyLinked = true;
                 }
 
-                // Auto-resolve a closing reference on an open issue, if the workflow permits it.
-                if (r.Closing && autoResolve && (int)issue.Status < (int)IssueStatus.Resolved
+                // Auto-resolve only for a NEWLY linked closing reference on an open issue the workflow
+                // permits — gating on newlyLinked means a replayed (already-linked) push can't re-resolve a
+                // manually reopened issue.
+                if (r.Closing && newlyLinked && autoResolve && (int)issue.Status < (int)IssueStatus.Resolved
                     && !resolvedIssueIds.Contains(issue.Id)
                     && await WorkflowOperations.IsAllowedAsync(db, projectId, issue.Status, IssueStatus.Resolved, ct))
                 {

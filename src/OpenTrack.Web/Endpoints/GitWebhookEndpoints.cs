@@ -41,7 +41,7 @@ public static class GitWebhookEndpoints
 
             var signature = request.Headers["X-Hub-Signature-256"].ToString();
             if (!GitSignature.IsValid(config.WebhookSecret, body, signature))
-                return Results.Unauthorized();
+                return Results.NotFound(); // same response as unconfigured — don't reveal which projects have Git enabled
 
             var githubEvent = request.Headers["X-GitHub-Event"].ToString();
             if (string.Equals(githubEvent, "ping", StringComparison.OrdinalIgnoreCase))

@@ -137,10 +137,15 @@ public static class ExportBuilder
 
     private static string Iso(DateTime dt) => dt.ToString("o", CultureInfo.InvariantCulture);
 
-    /// <summary>RFC-4180 CSV field: quote when it contains a comma, quote, CR, or LF; double inner quotes.</summary>
-    private static string Csv(string? value)
+    /// <summary>RFC-4180 CSV field: quote when it contains a comma, quote, CR, or LF; double inner quotes.
+    /// Also neutralizes spreadsheet formula injection — a value beginning with =, +, -, @, or a tab is
+    /// prefixed with a single quote so Excel/Sheets treat it as text, not a live formula.</summary>
+    public static string Csv(string? value)
     {
         var s = value ?? "";
+        // Formula-injection guard: values a spreadsheet would evaluate get a leading apostrophe.
+        if (s.Length > 0 && (s[0] is '=' or '+' or '-' or '@' or '\t' or '\r'))
+            s = "'" + s;
         if (s.IndexOfAny([',', '"', '\r', '\n']) < 0) return s;
         return "\"" + s.Replace("\"", "\"\"") + "\"";
     }

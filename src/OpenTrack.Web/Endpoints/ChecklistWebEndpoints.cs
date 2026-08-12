@@ -21,7 +21,9 @@ namespace OpenTrack.Web.Endpoints;
 /// checklist page normally posts its Pass/Fail/N-A via static-SSR forms; this endpoint is what the
 /// offline layer (checklist-offline.js) replays queued changes to when the tablet comes back online.
 /// It delegates to the same shared, ACL-checked ChecklistOperations, so an offline replay can't do
-/// anything the online form couldn't. Antiforgery is enforced (the JS sends the page's token).
+/// anything the online form couldn't. CSRF is mitigated by the same-origin + SameSite=Lax auth cookie
+/// (a cross-site page can't drive it); the antiforgery TOKEN is deliberately NOT enforced here because a
+/// change checked off offline is replayed later, by which point the page's token may have rotated.
 /// </summary>
 public static class ChecklistWebEndpoints
 {

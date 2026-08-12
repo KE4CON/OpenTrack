@@ -23,6 +23,7 @@ using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Automation;
 using OpenTrack.Infrastructure.Git;
+using OpenTrack.Infrastructure.Issues;
 using OpenTrack.Infrastructure.Sla;
 using OpenTrack.Infrastructure.Checklist;
 using OpenTrack.Infrastructure.CustomFields;
@@ -428,6 +429,7 @@ public class DbOpenTrackDataService(
         return await db.Issues.AsNoTracking()
             .WhereVisibleTo(access)   // ACL first — filtering can only narrow what the user may see
             .ApplyFilter(filter)
+            .Take(IssueDefaults.MaxListRows)   // defensive cap so a huge project can't materialize unbounded rows
             .Select(i => new IssueRow(
                 i.Id, i.ProjectId, i.Project.Name, i.Title, i.Status, i.Severity, i.Priority,
                 i.Reporter.UserName ?? "unknown", i.Assignee != null ? i.Assignee.UserName : null, i.UpdatedAt))
@@ -493,14 +495,17 @@ public class DbOpenTrackDataService(
         if (!ctx.CanCreateIssue(project.IsPublic))
             throw new UnauthorizedAccessException("Reporting an issue requires the Reporter role on this project.");
 
+        // Drop any category/version ids that don't belong to this project (cross-project id smuggling).
+        var (catId, avId, fvId) = await IssueScope.SanitizeAsync(db, projectId, input.CategoryId, input.AffectsVersionId, input.FixVersionId, ct);
         var issue = new Issue
         {
             ProjectId = projectId, Title = input.Title, Description = input.Description,
             StepsToReproduce = input.StepsToReproduce, ExpectedBehavior = input.ExpectedBehavior,
-            ActualBehavior = input.ActualBehavior, CategoryId = input.CategoryId,
+            ActualBehavior = input.ActualBehavior, CategoryId = catId,
             Severity = input.Severity, Priority = input.Priority, Reproducibility = input.Reproducibility,
-            DueDate = input.DueDate, AffectsVersionId = input.AffectsVersionId, FixVersionId = input.FixVersionId,
-            Latitude = input.Latitude, Longitude = input.Longitude,
+            DueDate = input.DueDate, AffectsVersionId = avId, FixVersionId = fvId,
+            Latitude = OpenTrack.Core.Validation.GeoValidation.Latitude(input.Latitude),
+            Longitude = OpenTrack.Core.Validation.GeoValidation.Longitude(input.Longitude),
             ReporterId = access.UserId, Status = IssueStatus.New,
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
@@ -555,10 +560,11 @@ public class DbOpenTrackDataService(
         issue.Priority = input.Priority;
         issue.Reproducibility = input.Reproducibility;
         issue.Resolution = input.Resolution;
-        issue.CategoryId = input.CategoryId;
+        var (uCat, uAv, uFv) = await IssueScope.SanitizeAsync(db, issue.ProjectId, input.CategoryId, input.AffectsVersionId, input.FixVersionId, ct);
+        issue.CategoryId = uCat;
         issue.DueDate = input.DueDate;
-        issue.AffectsVersionId = input.AffectsVersionId;
-        issue.FixVersionId = input.FixVersionId;
+        issue.AffectsVersionId = uAv;
+        issue.FixVersionId = uFv;
 
         // Privileged fields: silently keep the existing value if the caller lacks the right, so a
         // crafted request can never escalate (the UI already hides these controls by role).
