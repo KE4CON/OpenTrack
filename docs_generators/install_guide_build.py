@@ -222,8 +222,9 @@ CHAPTERS = [
             {"bullets": [
                 "The **two server programs** built and running \u2014 the **web app** on port **5035** (browsers) and "
                 "the **API** on port **5003** (desktop apps).",
-                "**One shared database** in your data folder (default `C:\\OpenTrack\\data` \u2014 change it with "
-                "`DataDir`).",
+                "**One shared database** in the data folder you chose when it asked (its suggestion is "
+                "`C:\\OpenTrack\\data`, or a second drive like `D:\\OpenTrack\\Data`, on Windows; "
+                "`/usr/local/opentrack/data` on a Mac).",
                 "On Windows, the **Firewall** opened for both ports so other devices can connect (a Mac on a "
                 "trusted network needs nothing here).",
                 "Both programs **registered to start at boot** — a scheduled task on Windows, a launchd service on "
