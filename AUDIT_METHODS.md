@@ -49,7 +49,7 @@ The methods reference these. Fill them in (or tell your assistant to detect them
 | **Reference oracle** | **MantisBT** behavior/feature set (the parity target) — diff OpenTrack's behavior against Mantis, feature by feature |
 | **Concurrency hot spots** | request handling under load, background jobs (notifications/email), any caches; **database transaction isolation** |
 | **Security-sensitive surfaces** | **it's a web app → M6 (Security) is the top priority:** authentication/session (fail-closed), authorization (per-project/role — watch **IDOR**), **XSS** in every rendered issue/comment field, **SQL injection**, **CSRF**, file-upload (path traversal + content-type), SSRF in any outbound fetch, password storage/hashing |
-| **Canonical spec / docs to check against** | `docs/OpenTrack_BugTracker_Report.pdf` (Mantis feature inventory + roadmap); `CLAUDE.md`; `OpenTrack_Decisions_Log.md` |
+| **Canonical spec / docs to check against** | `docs/reference/OpenTrack_BugTracker_Report.pdf` (Mantis feature inventory + roadmap); `CLAUDE.md`; `OpenTrack_Decisions_Log.md` |
 | **Known-latent list** | §11 Open questions (keep-or-defer Mantis features); the Decisions Log |
 
 ---

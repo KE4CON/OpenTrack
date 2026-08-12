@@ -4,7 +4,7 @@ Small helper scripts for OpenTrack maintenance.
 
 ## md2pdf.py — Markdown → PDF
 
-Renders one of our Markdown docs to a PDF (used e.g. for `docs/AI_ASSIST.pdf`).
+Renders one of our Markdown docs to a PDF (used e.g. for `docs/guides/AI_ASSIST.pdf`).
 Handles the subset of Markdown our docs use: `#`/`##`/`###` headings, `---`
 rules, bullet/numbered lists, fenced ```` ``` ```` code blocks, pipe tables, and
 inline `**bold**`, `` `code` ``, and `[links](url)`.
@@ -13,7 +13,7 @@ inline `**bold**`, `` `code` ``, and `[links](url)`.
 (no LaTeX, no pandoc, no system libraries) — so it runs anywhere Python does.
 
 ```bash
-python scripts/md2pdf.py docs/AI_ASSIST.md docs/AI_ASSIST.pdf
+python scripts/md2pdf.py docs/guides/AI_ASSIST.md docs/guides/AI_ASSIST.pdf
 ```
 
 Re-run it after editing the Markdown to refresh the PDF.
