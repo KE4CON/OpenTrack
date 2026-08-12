@@ -1,0 +1,256 @@
+{
+  "order": 6,
+  "title": "The Issue Page — a Complete Tour",
+  "subtitle": "Everything you can see and do on a single issue, from the number at the top to the history at the bottom.",
+  "in_this_chapter": [
+    "The header: number, title, project, and the action buttons",
+    "The key-fields panel and what each row tells you",
+    "The SLA badge, location, and private marker",
+    "Tags, custom fields, and the possibly-related list",
+    "The AI summary card",
+    "The write-up: Description, Steps, Expected, Actual",
+    "Attachments, Notes, Relationships, Linked commits, Time log",
+    "The automatic History trail",
+    "Troubleshooting things you cannot see or do"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Everything about one issue lives on its own page. The **number, title, and action buttons** sit at the top, then the **key fields** (status, severity, and so on), then the full write-up, attachments, notes, related issues, and a complete **History** at the bottom. Scroll down — it is all there on one page."
+      }
+    },
+    {
+      "h1": "What this is and how you get here"
+    },
+    {
+      "p": "Every issue has one page that shows and holds everything about it. You reach it by selecting an issue anywhere it is listed — a project's issue list, a search result, the dashboard, or the link you land on right after creating it. This chapter is a guided walk down that page from top to bottom, naming every section so you always know where a thing lives. Some sections only appear when they have content or when your role allows an action, so do not worry if you do not see every one on every issue."
+    },
+    {
+      "h1": "The header: number, title, and actions"
+    },
+    {
+      "p": "At the very top, a small gray line reads __[project name] / Issue #[number]__. The **number** (like `#123`) is a permanent identifier you can quote in conversation, in commit messages, or to a colleague — it never changes and always points to this one issue. Directly below it, in large type, is the issue's **title**."
+    },
+    {
+      "p": "To the right of the title sit the action buttons. The exact set depends on your role:"
+    },
+    {
+      "table": {
+        "headers": ["Button", "What it does"],
+        "rows": [
+          ["**Monitor** / **Monitoring ✓**", "Turns notifications for this issue on or off. When you are monitoring, the button reads __Monitoring ✓__ and is filled in; select it again to stop. A line under the header reminds you: __Monitoring an issue notifies you of changes to it.__ (See the Notifications chapter.)"],
+          ["**Print / PDF**", "Opens a clean, print-friendly version of the issue you can print on paper or save as a Portable Document Format (PDF) file. (See the Printing chapter.)"],
+          ["**Edit**", "Opens the edit form to change any field. This button only appears if you have permission to update the issue. (See the Working an Issue chapter.)"]
+        ],
+        "widths": [1.9, 4.6]
+      }
+    },
+    {
+      "screenshot": "The top of an issue page: the project/number line, the title, and the Monitor, Print / PDF, and Edit buttons"
+    },
+    {
+      "h1": "The key-fields panel"
+    },
+    {
+      "p": "Just below the header is a compact block of the fields that describe the issue's current state. They are laid out in rows so you can read the whole situation at a glance."
+    },
+    {
+      "p": "The first row shows the four classifications:"
+    },
+    {
+      "bullets": [
+        "**Status** — where the issue is in its life: __New__, __Feedback__, __Acknowledged__, __Confirmed__, __Assigned__, __Resolved__, or __Closed__ (the Working an Issue chapter explains each one).",
+        "**Severity** — how bad the impact is (Feature, Trivial, Text, Tweak, Minor, Major, Crash, Block).",
+        "**Priority** — how urgent it is (None, Low, Normal, High, Urgent, Immediate).",
+        "**Reproducibility** — how reliably it can be triggered (Always, Sometimes, Random, HaveNotTried, UnableToReproduce, NotApplicable)."
+      ]
+    },
+    {
+      "p": "The next row shows who and when:"
+    },
+    {
+      "bullets": [
+        "**Reporter** — the person who filed the issue.",
+        "**Assignee** — the person working it, or __Unassigned__ if nobody has it yet.",
+        "**Category** — the project bucket it belongs to, or __—__ if none was chosen.",
+        "**Updated** — the date and time it last changed, so you can tell a fresh issue from a stale one at a glance."
+      ]
+    },
+    {
+      "p": "A third row shows the resolution and version details:"
+    },
+    {
+      "bullets": [
+        "**Resolution** — how the issue ended, once it is resolved (starts at __Open__; the full list is in the Working an Issue chapter).",
+        "**Due** — the target date, or __—__ if none was set.",
+        "**Affects** — the release the problem shows up in, or __—__.",
+        "**Fixed in** — the release that resolves it, or __—__."
+      ]
+    },
+    {
+      "screenshot": "The key-fields panel showing the status/severity/priority/reproducibility row and the reporter/assignee rows"
+    },
+    {
+      "h2": "The SLA badge"
+    },
+    {
+      "p": "If the project has __Service-Level Agreement (SLA)__ targets set — deadlines the team commits to for responding to or resolving issues — a colored **SLA** badge appears in this area with a due time in Coordinated Universal Time (UTC). It tells you how the issue is doing against its deadline:"
+    },
+    {
+      "table": {
+        "headers": ["Badge", "Meaning"],
+        "rows": [
+          ["**On track** (green)", "Comfortably inside the deadline."],
+          ["**At risk** (yellow)", "The deadline is close; act soon to avoid missing it."],
+          ["**Breached** (red)", "The deadline has passed without the issue being resolved."]
+        ],
+        "widths": [1.8, 4.5]
+      }
+    },
+    {
+      "p": "If the project has no SLA targets, no badge shows at all — that is normal."
+    },
+    {
+      "h2": "Location and the private marker"
+    },
+    {
+      "bullets": [
+        "If a location was attached when the issue was filed, a **📍 Location** line shows the latitude and longitude with a **view map** link that opens the spot on an online map in a new tab.",
+        "If the issue is marked private, a yellow **Private issue** badge appears. A private issue is hidden from lower-access viewers (see the Working an Issue chapter)."
+      ]
+    },
+    {
+      "h1": "Tags"
+    },
+    {
+      "p": "The **Tags** section shows the free-form labels attached to the issue as small gray badges, or __none__ if there are none. Tags are handy for grouping and filtering across projects (for example __regression__ or __needs-design__). If you have permission to update the issue, you also get controls here to manage them:"
+    },
+    {
+      "bullets": [
+        "An **add a tag** box with an **Add** button. As you type, it suggests tags already in use so you can reuse an existing label instead of inventing a near-duplicate.",
+        "A **Remove a tag…** dropdown with a **Remove** button, listing the tags currently on the issue."
+      ]
+    },
+    {
+      "h1": "Custom fields"
+    },
+    {
+      "p": "If this project defines any __custom fields__ — extra fields beyond the built-in ones, like __Environment__ or __Customer__ — they appear in a **Custom fields** section. Viewers see them as a simple list of name-and-value. If you can update the issue, each one becomes an editable control (a text box, number box, date picker, or dropdown, depending on how it was set up), with a **Save custom fields** button. Required custom fields are marked with an asterisk (`*`). The Custom Fields chapter covers these in full."
+    },
+    {
+      "h1": "Possibly related"
+    },
+    {
+      "p": "OpenTrack quietly looks for other issues that resemble this one and, if it finds any, lists them in a **Possibly related** box — each as a link with its number, title, and status. It is an automatic nudge to help you spot duplicates or connected problems. Unlike the **Relationships** section further down, this list is just a suggestion; it does not create any formal link."
+    },
+    {
+      "h1": "The AI summary card"
+    },
+    {
+      "p": "If the AI assistant is turned on, a **✨ AI summary** card sits above the write-up. Select **Summarize thread** and OpenTrack reads the whole issue and its notes and produces a plain-language recap — the problem, what has been tried, and what is next. Once generated, the button changes to **Refresh** so you can regenerate it after new activity. A small note reminds you the text is AI-generated, so double-check anything important. If the AI is off, the card does not appear."
+    },
+    {
+      "screenshot": "The AI summary card with a generated recap and the Refresh button"
+    },
+    {
+      "h1": "The write-up"
+    },
+    {
+      "p": "Below the panels comes the heart of the issue — the text that was written when it was filed, with your Markdown rendered into real formatting. Each part gets its own clearly labeled heading, and a part is simply left out if it was never filled in:"
+    },
+    {
+      "bullets": [
+        "**Description** — always shown; the full story of the problem.",
+        "**Steps to Reproduce** — the recipe to trigger it, if provided.",
+        "**Expected Behavior** — what should happen, if provided.",
+        "**Actual Behavior** — what happens instead, if provided."
+      ]
+    },
+    {
+      "h1": "Attachments"
+    },
+    {
+      "p": "The **Attachments** section lists files added to the issue — logs, screenshots, sample data — each as a link showing its file name, size, and who uploaded it. Below the list is the control to add a file, and (with the right role) a **Delete** button beside each one. The Notes, Attachments, and Relationships chapter walks through uploading and downloading in detail. If there are none, it simply reads __No attachments.__"
+    },
+    {
+      "h1": "Notes"
+    },
+    {
+      "p": "The **Notes** section is the running discussion — comments from you and everyone else, oldest to newest, each stamped with the author's name and the time. A note marked private is outlined in yellow with a **Private** badge. At the bottom is an **Add a note…** box; below it a **Private note (visible to developers and up)** checkbox, and an **Add Note** button. Notes also understand Markdown, so you can format them just like the description."
+    },
+    {
+      "h1": "Relationships"
+    },
+    {
+      "p": "The **Relationships** section is where issues are formally linked to one another — this is the deliberate version of the automatic __Possibly related__ list above. Each existing link is shown with its type, the other issue's number and title, and that issue's project. If you can update the issue, controls let you add a link (choose a type, type the other issue's number, and select **Add**) or remove one. The relationship types are:"
+    },
+    {
+      "table": {
+        "headers": ["Type", "What it says"],
+        "rows": [
+          ["**related to**", "The two issues are connected, with no direction implied. This link reads the same from both sides."],
+          ["**duplicate of**", "This issue is the same problem as another. From the other issue's side it shows as __has duplicate__."],
+          ["**parent of**", "This issue is a parent that contains or oversees another. From the other side it shows as __child of__."],
+          ["**blocks**", "This issue is holding up another — the other cannot proceed until this is done. From the other side it shows as __blocked by__."]
+        ],
+        "widths": [1.6, 4.9]
+      }
+    },
+    {
+      "h1": "Linked commits"
+    },
+    {
+      "p": "If the project has Git integration turned on and a code commit mentioned this issue's number, a **Linked commits** section lists those commits — each with its short identifier (a link to the code host if available), the commit message, and the author and time. A commit that closed the issue carries a green **resolved** badge. This section is hidden when there are no linked commits. The Git Integration chapter explains how commits get linked."
+    },
+    {
+      "h1": "Time log"
+    },
+    {
+      "p": "The **Time log** section records work spent on the issue. When entries exist, it shows a **Total** at the top and a table with columns **When**, **Who**, **Time**, and **Note**, plus a **Remove** link on each row (with the right role). Below the table, an entry form lets you log more:"
+    },
+    {
+      "bullets": [
+        "**Hours** and **Minutes** — how long you spent.",
+        "**Date** — the day the work was done (defaults to today).",
+        "**Note (optional)** — a short description of what you did.",
+        "A **Log time** button to save the entry."
+      ]
+    },
+    {
+      "p": "If nothing has been logged, the section reads __No time logged yet.__"
+    },
+    {
+      "h1": "History — the automatic paper trail"
+    },
+    {
+      "p": "At the very bottom, the **History** section is a dated, automatic record of every change ever made to the issue, shown as a table with columns **When**, **Who**, **Field**, **From**, and **To**. Every field change, status move, and assignment lands here on its own row, so you can always reconstruct exactly how a problem was handled and by whom."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "HISTORY IS AUTOMATIC AND CANNOT BE EDITED",
+        "text": "You never update the **History** yourself — OpenTrack writes every entry for you, with who and when, the moment a change is saved. It is the issue's permanent paper trail, and there is no way to edit or erase a line of it. If a fresh issue has none, it simply reads __No changes recorded yet.__"
+      }
+    },
+    {
+      "screenshot": "The History table at the bottom of an issue, showing When / Who / Field / From / To columns"
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__There is no Edit button.__ You do not have permission to change this issue. Editing requires an updater role or higher; ask a Manager if you need it.",
+        "__I do not see the tag, relationship, custom-field, or time-log controls.__ Those add and remove controls only show for people who can update the issue. Viewers see the values but not the editing controls.",
+        "__There is no SLA badge.__ This project has no Service-Level Agreement targets set, so there is nothing to measure against. That is normal.",
+        "__There is no AI summary card.__ The AI assistant is turned off for your instance. It only appears when an administrator has enabled it.",
+        "__A whole section is missing (Linked commits, Custom fields, Location, Possibly related).__ Those sections only appear when they have something to show — no linked commits, no custom fields defined, no location attached, or no similar issues found, respectively.",
+        "__The Assignee reads Unassigned.__ Nobody has taken the issue yet. Anyone with the right role can set an assignee on the Edit screen (see the Working an Issue chapter).",
+        "__The view map link opens a blank or wrong spot.__ The link uses the exact coordinates that were captured when the issue was filed. If they look wrong, the location was captured in the wrong place; there is no way to move it after the fact — file a note explaining the correct location.",
+        "__I expected a note I wrote and it is not here.__ Check whether you marked it **Private** — private notes are only visible to developers and up, and are outlined in yellow. A lower-access viewer will not see them."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,326 @@
+{
+  "order": 1,
+  "title": "Welcome & Getting Around",
+  "subtitle": "What OpenTrack is, how to sign in, and a guided tour of the screen.",
+  "in_this_chapter": [
+    "What OpenTrack does and why it's built this way",
+    "Creating your account and signing in — password or passkey",
+    "The first account becomes the Administrator",
+    "A tour of every part of the screen, item by item",
+    "Every entry in the left navigation and what it opens",
+    "Web app vs. desktop app — and pointing the desktop app at your server",
+    "Troubleshooting sign-in and layout problems"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Open OpenTrack in a web browser (or the desktop app), sign in — or select **Register** the first time — and you're in. There's a menu down the **left** and your work in the **middle**. That's the whole layout."
+      }
+    },
+    {
+      "h1": "What OpenTrack is"
+    },
+    {
+      "p": "OpenTrack is a **self-hosted issue and bug tracker** — a private, organized place to record problems (bugs, tasks, feature requests, support tickets), decide what matters most, assign the work, and follow each item through to resolution. Think of it as a shared, searchable memory for everything that's wrong, planned, or in progress across your projects, so nothing lives only in someone's head or an email thread."
+    },
+    {
+      "p": "“Self-hosted” means it runs on **your own** server (a small mini-PC on your network, for example) rather than on someone else's cloud service. The practical upshot: your data stays with you, there's no per-user subscription, and you decide who can reach it. OpenTrack is **open-source** software released under the GNU Affero General Public License version 3 (AGPL v3), so you're free to run, inspect, and modify it."
+    },
+    {
+      "p": "You'll use OpenTrack one of two ways, and they look and behave almost the same — nearly everything in this manual applies to both:"
+    },
+    {
+      "bullets": [
+        "**The web app** — open a web address in any browser (Chrome, Edge, Safari, Firefox) on a computer, tablet, or phone. Nothing to install.",
+        "**The desktop app** — a native application for Windows or Mac that talks to the same server. Handy if you'd rather launch an app than a browser."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "IF IT ISN'T INSTALLED YET",
+        "text": "Someone has to set up the OpenTrack **server** once before anyone can sign in — that one-time job (choosing the mini-PC, installing the software, opening the network port) is covered start to finish in the separate **Installation Guide**. This manual assumes the server is already running and you have its web address."
+      }
+    },
+    {
+      "h1": "Creating your account and signing in"
+    },
+    {
+      "p": "OpenTrack keeps its own list of accounts — an email address and a password per person. You don't need any outside account (no Google, no Microsoft) to use it. When you first open the app without being signed in, you land on the **Log in** page, titled __Log in__ at the top with the sub-heading __Use a local account to log in.__"
+    },
+    {
+      "h2": "Signing in with a password"
+    },
+    {
+      "steps": [
+        "Open OpenTrack — the web address your administrator gave you (something like `http://192.168.1.50:5003`), or the desktop app.",
+        "In the **Email** box, type the email address your account uses.",
+        "In the **Password** box, type your password.",
+        "If this is your own computer and you'd like to stay signed in, tick **Remember me**. Leave it unticked on a shared or public machine.",
+        "Select the **Log in** button. On success you're taken to your home screen (the Dashboard)."
+      ]
+    },
+    {
+      "screenshot": "The OpenTrack Log in page: Email and Password boxes, Remember me checkbox, and the Log in button"
+    },
+    {
+      "p": "The **Log in** page has three helper links beneath the form, for the moments things go sideways:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Link",
+          "What it's for"
+        ],
+        "rows": [
+          [
+            "**Forgot your password?**",
+            "Starts a password reset. (On setups that don't send email, this may not deliver a reset link — see the note about email below.)"
+          ],
+          [
+            "**Register as a new user**",
+            "Opens the account-creation page (same as **Register** in the menu)."
+          ],
+          [
+            "**Resend email confirmation**",
+            "Sends the “confirm your account” email again, if your setup uses email confirmation."
+          ]
+        ],
+        "widths": [
+          2.2,
+          4.3
+        ]
+      }
+    },
+    {
+      "h2": "Signing in with a passkey"
+    },
+    {
+      "p": "Below the password form, after an __OR__ divider, is a **Log in with a passkey** button. A __passkey__ is a modern, password-free sign-in that uses your device's fingerprint reader, face scan, or screen lock (or a hardware security key) instead of a typed password. If you have set one up already (see the *Your Account & Preferences* material), type your email in the **Email** box, then select **Log in with a passkey** and follow your device's prompt. If you've never created a passkey, ignore this button and use your password."
+    },
+    {
+      "h2": "Registering a new account"
+    },
+    {
+      "p": "If you don't have an account yet and registration is open, select **Register** (in the left navigation, or the __Register as a new user__ link on the Log in page). The **Register** page, titled __Create a new account.__, asks for three things:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Field",
+          "What to enter"
+        ],
+        "rows": [
+          [
+            "**Email**",
+            "The email address that will be your account name."
+          ],
+          [
+            "**Password**",
+            "A password at least 6 characters long."
+          ],
+          [
+            "**Confirm Password**",
+            "The exact same password again, so a typo can't lock you out."
+          ]
+        ],
+        "widths": [
+          1.9,
+          4.6
+        ]
+      }
+    },
+    {
+      "steps": [
+        "Fill in **Email**, **Password**, and **Confirm Password**.",
+        "Select the **Register** button.",
+        "If your server doesn't require email confirmation, you're signed in immediately and land in the app. If it does, you'll see a page asking you to confirm your email before signing in."
+      ]
+    },
+    {
+      "screenshot": "The Register page with Email, Password, and Confirm Password boxes and the Register button"
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "THE FIRST ACCOUNT BECOMES THE ADMINISTRATOR",
+        "text": "On a brand-new server, if no administrator has been set up in advance, the **very first account registered** automatically becomes the **Administrator** — the person who runs the whole instance. If that's you, guard that account. (An administrator can also be configured ahead of time by whoever installs the server, so it doesn't have to depend on who registers first.)"
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "ABOUT THAT CONFIRMATION EMAIL",
+        "text": "Many self-hosted OpenTrack setups don't send email at all (there's no mail server on a home network by default). That's fine — on those setups **confirming your email is not required to sign in**. If a “confirm your account” link never arrives, you can still log in and use everything normally."
+      }
+    },
+    {
+      "h1": "A tour of the screen"
+    },
+    {
+      "p": "Once you're in, the window has three areas. Get comfortable with these and you'll always know where to look:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Area",
+          "What lives there"
+        ],
+        "rows": [
+          [
+            "**Left navigation**",
+            "The main menu down the left edge, with a brand name at the top (__OpenTrack__). Every big area of the app is one click away here — the full list is in the next section."
+          ],
+          [
+            "**Top bar**",
+            "The title of the page you're on, and — on list pages — a search box and the main action buttons (like **New Project** or **New Issue**)."
+          ],
+          [
+            "**Main area**",
+            "The actual content: a list of issues, a single issue, a project page, a chart, and so on. This is where you do the work."
+          ]
+        ],
+        "widths": [
+          1.7,
+          4.8
+        ]
+      }
+    },
+    {
+      "screenshot": "The main screen with the left navigation, top bar, and main area labeled"
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "ON A NARROW SCREEN",
+        "text": "On a phone or a narrow window the left navigation collapses behind a small “hamburger” toggle button (three stacked lines) at the top. Select it to slide the menu in and out. Select any menu item and the menu tucks itself away again so the main area has room."
+      }
+    },
+    {
+      "h1": "Every entry in the left navigation"
+    },
+    {
+      "p": "Here is the full left-navigation menu you see once signed in to the **web app**, top to bottom, and what each one opens:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Menu item",
+          "What it opens"
+        ],
+        "rows": [
+          [
+            "**Home**",
+            "The landing page. (In the **desktop app** this entry is labeled **Dashboard** and opens your overview directly.)"
+          ],
+          [
+            "**Projects**",
+            "The list of projects you can see, and the door to creating one — see the *Projects & Their Settings* chapter."
+          ],
+          [
+            "**Issues**",
+            "The master list of issues across your projects, with search and filters."
+          ],
+          [
+            "**Quick add**",
+            "A fast, stripped-down form for logging a problem in seconds."
+          ],
+          [
+            "**Reports**",
+            "Charts and breakdowns of your issues."
+          ],
+          [
+            "**SLA status**",
+            "The Service-Level Agreement (SLA) board — which issues are close to, or past, their response and resolution targets. (Web app only.)"
+          ],
+          [
+            "**Notifications**",
+            "Your alerts. A red number badge on this item shows how many are unread."
+          ],
+          [
+            "**Backup & export**",
+            "Download a copy of your data."
+          ],
+          [
+            "**Import**",
+            "Bring issues in from a file. (Web app only.)"
+          ],
+          [
+            "**Preferences**",
+            "Your personal settings for the app."
+          ],
+          [
+            "**Users**",
+            "The instance-wide account list. This item appears **only for Administrators**."
+          ],
+          [
+            "**(your email)**",
+            "Your account page, where you manage your password, passkeys, and email."
+          ],
+          [
+            "**Logout** / **Sign out**",
+            "Ends your session and returns you to the Log in page."
+          ]
+        ],
+        "widths": [
+          1.9,
+          4.6
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "YOUR ROLE DECIDES WHAT YOU SEE",
+        "text": "OpenTrack only shows you the buttons your **role** allows. A Reporter sees the controls to file and comment on issues; a Manager also sees a project's Settings; an Administrator sees everything, including the **Users** menu item. So if a button described in this manual isn't on your screen, it's almost always because your role doesn't include it — see the *People & Roles* chapter. The same is true of optional features (AI, Git, SLAs, public intake): their buttons only appear once someone turns them on."
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "A KEYBOARD SHORTCUT WORTH KNOWING",
+        "text": "In the web app, the left navigation shows a small reminder: __Ctrl+K to jump__ (⌘K on a Mac). Press it from anywhere to pop open a quick jump-to box, so you can hop to an issue or project without hunting through menus."
+      }
+    },
+    {
+      "h1": "Desktop app: which server it talks to"
+    },
+    {
+      "p": "The desktop app needs to know your server's web address. It ships with a default, and you can change it anytime from the **Settings** entry in its left navigation — which stays visible even before you sign in, precisely so you can point the app at the right server first."
+    },
+    {
+      "steps": [
+        "In the desktop app's left navigation, select **Settings**.",
+        "In the **Server address (OpenTrack server)** box, type your server's address — for example `http://192.168.1.50:5003`, or an `https://…` address if your server uses encryption.",
+        "Select the **Save** button. A green confirmation reads __Saved. New requests (including sign-in) will use this server.__",
+        "Select **Back** to return, then sign in as usual."
+      ]
+    },
+    {
+      "screenshot": "The desktop app Settings page with the Server address box and the Save button"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "THE ADDRESS MUST START WITH http:// OR https://",
+        "text": "If you type an address the app can't understand, saving shows a red message: __Enter a valid address that starts with http:// or https://__. Include the `http://` (or `https://`) at the front, and the port number if your server uses one (the `:5003` part). The address is remembered on that computer, so you only set it once."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__My email and password are rejected (“Invalid login attempt”).__ Double-check for typos and stray spaces, and confirm Caps Lock is off. Passwords are case-sensitive. If you truly can't get in, use **Forgot your password?** or ask your Administrator to reset it.",
+        "__I don't have an account and there's no Register link.__ Registration may be closed on your server, or an Administrator may create accounts for you. Ask whoever runs the server to add you.",
+        "__The page says I must confirm my email, but no email ever arrives.__ Many home setups don't send email. If confirmation isn't actually required on your server you can still sign in; if it is, ask your Administrator to confirm your account or turn email confirmation off.",
+        "__The desktop app can't reach the server.__ Open **Settings** and check the **Server address** is exactly right — the `http://` or `https://` prefix, the correct IP address or name, and the port number. Make sure the server is powered on and on the same network.",
+        "__A menu item this manual mentions isn't in my left navigation.__ It's almost certainly your **role** (for example, **Users** shows only for Administrators) or an optional feature that's turned off. See *People & Roles*. Note too that the desktop app's menu is slightly shorter than the web app's (no **SLA status** or **Import**).",
+        "__The menu disappeared on my phone.__ It collapsed to save space. Select the small toggle button (three stacked lines) at the top to bring it back.",
+        "__“Log in with a passkey” does nothing.__ You need to have created a passkey first, and typed your email in the **Email** box. If you've never set one up, sign in with your password instead."
+      ]
+    }
+  ]
+}

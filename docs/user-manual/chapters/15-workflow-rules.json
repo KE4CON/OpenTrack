@@ -1,0 +1,237 @@
+{
+  "order": 15,
+  "title": "Workflow Rules",
+  "subtitle": "Restrict which status changes are allowed, so issues follow your process instead of jumping around at random.",
+  "in_this_chapter": [
+    "What an \"open\" workflow is and why you might close it",
+    "The seven issue statuses OpenTrack ships with",
+    "Opening the Workflow section in project Settings (Managers only)",
+    "Adding an allowed from-to transition",
+    "Removing a rule and returning to an open workflow",
+    "Where the rules take effect: the Edit screen, the Board, and bulk actions",
+    "Troubleshooting blocked status changes"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "By default an issue can jump to any status. A **Manager** can limit which status changes are allowed under **Settings → Workflow** by listing each permitted **from → to** move. Add even one rule and only the moves you list are allowed anywhere in the app. Delete every rule to go back to an open workflow."
+      }
+    },
+    {
+      "h1": "What a workflow is for"
+    },
+    {
+      "p": "Every issue in OpenTrack has a **status** — a single word that says where it stands, such as __New__, __Confirmed__, or __Closed__. As work happens, people change that status: a tester confirms a bug, a developer resolves it, a lead closes it out. A **workflow** is the set of rules that decides which of those changes are allowed."
+    },
+    {
+      "p": "Out of the box, OpenTrack uses an **open workflow**: an issue can move from any status to any other status, in any order. That is simple and flexible, and for a small team it is often all you need. But some teams want more discipline. They don't want a bug to leap straight from __New__ to __Closed__ without ever being confirmed and resolved along the way. For them, a Manager can define a workflow — an explicit list of the moves that are permitted — and OpenTrack will refuse every move that isn't on the list."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "MANAGERS ONLY",
+        "text": "Only a **Manager** on the project can see or change the Workflow rules. If you open project Settings and see a yellow banner reading __You need the Manager role on this project to change its settings__, ask a project Manager to make the changes for you."
+      }
+    },
+    {
+      "h1": "The statuses you're working with"
+    },
+    {
+      "p": "Before you write a single rule, it helps to know the full set of statuses an issue can hold. OpenTrack ships with seven, listed here in the order they normally flow. Both dropdowns in the Workflow section — the __from__ side and the __to__ side — offer exactly these seven."
+    },
+    {
+      "table": {
+        "headers": [
+          "Status",
+          "What it usually means"
+        ],
+        "rows": [
+          [
+            "**New**",
+            "Just filed. Nobody has looked at it yet. This is where public reports and freshly created issues land."
+          ],
+          [
+            "**Feedback**",
+            "Waiting on more information — usually a question back to the reporter before work can continue."
+          ],
+          [
+            "**Acknowledged**",
+            "Someone has read it and agrees it's worth tracking, but hasn't yet reproduced or committed to it."
+          ],
+          [
+            "**Confirmed**",
+            "Reproduced and verified as a real problem."
+          ],
+          [
+            "**Assigned**",
+            "Handed to a specific person to work on."
+          ],
+          [
+            "**Resolved**",
+            "The work is done — fixed, or otherwise dealt with — pending a final check."
+          ],
+          [
+            "**Closed**",
+            "Finished and filed away. No more work expected."
+          ]
+        ],
+        "widths": [
+          1.3,
+          4
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "\"RESOLVED\" IS THE DIVIDING LINE",
+        "text": "Elsewhere in OpenTrack — on the dashboard, in Reports, on the Roadmap — an issue counts as **open** while its status sits below __Resolved__, and as **done** once it reaches __Resolved__ or __Closed__. Keep that in mind when you design a workflow: the path you draw is the path an issue takes from open to done."
+      }
+    },
+    {
+      "h1": "Opening the Workflow section"
+    },
+    {
+      "p": "The Workflow rules live on the project's **Settings** page, partway down, under their own heading."
+    },
+    {
+      "steps": [
+        "Open the project you want to set rules for.",
+        "Select **Settings** (or **Settings — __ProjectName__** at the top of the settings page).",
+        "Scroll down past **Categories**, **Versions**, and **Integrations — outgoing webhooks** until you reach the **Workflow** heading.",
+        "Read the short explanation under the heading: __Restrict which status changes are allowed. Leave this empty to allow any change (the default). Once you add even one rule, only the rules you list are permitted.__"
+      ]
+    },
+    {
+      "screenshot": "The Workflow section of project Settings, with its explanation text, current rule list, and the add-a-rule controls"
+    },
+    {
+      "p": "What you see next depends on whether any rules exist yet:"
+    },
+    {
+      "bullets": [
+        "If there are **no rules**, a gray line reads __Open workflow — any status change is allowed.__ This is the default state.",
+        "If there **are rules**, each one is listed on its own line as a __from → to__ pair, with a small red **remove** link beside it."
+      ]
+    },
+    {
+      "h1": "Adding an allowed transition"
+    },
+    {
+      "p": "A rule is a single permitted move: \"an issue is allowed to go __from__ this status __to__ that status.\" You build your workflow one move at a time. The controls sit just below the current rule list: two dropdowns joined by an arrow, and an **Allow** button."
+    },
+    {
+      "steps": [
+        "In the **left dropdown** (the __from__ status), pick the status an issue would be leaving. It starts on __New__.",
+        "In the **right dropdown** (the __to__ status), pick the status you want to allow it to move to. It starts on __Acknowledged__.",
+        "Select **Allow**.",
+        "The page saves, shows a green __Saved.__ message at the top, and your new rule appears in the list above as a __from → to__ line. The dropdowns reset, ready for the next rule."
+      ]
+    },
+    {
+      "screenshot": "The add-a-rule row: the from-status dropdown, an arrow, the to-status dropdown, and the Allow button"
+    },
+    {
+      "p": "Repeat that for every move your team legitimately makes. A common, orderly workflow looks like this:"
+    },
+    {
+      "table": {
+        "headers": [
+          "From",
+          "To",
+          "Meaning of the step"
+        ],
+        "rows": [
+          [
+            "New",
+            "Acknowledged",
+            "A triager has read the new report."
+          ],
+          [
+            "Acknowledged",
+            "Confirmed",
+            "The problem has been reproduced."
+          ],
+          [
+            "Confirmed",
+            "Assigned",
+            "Handed to someone to fix."
+          ],
+          [
+            "Assigned",
+            "Resolved",
+            "The fix is done."
+          ],
+          [
+            "Resolved",
+            "Closed",
+            "Signed off and filed away."
+          ]
+        ],
+        "widths": [
+          1.4,
+          1.4,
+          3
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "LIST EVERY MOVE YOU ACTUALLY MAKE",
+        "text": "The moment you add your first rule, OpenTrack stops allowing anything you didn't list. If your team sometimes sends an issue back — say from __Confirmed__ to __Feedback__ to ask a question, or reopens a __Resolved__ issue back to __Assigned__ — you must add those moves too, or people will find themselves unable to make a change they legitimately need. When in doubt, add the extra rule."
+      }
+    },
+    {
+      "h1": "Removing a rule"
+    },
+    {
+      "p": "Rules aren't permanent. To take one out:"
+    },
+    {
+      "steps": [
+        "Find the rule in the list of __from → to__ lines.",
+        "Select the red **remove** link at the end of that line.",
+        "The page saves and the rule disappears from the list."
+      ]
+    },
+    {
+      "p": "Remove rules until the list is empty and the __Open workflow — any status change is allowed.__ line comes back. At that point the project is fully open again and OpenTrack will accept any status change. There is no separate \"turn off workflow\" switch — an empty list __is__ the off state."
+    },
+    {
+      "h1": "Where the rules take effect"
+    },
+    {
+      "p": "Once you've defined a workflow, it is enforced everywhere a status can change — you don't have to remember it or police it by hand. The same rules apply in all of these places:"
+    },
+    {
+      "bullets": [
+        "**The issue Edit screen.** When someone edits an issue, the status dropdown (or the save) will refuse a move that isn't allowed, so an out-of-order change can't be saved.",
+        "**The Board.** Dragging an issue card from one status column to another is itself a status change, so the board honors the workflow too — a drag onto a status you haven't allowed won't stick.",
+        "**Bulk actions.** When you change many issues at once (for example, a bulk __Close__), OpenTrack quietly skips any issue whose current status isn't allowed to reach the target status, rather than forcing an illegal move."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "START OPEN, TIGHTEN LATER",
+        "text": "If you're not sure you need a workflow, leave it open. A workflow is worth adding once you've actually felt the pain of issues skipping steps — not before. When you do add one, sketch the whole path first (including the \"send it back\" moves), then enter each move as a rule."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__The Workflow section isn't on my Settings page, or everything is grayed out.__ You're not a Manager on this project. Only Managers see and edit workflow rules. A yellow banner near the top of Settings — __You need the Manager role on this project to change its settings__ — confirms it. Ask a project Manager to make the change.",
+        "__A status change I expected won't save, or a board card snaps back.__ That move isn't on the allowed list. Open **Settings → Workflow** and check the __from → to__ lines. Either add the move you need, or route the issue through the intermediate statuses that __are__ allowed.",
+        "__A bulk Close skipped some issues.__ Those issues were in a status that isn't allowed to move to __Closed__ under your workflow. Move them through the allowed steps first, or add a rule permitting the jump.",
+        "__I added one rule and now everyone is stuck.__ That's expected — one rule closes the workflow. Add the rest of your legitimate moves (including any \"send back\" or \"reopen\" steps), or remove that single rule to reopen the workflow entirely.",
+        "__I want to switch a project's workflow off completely.__ There's no off switch. Remove every rule with the **remove** links until the list shows __Open workflow — any status change is allowed.__",
+        "__My rules seem to apply to the wrong project.__ Workflow rules are per project. Make sure you're on the Settings page of the project you meant — the heading reads __Settings — __ProjectName____."
+      ]
+    }
+  ]
+}

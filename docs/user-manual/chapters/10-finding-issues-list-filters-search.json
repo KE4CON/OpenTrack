@@ -1,0 +1,285 @@
+{
+  "order": 10,
+  "title": "Finding Issues: List, Filters & Search",
+  "subtitle": "Narrow the list, search every word (including notes), save the views you use most, and jump anywhere from the keyboard.",
+  "in_this_chapter": [
+    "The issue list and what each column shows",
+    "Every filter control, and the values each one offers",
+    "Sorting, and the Stale-only view",
+    "Full-text search — and why it finds more than you'd expect",
+    "Saving filters and sharing them by link",
+    "Plain-English (AI) search, when it's turned on",
+    "The keyboard command palette (Ctrl+K)",
+    "Troubleshooting"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Click **Issues** in the left navigation, set any mix of filters (project, status, severity, priority, tag, or a text search), and click **Search**. Save a filter you use often so it becomes a one-click pill, or press **Ctrl+K** (**Cmd+K** on a Mac) to jump anywhere without the mouse."
+      }
+    },
+    {
+      "h1": "The issue list"
+    },
+    {
+      "p": "Select **Issues** in the left navigation to open the issue list. It shows every issue you're allowed to view, across all your projects at once — the place most day-to-day finding happens. A **filter bar** runs along the top; the results appear as a table below it, and a small line reads how many matched, for example __24 issue(s) match__. If nothing matches, it reads __No issues match this filter.__"
+    },
+    {
+      "p": "Each row in the results table shows, left to right:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Column",
+          "What it shows"
+        ],
+        "rows": [
+          [
+            "**#**",
+            "The issue's number — its permanent ID. Handy for the command palette and for linking relationships."
+          ],
+          [
+            "**Project**",
+            "Which project the issue belongs to."
+          ],
+          [
+            "**Title**",
+            "The issue's title, as a link. Click it to open the full issue."
+          ],
+          [
+            "**Status**",
+            "Where the issue is in its lifecycle (New, Assigned, Resolved, and so on)."
+          ],
+          [
+            "**Severity**",
+            "How serious the issue is (Minor, Major, Crash, and so on)."
+          ],
+          [
+            "**Priority**",
+            "How urgently it should be handled (Low, Normal, High, and so on)."
+          ],
+          [
+            "**Assignee**",
+            "Who it's assigned to, or __Unassigned__."
+          ],
+          [
+            "**Updated**",
+            "When the issue last changed."
+          ]
+        ],
+        "widths": [
+          1.3,
+          4.7
+        ]
+      }
+    },
+    {
+      "screenshot": "The issue list: the filter bar across the top, the saved-filter pills, and the results table below"
+    },
+    {
+      "h1": "Filtering"
+    },
+    {
+      "p": "The filter bar is a row of drop-downs and boxes. You set any combination of them and click **Search** — the filters **combine**, so each one you add narrows the results further (project __Website__ *and* status __Assigned__ *and* severity __Crash__ returns only issues matching all three). Leaving a control on its __Any__ or __All__ setting means \"don't filter on this.\" The controls are:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Control",
+          "Choices",
+          "What it does"
+        ],
+        "rows": [
+          [
+            "**Project**",
+            "__All projects__, or any one project you can see.",
+            "Limits the list to a single project."
+          ],
+          [
+            "**Status**",
+            "__Any__, New, Feedback, Acknowledged, Confirmed, Assigned, Resolved, Closed.",
+            "Shows only issues in the chosen lifecycle state."
+          ],
+          [
+            "**Severity**",
+            "__Any__, Feature, Trivial, Text, Tweak, Minor, Major, Crash, Block.",
+            "Shows only issues of the chosen seriousness."
+          ],
+          [
+            "**Priority**",
+            "__Any__, None, Low, Normal, High, Urgent, Immediate.",
+            "Shows only issues at the chosen urgency."
+          ],
+          [
+            "**Tag**",
+            "__Any__, or any tag in use across the instance.",
+            "Shows only issues carrying that tag — the payoff of tagging consistently."
+          ],
+          [
+            "**Text**",
+            "A free-text box.",
+            "Full-text search across title, description, and notes (see below)."
+          ]
+        ],
+        "widths": [
+          1.3,
+          3,
+          2.7
+        ]
+      }
+    },
+    {
+      "p": "Two buttons finish the bar: **Search** applies whatever you've set, and **Clear** wipes every filter and returns the list to its default, unfiltered state."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "YOU ONLY EVER SEE WHAT YOU'RE ALLOWED TO",
+        "text": "Filtering can only ever narrow what you already have permission to view. Your access is applied first, then your filters on top. So a text search or a shared filter link can never surface an issue in a project you don't have access to."
+      }
+    },
+    {
+      "h1": "Sorting, and the Stale-only view"
+    },
+    {
+      "p": "The **Sort by** drop-down (at the right of the filter bar) sets the order of the results. Your choices are:"
+    },
+    {
+      "bullets": [
+        "**Updated (newest)** — most recently changed first. This is the usual default.",
+        "**Updated (oldest)** — least recently touched first.",
+        "**Created (newest)** and **Created (oldest)** — by when the issue was first filed.",
+        "**Priority (high→low)** — most urgent at the top.",
+        "**Severity (high→low)** — most serious at the top.",
+        "**Status** — grouped by lifecycle state.",
+        "**ID (newest)** and **ID (oldest)** — by issue number."
+      ]
+    },
+    {
+      "p": "Next to the sort control is a checkbox: **Stale only (open, 30+ days idle)**. Tick it to show just the open issues that nobody has touched in over 30 days — your \"what's been forgotten?\" view. It's the fastest way to surface work that quietly stalled. Combine it with a project or severity filter to focus the cleanup."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "SET YOUR OWN DEFAULT SORT",
+        "text": "If you didn't pick a sort, the list uses your preferred default order (set in your preferences), falling back to __Updated (newest)__ if you haven't chosen one. Pick a sort here any time to override it for the current search."
+      }
+    },
+    {
+      "h1": "Full-text search — it looks inside the notes, too"
+    },
+    {
+      "p": "The **Text** box does more than match titles. It searches an issue's **title, its description, and every note on it**. That last part matters: a detail someone mentioned only in a comment three weeks ago will still surface the issue, even if that word appears nowhere in the title or description. You don't have to remember *where* something was written — only that it was."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "SEARCH IS CASE-INSENSITIVE AND PARTIAL",
+        "text": "Matching ignores capitalization and matches on part of a word, so __login__ finds __Login__ and __logins__. When a search returns too much, add a filter (a project, a status, or a tag) rather than a longer phrase — the filters and the text box work together."
+      }
+    },
+    {
+      "h1": "Save a filter, and share it"
+    },
+    {
+      "p": "Built a filter combination you'll want again? Don't rebuild it by hand each time — save it. Saved filters appear as one-click **pills** in a row just above the results."
+    },
+    {
+      "steps": [
+        "Set up the filter exactly as you want it (any mix of drop-downs, the text box, sort, and the stale toggle).",
+        "In the box labeled __Save current filter as…__, type a name for it.",
+        "Click **Save**. The filter becomes a pill above the list; click that pill any time to re-run the whole filter in one click.",
+        "To remove a saved filter, use the **Delete a saved filter…** drop-down next to the save box, pick it, and click **Delete**."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "BOOKMARK OR SHARE ANY VIEW BY LINK",
+        "text": "Every filter is written into the page's web address (URL). Whenever you run a search, the address bar updates to match — so you can **bookmark** that view in your browser, or **paste the link** to a colleague and they'll open the very same filtered list. (They'll still only see the issues they're allowed to, so a shared link never leaks anything.)"
+      }
+    },
+    {
+      "screenshot": "The saved-filter row: existing filter pills, the Save current filter as box, and the Delete a saved filter drop-down"
+    },
+    {
+      "h1": "Plain-English search (when AI is turned on)"
+    },
+    {
+      "p": "If your OpenTrack administrator has turned on the optional AI features, an extra box appears above the filter bar labeled **✨ Ask in plain English**. Type a request the way you'd say it out loud — for example, __high-priority crashes nobody has touched in a month__ — and click **Search with AI**. OpenTrack turns your sentence into the ordinary filters below (status, severity, priority, keywords, stale, project) and runs them. You can then tweak those filters by hand and search again."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "IT ONLY FILLS IN THE FILTERS",
+        "text": "Plain-English search can only ever produce a filter you could have built yourself with the controls above — it adds no hidden search power and can't reach issues you're not permitted to see. If it can't make sense of your request, it says so; try naming a status, severity, priority, keyword, or \"stale.\" If AI is switched off for your instance, this box simply isn't there."
+      }
+    },
+    {
+      "h1": "The command palette (keyboard)"
+    },
+    {
+      "p": "For fast, mouse-free navigation, OpenTrack has a **command palette** — a quick-jump box you can pop open from any page. It only ever navigates (it changes which page you're on); it never changes data, so it's completely safe to open and poke around in."
+    },
+    {
+      "steps": [
+        "Press **Ctrl + K** (on a Mac, **Cmd + K**). A search box drops down over the middle of the screen, prompting __Type to search, #123 to jump to an issue, or a command…__.",
+        "Start typing. The list below the box updates as you type.",
+        "Use the **↓** and **↑** arrow keys to move the highlight through the matches (the top one is highlighted to start).",
+        "Press **Enter** to go to the highlighted match — or click any match with the mouse.",
+        "Press **Esc**, or click outside the box, to close it without going anywhere."
+      ]
+    },
+    {
+      "p": "What you can type into it:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Type this",
+          "What you get"
+        ],
+        "rows": [
+          [
+            "A number like `142` or `#142`",
+            "A __Go to issue #142__ result that opens that issue directly."
+          ],
+          [
+            "A word or phrase",
+            "Matching **commands** (see below), plus a __Search issues for \"…\"__ result that runs a text search for what you typed."
+          ],
+          [
+            "Part of a command name",
+            "That command — for example typing __back__ finds __Backup & export__."
+          ]
+        ],
+        "widths": [
+          2.2,
+          3.8
+        ]
+      }
+    },
+    {
+      "p": "The built-in commands the palette can jump to are: **Dashboard**, **All issues**, **Quick add a problem** (the fast issue-reporting form), **Projects**, **Notifications**, and **Backup & export**."
+    },
+    {
+      "screenshot": "The command palette open over the page, showing the search box and a list of quick matches including Go to issue and command entries"
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__My search returns nothing.__ A leftover filter is probably too tight. Click **Clear** to reset everything, then add filters back one at a time. Remember the filters combine — project *and* status *and* severity all have to match at once.",
+        "__An issue I expected isn't in the list.__ Check the **Project** filter isn't pinned to the wrong project, that **Status** isn't hiding it (a Closed issue won't show if Status is set to New), and that **Stale only** isn't ticked. If you still can't see it, you may not have access to its project.",
+        "__My text search isn't finding a word I know is there.__ The Text box matches title, description, and notes — but not attachments' contents. If the word only lives inside an attached file, search won't find it. Otherwise, check for a typo and remember matching ignores capitalization.",
+        "__I saved a filter but it's not in the pills.__ Give the filter a name in the __Save current filter as…__ box before clicking **Save** — an unnamed filter isn't saved. Then look for its pill in the row above the results.",
+        "__I pasted a filter link to a colleague and they see fewer issues.__ That's expected: a shared filter link shows each person only the issues they're allowed to view. The filter is the same; the access is theirs.",
+        "__The ✨ Ask in plain English box isn't there.__ AI features are optional and off unless an administrator enables them. Use the regular filter bar instead — it can do everything the plain-English box turns your request into.",
+        "__Ctrl+K does nothing.__ Make sure the OpenTrack page has focus (click once on the page first). On a Mac use **Cmd+K**. If a browser extension has claimed that shortcut, you can still open any page from the left navigation instead."
+      ]
+    }
+  ]
+}

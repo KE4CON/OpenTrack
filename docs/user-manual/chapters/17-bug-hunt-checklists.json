@@ -1,0 +1,248 @@
+{
+  "order": 17,
+  "title": "Bug-Hunt Checklists",
+  "subtitle": "Work a repeatable list of things to test, and turn any failure into a tracked issue with one tap.",
+  "in_this_chapter": [
+    "What a bug-hunt checklist is for and who can change it",
+    "Building one by pasting a whole list at once (the fast way)",
+    "Adding items one at a time",
+    "Editing, grouping into sections, adding notes, and deleting",
+    "Working the list: Pass, Fail, N/A, and Reset",
+    "Turning a failure into a linked issue in one tap",
+    "The progress bar and running counts",
+    "Working offline out in the field",
+    "Troubleshooting"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Build a reusable checklist for a project — paste a whole list at once, or add items one at a time — then work down it tapping **Pass**, **Fail**, or **N/A**. A **Fail** becomes a linked, tracked issue in one tap. Building the list is a **Manager** job; anyone on the project can then work it."
+      }
+    },
+    {
+      "h1": "What a bug-hunt checklist is for"
+    },
+    {
+      "p": "A **bug-hunt checklist** is a reusable list of things to check on a project — the sweep you do before a release, a Quality Assurance (QA) pass, or a routine inspection. Instead of trying to remember every corner to test, you work down the list, marking each item **Pass**, **Fail**, or **Not-applicable (N/A)**, and any failure becomes a real, tracked issue with one tap. You build the list **once** and it stays on the project for every future pass — the results reset each time you rework it, but the items themselves live on."
+    },
+    {
+      "p": "The page explains this at the top: __Work down the list on any device on your network — tap Pass, Fail, or N/A for each item. A Fail can create a linked issue you then triage like any other bug. Anything not on the list is still logged as a normal issue.__"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "WHO CAN DO WHAT",
+        "text": "Only a **Manager** can build or change a project's checklist — adding items, editing them, marking Pass/Fail/N/A, and creating issues from failures. Anyone on the project can open the page and read the list. If the project has no checklist yet and you're not a Manager, you'll see __This project has no bug-hunt checklist yet. A project manager can add one.__"
+      }
+    },
+    {
+      "h1": "Opening the checklist"
+    },
+    {
+      "steps": [
+        "Open the project you want to check.",
+        "Select **Checklist** (the page is titled __Bug-hunt checklist — __ProjectName____).",
+        "If a checklist already exists, its items appear grouped under their section headings, with a progress bar at the top. If it's empty and you're a Manager, you'll see the tools to build one."
+      ]
+    },
+    {
+      "h1": "Building a checklist (Manager)"
+    },
+    {
+      "p": "There's nothing to install and no file to upload. You create the list right in the app, either by pasting a whole list at once or by adding items one at a time. The two building tools sit side by side near the bottom of the page: **Import a checklist** on the left, **Add one item** on the right."
+    },
+    {
+      "h2": "The fast way: paste a whole list"
+    },
+    {
+      "p": "If you already have a list — in a document, a past release checklist, a wiki page — you don't retype it. You paste it, and OpenTrack turns each line into an item."
+    },
+    {
+      "steps": [
+        "Find the **Import a checklist** box on the left.",
+        "Paste your list into the large text area, **one item per line**.",
+        "Select **Import items**. Every line is added at once, grouped under whatever headings you included, and a green message confirms __Imported N item(s).__"
+      ]
+    },
+    {
+      "p": "The formatting is forgiving — you don't have to clean up your source text first. OpenTrack reads each line like this:"
+    },
+    {
+      "table": {
+        "headers": [
+          "A line that looks like…",
+          "…becomes"
+        ],
+        "rows": [
+          [
+            "`# Concurrency`  (starts with a hash)",
+            "A **section heading** that groups the items beneath it."
+          ],
+          [
+            "`- [ ] Message store is thread-safe`  (a checkbox line)",
+            "A checklist **item** (the __- [ ]__ is stripped)."
+          ],
+          [
+            "`- TX blocked on N0CALL`  (a bullet line)",
+            "A checklist **item** (the __-__ is stripped)."
+          ],
+          [
+            "`1. Geofence service is locked`  (a numbered line)",
+            "A checklist **item** (the number is stripped)."
+          ],
+          [
+            "`Plain text with no marker`",
+            "A checklist **item**, taken as-is."
+          ]
+        ],
+        "widths": [
+          3.2,
+          3
+        ]
+      }
+    },
+    {
+      "p": "For example, pasting this:"
+    },
+    {
+      "code": [
+        "# Concurrency",
+        "- [ ] Message store is thread-safe",
+        "- [ ] Geofence service is locked",
+        "# RF identity",
+        "- TX blocked on N0CALL"
+      ]
+    },
+    {
+      "p": "…creates five items in two sections (__Concurrency__ and __RF identity__)."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "\"IMPORT\" MEANS PASTE, NOT A FILE",
+        "text": "This is the closest thing to \"uploading\" a checklist: you paste the text of a list rather than choosing a file. It's the quickest way to stand up a full checklist, or to bulk-add a batch of items to an existing one — importing again just adds more items on top of what's there."
+      }
+    },
+    {
+      "h2": "One at a time"
+    },
+    {
+      "p": "For a single item, or when you're building the list from scratch as you think, use the **Add one item** box on the right."
+    },
+    {
+      "steps": [
+        "Enter an **item title** — the thing to check — in the first box (for example, __TX blocked on N0CALL__).",
+        "Optionally enter an **Area / section** to group it under. Items sharing an Area are automatically gathered under that heading.",
+        "Optionally enter **How/what to check** details describing exactly what to look for.",
+        "Select **Add item**. It appears in the list, under its section if you gave one, and a green __Saved.__ message confirms it."
+      ]
+    },
+    {
+      "screenshot": "The two building tools side by side: the Import-a-checklist paste box on the left and the Add-one-item form on the right"
+    },
+    {
+      "h2": "Editing, grouping, notes, and deleting"
+    },
+    {
+      "p": "Every item carries an **Edit / note** button (Managers only). Select it to open the **Edit item** panel, where you can change:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Field",
+          "What it does"
+        ],
+        "rows": [
+          [
+            "**Title**",
+            "The item's wording."
+          ],
+          [
+            "**Area (optional grouping)**",
+            "The section heading this item is filed under. Give two items the same Area and they group together automatically."
+          ],
+          [
+            "**Details — what/how to check**",
+            "Guidance shown under the item's title, in small gray text."
+          ],
+          [
+            "**Notes — what you found**",
+            "A place to record what you saw when you checked it. Notes show under the item in italics, prefixed __Notes:__."
+          ]
+        ],
+        "widths": [
+          2.2,
+          4
+        ]
+      }
+    },
+    {
+      "p": "Select **Save** to keep your changes (the page returns to the checklist), or **Cancel** to back out. To remove the item entirely, select **Delete this item** at the bottom of the Edit panel. Grouping is how you turn a long, flat list into readable sections: set the same **Area** on related items and OpenTrack draws a section heading with an underline above each group."
+    },
+    {
+      "h1": "Working the checklist"
+    },
+    {
+      "p": "Once the list exists, working it is fast and touch-friendly — the buttons are large on purpose, for use on a tablet or phone."
+    },
+    {
+      "steps": [
+        "Open the project and select **Checklist** on any device on your network.",
+        "For each item, tap **Pass**, **Fail**, or **N/A**. The button lights up in its color — green for Pass, red for Fail, gray for N/A — and the item's badge and card border update to match.",
+        "Made a mistake? Tap **Reset** on that item to clear its result and send it back to __To do__.",
+        "Watch the top of the page: a green **progress bar** and a __X of Y checked__ line fill in as you go, with a running __N failed · N passed__ tally beside it."
+      ]
+    },
+    {
+      "screenshot": "A checklist being worked: the progress bar and counts at top, items grouped under section headings, with Pass/Fail/N/A buttons and colored status badges"
+    },
+    {
+      "p": "The status of each item is shown three ways at once so it reads at a glance: a colored **badge** on the left (__Pass__, __Fail__, __N/A__, or __To do__), the highlighted button, and a colored **card border** (green for pass, red for fail)."
+    },
+    {
+      "h2": "Turning a failure into an issue"
+    },
+    {
+      "p": "The whole point of marking something **Fail** is to get it fixed. So when you fail an item, OpenTrack offers to file it for you."
+    },
+    {
+      "steps": [
+        "Mark an item **Fail**. A red **Create issue from this failure →** button appears on that item.",
+        "Select it. OpenTrack creates a new issue **linked** to the checklist item and takes you straight to that new issue.",
+        "Triage the issue like any other bug — set its severity, assign it, comment, and so on.",
+        "Back on the checklist, the failed item now shows a small __↳ Issue #number__ link, so the item and the bug it spawned always point at each other."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "ONE ISSUE PER FAILURE",
+        "text": "The **Create issue from this failure →** button only appears on a failed item that hasn't already spawned an issue. Once an item is linked to an issue, the button is replaced by the __↳ Issue #number__ link, so you can't accidentally file the same failure twice. Anything you notice that **isn't** on the checklist, you just file as a normal issue in the usual way."
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "IT KEEPS WORKING WHEN THE NETWORK DOESN'T",
+        "text": "On a tablet or phone, the checklist keeps working through brief network drops — tick items off out in the field or in a signal-dead corner of a building, and your marks sync automatically when you're back online. (Creating an issue from a failure does need a live connection; OpenTrack tells you if you're offline and the action waits.) See the *Mobile, Tablets & the Field* chapter for more."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__I don't see the building tools (Import / Add one item).__ Those are Manager-only. If you're not a Manager on the project, you can read and see the checklist but not change it. Ask a project Manager to add or edit items.",
+        "__There are no Pass/Fail/N/A buttons on the items.__ Same reason — marking items is a Manager action. Non-Managers see the list and its current results but can't change them.",
+        "__My paste created one giant item instead of many.__ Import reads **one item per line**. If your source pasted as a single line (no line breaks), split it onto separate lines and import again.",
+        "__A pasted line I meant as an item became a heading.__ Lines that start with __#__ become section headings. Remove the leading __#__ from any line you want treated as a checklist item.",
+        "__The \"Create issue from this failure\" button isn't there.__ It only shows on an item marked **Fail** that hasn't already been turned into an issue. If the item already links to __↳ Issue #number__, it's been filed; open that issue instead.",
+        "__I want to remove a result without deleting the item.__ Use **Reset** on the item to clear its Pass/Fail/N/A and return it to __To do__. **Delete this item** (in the Edit panel) removes the item itself.",
+        "__My items aren't grouping into sections.__ Grouping is by **Area**. Give related items the exact same Area text (in the Add box or via Edit / note) and they'll gather under one heading.",
+        "__Nothing saved / I saw a red message.__ A red banner usually means you don't have permission (not a Manager) or the title was empty. Check the message text, confirm your role, and make sure the item title isn't blank."
+      ]
+    }
+  ]
+}

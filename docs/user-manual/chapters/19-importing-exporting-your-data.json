@@ -1,0 +1,328 @@
+{
+  "order": 19,
+  "title": "Importing & Exporting Your Data",
+  "subtitle": "Bring issues in from other tools, get your own data out, and set up automatic backups.",
+  "in_this_chapter": [
+    "Importing from MantisBT, a spreadsheet, Jira, or GitHub",
+    "The Import page, field by field",
+    "Which column and field names OpenTrack recognizes",
+    "Exporting to JSON or a spreadsheet (CSV)",
+    "Backing up the whole database file",
+    "Turning on automatic scheduled backups"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Moving in? Use **Import** to pull issues from a spreadsheet, a Jira export, or GitHub — or the dedicated **MantisBT** importer on the **Backup & export** page. Your data is always yours: **Backup & export** downloads it any time as JSON or CSV, and the server can also take automatic backups on a schedule."
+      }
+    },
+    {
+      "h1": "What this chapter covers"
+    },
+    {
+      "p": "OpenTrack keeps everything you enter — issues, notes, tags, and the rest — but it never traps that data inside itself. This chapter covers the three ways data moves in and out: __importing__ (bringing issues in from another tracker so you don't retype anything), __exporting__ (downloading your own issues to a file), and __backing up__ (keeping a safe copy of the whole database in case the computer running OpenTrack ever fails). Two pages in the left navigation do this work: the **Import** page and the **Backup & export** page."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "TWO FILE FORMATS, SPELLED OUT",
+        "text": "Two file types come up throughout this chapter. **CSV** (Comma-Separated Values) is the plain, flat format every spreadsheet program and most trackers can produce — a header row of column names, then one row per issue. **JSON** (JavaScript Object Notation) is a structured text format that can hold richer, nested detail (an issue plus its notes, tags, and custom fields all together). CSV is best for reports and spreadsheets; JSON is best for a complete backup or a full move to another system."
+      }
+    },
+    {
+      "h1": "Importing issues"
+    },
+    {
+      "p": "If you're switching to OpenTrack from another tracker, you don't have to re-enter your old issues by hand. OpenTrack reads exports from four common sources. Which tool you use depends on where the data is coming from:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Coming from",
+          "File it produces",
+          "Where to import it"
+        ],
+        "rows": [
+          [
+            "**MantisBT** (a widely used older tracker)",
+            "An **XML** file from MantisBT's __Export Issues__",
+            "The **Import from MantisBT** card on the **Backup & export** page"
+          ],
+          [
+            "A **spreadsheet** (Excel, Numbers, Google Sheets)",
+            "A **CSV** file with a header row",
+            "The **Import** page (file type **CSV**)"
+          ],
+          [
+            "**Jira**",
+            "Jira's **CSV** export",
+            "The **Import** page (file type **Jira**)"
+          ],
+          [
+            "**GitHub Issues**",
+            "The issues **JSON** from the GitHub Application Programming Interface (API)",
+            "The **Import** page (file type **GitHub**)"
+          ]
+        ],
+        "widths": [
+          2.2,
+          2.6,
+          2.4
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "YOU NEED THE MANAGER ROLE",
+        "text": "Importing adds issues into an existing project, so you must have the **Manager** role on the project you're importing **into**. If you don't manage any projects yet, create one first (see the Projects chapter), then come back. The Import page tells you plainly if you have no projects to import into."
+      }
+    },
+    {
+      "h1": "The Import page, step by step"
+    },
+    {
+      "p": "Use the **Import** page for CSV spreadsheets, Jira exports, and GitHub issues. (MantisBT has its own importer — covered further down.) Open it from **Import** in the left navigation. You'll see a short explanation at the top, then a form with three fields and an **Import** button."
+    },
+    {
+      "steps": [
+        "Select **Import** in the left navigation.",
+        "Under **Target project**, choose the project the issues should land in. This is a dropdown of every project you manage.",
+        "Under **File type**, pick **CSV**, **Jira**, or **GitHub** to match the file you're uploading (see the table below for exactly what each means).",
+        "Under **File**, select **Choose file** and pick your export from your computer. OpenTrack accepts files ending in `.csv`, `.json`, or `.txt`.",
+        "Select **Import**.",
+        "A colored banner reports the result — for example, __Imported 42 issue(s), skipped 3 already-imported, linked 7 tag(s)__."
+      ]
+    },
+    {
+      "screenshot": "The Import page showing the Target project dropdown, File type dropdown, file picker, and Import button"
+    },
+    {
+      "table": {
+        "headers": [
+          "File type option",
+          "What to upload"
+        ],
+        "rows": [
+          [
+            "**CSV — a spreadsheet with a header row**",
+            "Any comma-separated file whose first row is column names. This is the catch-all for spreadsheets and most trackers."
+          ],
+          [
+            "**Jira — CSV export from Jira**",
+            "The CSV that Jira produces from its issue export. Same idea as plain CSV, tuned for Jira's column names."
+          ],
+          [
+            "**GitHub — Issues JSON (from the GitHub API)**",
+            "The JSON array returned by GitHub for a repository's issues (the `/repos/OWNER/REPO/issues?state=all` call). Pull requests in that file are skipped automatically."
+          ]
+        ],
+        "widths": [
+          2.4,
+          4.2
+        ]
+      }
+    },
+    {
+      "h2": "Which column and field names OpenTrack recognizes"
+    },
+    {
+      "p": "For **CSV** and **Jira** files, the very first row must be the column headers. You don't have to rename anything first — OpenTrack recognizes the common names for each field and matches them automatically, whichever your old tool happened to use:"
+    },
+    {
+      "table": {
+        "headers": [
+          "OpenTrack field",
+          "Header names it recognizes"
+        ],
+        "rows": [
+          [
+            "Title",
+            "__Title__ or __Summary__"
+          ],
+          [
+            "Description",
+            "__Description__"
+          ],
+          [
+            "Status",
+            "__Status__"
+          ],
+          [
+            "Severity",
+            "__Severity__"
+          ],
+          [
+            "Priority",
+            "__Priority__"
+          ],
+          [
+            "Category",
+            "__Category__ or __Component__"
+          ],
+          [
+            "Tags",
+            "__Labels__ or __Tags__"
+          ],
+          [
+            "Assignee",
+            "__Assignee__"
+          ],
+          [
+            "Reporter",
+            "__Reporter__"
+          ],
+          [
+            "Original ID",
+            "__Key__ or __ID__ (used to recognize a row on a re-run)"
+          ]
+        ],
+        "widths": [
+          2,
+          4.6
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "RE-RUNNING THE SAME FILE IS SAFE",
+        "text": "Import remembers the original ID of every row it brings in. If you import the **same file** again — say you added a few more issues to it and want to top up — OpenTrack recognizes the rows it already has and **skips** them. You won't get duplicates. The result banner tells you how many were skipped for exactly this reason."
+      }
+    },
+    {
+      "h2": "When an import is refused"
+    },
+    {
+      "p": "If something isn't right, the banner turns yellow or red and tells you what to fix. The common messages are:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Message",
+          "What it means"
+        ],
+        "rows": [
+          [
+            "__Please choose a file to upload.__",
+            "You selected **Import** without picking a file."
+          ],
+          [
+            "__Please choose a target project.__",
+            "No project was selected in the **Target project** dropdown."
+          ],
+          [
+            "__That file is larger than the 25 MB limit.__",
+            "The upload is over the 25-megabyte (MB) size cap. Split a very large export into smaller files."
+          ],
+          [
+            "__That file couldn't be read as the selected type.__",
+            "The file doesn't match the **File type** you chose — for example a Jira CSV uploaded as GitHub JSON. Double-check the format and the File type dropdown."
+          ],
+          [
+            "__You need the Manager role on that project to import into it.__",
+            "You're not a Manager of the target project. Ask a Manager, or import into a project you manage."
+          ]
+        ],
+        "widths": [
+          3,
+          3.6
+        ]
+      }
+    },
+    {
+      "h2": "Importing from MantisBT"
+    },
+    {
+      "p": "MantisBT has its own importer because it carries more than a flat list — it brings projects, issues, notes, and tags across in one step. You'll find it as the **Import from MantisBT** card on the **Backup & export** page (it appears only if you have the **Manager** role). To use it:"
+    },
+    {
+      "steps": [
+        "In MantisBT, use __Export Issues__ to download an **XML** file.",
+        "In OpenTrack, open **Backup & export** from the left navigation and find the **Import from MantisBT** card.",
+        "Select **Choose file**, pick your `.xml` export, and select **Import**.",
+        "The banner reports what came in — issues across however many projects (new and existing), notes, and tag links."
+      ]
+    },
+    {
+      "p": "A few things worth knowing about the MantisBT import: it can __create the matching projects for you__ if they don't exist yet; statuses, severities, and priorities are mapped across exactly; MantisBT users are matched to your OpenTrack accounts by username where possible, and where there's no match the original name is kept in the issue text so nothing is lost. Imported projects start out **private**. Unlike the CSV/Jira/GitHub importer, the MantisBT importer does __not__ de-duplicate — run it __once__ per export, because re-uploading the same file adds the issues a second time."
+    },
+    {
+      "h1": "Exporting your data"
+    },
+    {
+      "p": "Your data is always yours to take with you. Open **Backup & export** in the left navigation. In the **web** version of OpenTrack you'll see one-click download buttons; every export includes __only what you're allowed to see__, so it never leaks issues from projects you can't access. There are two cards:"
+    },
+    {
+      "bullets": [
+        "**Spreadsheet (CSV)** — the **All issues (CSV)** button downloads a flat list of every issue you can see, ready to open in Excel, Numbers, or Google Sheets. Best for reporting, sorting, or sharing a quick snapshot.",
+        "**Full backup (JSON), per project** — a small table lists each of your projects with a **CSV** and a **JSON** button beside it. The per-project **JSON** download is the complete copy: issues together with their notes, tags, custom-field values, and bug-hunt checklist, all in one file you can archive or move to another system."
+      ]
+    },
+    {
+      "screenshot": "The Backup & export page with the Spreadsheet (CSV) card and the per-project Full backup (JSON) table"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "DESKTOP APP VS. WEB",
+        "text": "The one-click CSV and JSON download buttons appear in the **web version** (OpenTrack opened in a browser). In the **desktop app**, those buttons are replaced by a note pointing you to the whole-database backup described next — copying the database file is the way to back up from the desktop app."
+      }
+    },
+    {
+      "h1": "Backing up the whole database"
+    },
+    {
+      "p": "Everything OpenTrack stores lives in a single database file on the computer that runs the server. Exporting issues to CSV or JSON is great for taking data elsewhere, but the surest __complete__ backup is a copy of that one file. The **Backing up the whole database** card at the bottom of **Backup & export** explains it:"
+    },
+    {
+      "bullets": [
+        "The file is named `opentrack.db` by default, in the server's data folder.",
+        "**Stop the server first** (or copy the file when the server is idle) so the copy is consistent and not caught mid-write.",
+        "If the files `opentrack.db-wal` and `opentrack.db-shm` are sitting next to it, copy those too — they can hold recent changes.",
+        "To **restore**, put the file back in the same place and start the server again."
+      ]
+    },
+    {
+      "h1": "Automatic scheduled backups"
+    },
+    {
+      "p": "The manual export above is on-demand — you click when you want a copy. For peace of mind, the **server** can also make **automatic backups** on a schedule: consistent snapshots of the whole database, taken safely while the app keeps running. This is a __server setting__ (whoever runs the server turns it on, not something in the web pages), and it's **off by default**. To enable it, set these values on the server and then restart OpenTrack:"
+    },
+    {
+      "code": [
+        "OpenTrack__Backup__Enabled=true",
+        "OpenTrack__Backup__IntervalHours=24     # how often to snapshot",
+        "OpenTrack__Backup__Directory=           # blank = a 'backups' folder next to the database",
+        "OpenTrack__Backup__Retention=14         # keep the newest 14 snapshots, delete older ones"
+      ]
+    },
+    {
+      "p": "Each snapshot is named `opentrack-YYYYMMDD-HHMMSS.db` — the date and time it was taken, so the newest is easy to spot. To **restore** one: stop the server, copy the chosen snapshot over the live `opentrack.db` file, and start the server again."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "KEEP A COPY OFF THE MACHINE",
+        "text": "Automatic backups protect against mistakes and file corruption, but not against the whole server dying, being stolen, or being lost in a fire or flood. Every so often, copy a recent snapshot (or a manual JSON export) to a different device or a cloud drive, so that a single failure can't take everything with it."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__The Import page says I don't manage any projects.__ Importing needs the **Manager** role on a target project. Create a project first (or ask to be made a Manager of one), then return to **Import**.",
+        "__My import was refused as the wrong type.__ The **File type** dropdown must match the file. A Jira CSV must be imported as **Jira** or **CSV**, and a GitHub export as **GitHub**. Re-check the dropdown and try again.",
+        "__Some columns didn't come across.__ For CSV and Jira, the first row must be the column headers, and OpenTrack matches only the recognized names (see the table above). Rename an unusual header to a recognized one — for example __Summary__ for the title — and re-import.",
+        "__I imported the same file twice and worried about duplicates.__ For CSV, Jira, and GitHub, re-running the same file is safe — matching rows are skipped, and the banner tells you how many. The **MantisBT** importer is the exception: it does not de-duplicate, so run each MantisBT export only once.",
+        "__The file is too big.__ Uploads are capped at 25 MB. Split a very large export into smaller files and import them one after another.",
+        "__I don't see the CSV/JSON download buttons.__ You're likely in the **desktop app**, where those buttons are replaced by a note. Open OpenTrack in a browser for one-click downloads, or back up by copying the `opentrack.db` file.",
+        "__Where did automatic backups go?__ They're **off by default** and controlled on the server, not in the web pages. Whoever runs the server sets `OpenTrack__Backup__Enabled=true` (and the related values) and restarts OpenTrack.",
+        "__I need to restore a backup.__ Stop the server, copy your chosen `opentrack-…​.db` snapshot over the live `opentrack.db` file (in the server's data folder), and start the server again."
+      ]
+    }
+  ]
+}

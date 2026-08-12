@@ -1,0 +1,212 @@
+{
+  "order": 21,
+  "title": "Integrations: Git & Chat Notifications",
+  "subtitle": "Link code commits to issues, and get pinged in Slack or Discord when things change.",
+  "in_this_chapter": [
+    "How Git integration links commits to issues",
+    "The commit keywords that link and auto-resolve",
+    "Connecting a GitHub repository, field by field",
+    "Setting up the webhook in GitHub",
+    "Reading the Linked commits section on an issue",
+    "Sending change notifications to Slack, Discord, or your own service"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Connect a **GitHub** repository so a commit that says **fixes #123** links to (and can resolve) that issue. Separately, add a **Slack** or **Discord** webhook on the project's **Settings** page to get pinged whenever an issue is created, changed, or commented on."
+      }
+    },
+    {
+      "h1": "Two integrations, two directions"
+    },
+    {
+      "p": "OpenTrack connects to the tools your team already uses in two independent ways, and it helps to keep them straight. **Git integration** is __incoming__: your code host (GitHub) tells OpenTrack about commits, and OpenTrack links them to the matching issues. **Chat notifications** are __outgoing__: OpenTrack tells a chat channel (Slack, Discord, or your own service) whenever an issue changes. You can turn on either one, both, or neither. Both are set up per project, and both need the **Manager** role."
+    },
+    {
+      "h1": "Git integration — how it works"
+    },
+    {
+      "p": "A __commit__ is a saved change to your code. When you connect a **GitHub** repository (repo) to a project, OpenTrack watches for commits whose message mentions an issue number and links the two automatically. That closes the gap between __here's the bug__ and __here's the change that fixed it__ — from any issue you can jump straight to the commit that addressed it."
+    },
+    {
+      "p": "What OpenTrack does with a commit depends on the exact words in the message:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Commit message contains",
+          "What OpenTrack does"
+        ],
+        "rows": [
+          [
+            "**`fixes #123`** (also **`closes #123`** or **`resolves #123`**)",
+            "Links the commit to issue #123 **and**, if you've turned on auto-resolve, moves that issue to **Resolved**"
+          ],
+          [
+            "**`#123`** (a plain mention)",
+            "Links the commit to issue #123 **without** changing its status"
+          ]
+        ],
+        "widths": [
+          3,
+          3.6
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "OPENTRACK ONLY RECEIVES",
+        "text": "Git integration is strictly one-way and read-only from OpenTrack's side. OpenTrack only **receives** notifications from GitHub — it never needs access to your code, and never signs in to your GitHub account. Auto-resolve, when on, only affects **open** issues and only when your project's workflow allows a move to **Resolved**."
+      }
+    },
+    {
+      "h1": "Connect a repository (Manager)"
+    },
+    {
+      "p": "Setting up Git integration has two halves: first you enable it in OpenTrack and set a shared secret, then you paste OpenTrack's address into GitHub. Do the OpenTrack half first, because it gives you the address (the __Payload URL__) you'll need for GitHub."
+    },
+    {
+      "steps": [
+        "On the project, go to **Settings**, then select **Git** across the top (this opens the **Git integration** page).",
+        "Tick **Enable Git integration for this project**.",
+        "In **Webhook secret**, enter a long random string you make up. This is required when integration is enabled — it's what proves a notification really came from your GitHub. Treat it like a password.",
+        "Decide whether to tick **Auto-resolve an issue when a pushed commit says `fixes #id`** (or close/resolve). Leave it off if you'd rather commits only link, never change status.",
+        "Select **Save**. OpenTrack confirms with __Saved.__ and shows a **Payload URL** in the __Set up the webhook in GitHub__ section below — you'll need it in the next step."
+      ]
+    },
+    {
+      "screenshot": "The Git integration page: the Enable switch, the Webhook secret field, the Auto-resolve checkbox, and the Payload URL below"
+    },
+    {
+      "table": {
+        "headers": [
+          "Control",
+          "What it does"
+        ],
+        "rows": [
+          [
+            "**Enable Git integration for this project**",
+            "The master on/off switch. When off, commits are ignored."
+          ],
+          [
+            "**Webhook secret**",
+            "A shared password you invent. You paste the same value into GitHub; OpenTrack rejects any push whose signature doesn't match, so a strong, random secret is what keeps the endpoint safe."
+          ],
+          [
+            "**Auto-resolve**",
+            "When ticked, a `fixes #id` (or close/resolve) commit moves that open issue to **Resolved**. A plain `#id` mention only links, whatever this is set to."
+          ]
+        ],
+        "widths": [
+          2.4,
+          4.2
+        ]
+      }
+    },
+    {
+      "h2": "Set up the webhook in GitHub"
+    },
+    {
+      "p": "Now hand OpenTrack's address to GitHub so it knows where to send commit notifications. The __Set up the webhook in GitHub__ section on the Git integration page lists these same steps, with your exact Payload URL ready to copy:"
+    },
+    {
+      "steps": [
+        "In your GitHub repository, go to **Settings → Webhooks → Add webhook**.",
+        "**Payload URL:** paste the address OpenTrack showed you (it looks like `…/git/webhook/12`).",
+        "**Content type:** choose `application/json`.",
+        "**Secret:** enter the same **Webhook secret** you set in OpenTrack.",
+        "**Events:** choose __Just the `push` event__.",
+        "Save the webhook."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "REACHABILITY & THE GREEN CHECK",
+        "text": "For GitHub to reach your server, the server must be reachable from the internet (a public address or a secure tunnel) and — since the secret is what guards it — is best served over encrypted **HTTPS** (HyperText Transfer Protocol Secure). When you add the webhook, GitHub sends a test __ping__; a green check mark there means the address and secret are right."
+      }
+    },
+    {
+      "h1": "See the linked commits"
+    },
+    {
+      "p": "Once everything is connected, any issue that a commit has referenced grows a **Linked commits** section on its page. Each entry shows a short commit identifier that links back to the commit on GitHub, and a **resolved** badge if that particular commit closed the issue. That makes the whole trail — from the original report to the exact change that fixed it — one click away, for anyone reviewing the issue later."
+    },
+    {
+      "screenshot": "An issue page showing the Linked commits section with a short commit id and a resolved badge"
+    },
+    {
+      "h1": "Chat notifications — Slack, Discord, or your own service"
+    },
+    {
+      "p": "Separately from Git, a project can **push a short notification to a chat channel** whenever one of its issues is created, changed, or commented on — so your team hears about activity where they already are, instead of having to check OpenTrack. This is set up in the **Integrations — outgoing webhooks** area on the project's **Settings** page."
+    },
+    {
+      "p": "The idea is the mirror image of Git integration: there, GitHub sent messages __in__; here, OpenTrack sends messages __out__ to a URL that the chat tool gives you. That URL is called an __incoming webhook__ (incoming from the chat tool's point of view)."
+    },
+    {
+      "steps": [
+        "In your chat tool, create an **incoming webhook** and copy its URL. Slack and Discord both provide these; the URL contains a secret token, so treat it as private.",
+        "On the project, go to **Settings** and scroll to **Integrations — outgoing webhooks**.",
+        "Paste the URL into the **Webhook URL** box.",
+        "Choose its **Format** — **Slack**, **Discord**, or **Generic** — from the dropdown.",
+        "Select **Add**. The webhook appears in the list above, and can be removed anytime with its **Delete** button."
+      ]
+    },
+    {
+      "screenshot": "The Integrations — outgoing webhooks area: the list of existing webhooks and the Webhook URL box with the Format dropdown"
+    },
+    {
+      "table": {
+        "headers": [
+          "Format",
+          "What it sends"
+        ],
+        "rows": [
+          [
+            "**Slack**",
+            "A short text message formatted for a Slack channel."
+          ],
+          [
+            "**Discord**",
+            "A short text message formatted for a Discord channel."
+          ],
+          [
+            "**Generic**",
+            "The full details as **JSON** (JavaScript Object Notation) — event, project, issue, status, and time — posted to your own service or automation."
+          ]
+        ],
+        "widths": [
+          1.6,
+          5
+        ]
+      }
+    },
+    {
+      "p": "The list of configured webhooks shows each one's **Destination** (its URL) and **Format**, with a **Delete** button beside it. You can add as many as you like — for example a Slack channel for the team and a Generic endpoint feeding your own dashboard — and remove any of them at any time."
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "ONLY ADD URLS YOU TRUST",
+        "text": "An outgoing-webhook URL sends your issue activity to whatever service it points at. Only paste URLs you created yourself and trust — never one someone else handed you without knowing exactly where it goes. Because the URL usually contains a secret token, anyone who has it can receive your project's activity."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__I can't open the Git page or the webhooks section.__ Both need the **Manager** role on the project. If you see __You need the Manager role…​__, ask a Manager to set it up or to grant you the role.",
+        "__Commits aren't linking to issues.__ Check that **Enable Git integration** is ticked and saved, that the GitHub webhook's **Payload URL** matches the one OpenTrack shows, and that the **Secret** is identical on both sides. In GitHub's webhook page, a red mark or failed deliveries point to a wrong URL, an unreachable server, or a mismatched secret.",
+        "__The commit linked but the issue didn't resolve.__ Auto-resolve must be ticked, the commit must use a resolving keyword (`fixes`, `closes`, or `resolves`) rather than a plain `#id`, the issue must be **open**, and your project's workflow must allow a move to **Resolved**. A plain `#123` only ever links.",
+        "__GitHub shows a red X on the webhook.__ GitHub can't reach your server, or the secret is wrong. Make sure the server is reachable from the internet (public address or secure tunnel), ideally over **HTTPS**, then re-check the secret and redeliver the ping.",
+        "__No chat notifications are arriving.__ Confirm the webhook is listed under **Integrations — outgoing webhooks** with the right **Format**, and that the incoming-webhook URL is still valid in Slack or Discord (they can be revoked). Send a test change to the issue to trigger one.",
+        "__Notifications go to the wrong place or look wrong.__ The **Format** must match the destination — use **Slack** for a Slack URL, **Discord** for a Discord URL, and **Generic** only for your own service that expects JSON. Delete the mismatched webhook and add it again with the correct format."
+      ]
+    }
+  ]
+}

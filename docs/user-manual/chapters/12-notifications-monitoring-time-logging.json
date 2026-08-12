@@ -1,0 +1,219 @@
+{
+  "order": 12,
+  "title": "Notifications, Monitoring & Time Logging",
+  "subtitle": "Get told when things change, and record the effort you spend on an issue.",
+  "in_this_chapter": [
+    "Monitoring an issue with the Monitor button",
+    "Which issues you follow automatically",
+    "Exactly what a notification is sent for",
+    "Reading and clearing your notifications",
+    "Logging hours and minutes against an issue",
+    "Reading the time log and running total",
+    "Troubleshooting"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Select **Monitor** at the top of an issue to be told when it changes. Check **Notifications** in the left navigation to read what's happened, and select **mark read** to clear an item. Record the effort you spend in the issue's **Time log** section near the bottom of the issue page."
+      }
+    },
+    {
+      "h1": "Monitoring an issue"
+    },
+    {
+      "p": "**Monitoring** an issue (some trackers call it __watching__) means \"tell me whenever this changes.\" Once you monitor an issue, OpenTrack sends you a notification every time it is edited, gets a new note, or changes status — so you can keep an eye on something without opening it over and over."
+    },
+    {
+      "p": "The control is a single button at the top-right of any issue page, next to **Print / PDF**:"
+    },
+    {
+      "steps": [
+        "Open the issue you want to follow.",
+        "At the top-right, find the **Monitor** button.",
+        "Select it. It changes to read **Monitoring ✓** and fills in with a solid color, confirming you are now following the issue.",
+        "To stop following, select the button again. It returns to the plain **Monitor** label and you will no longer be notified about that issue."
+      ]
+    },
+    {
+      "p": "A small reminder line sits just beneath the issue's title: __Monitoring an issue notifies you of changes to it.__ The button is a simple on/off toggle — there is nothing else to set."
+    },
+    {
+      "screenshot": "An issue page with the Monitor button at the top-right, shown in its 'Monitoring ✓' on state"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "YOU ALREADY FOLLOW SOME ISSUES AUTOMATICALLY",
+        "text": "You are notified about every issue you **reported** and every issue **assigned to you**, without pressing anything. There is no need to Monitor those — you already follow them. Use **Monitor** for the *other* issues you want to keep an eye on: a teammate's bug you depend on, a report you triaged, or anything you just want to stay aware of."
+      }
+    },
+    {
+      "h2": "What actually triggers a notification"
+    },
+    {
+      "p": "A notification goes out when an issue you follow **changes** — for example a new note is posted, its status moves, its assignee changes, or its fields are edited. The message you receive names the issue and gives a short summary of what changed, in the form __Issue #42 — Login button does nothing: status changed to Confirmed__."
+    },
+    {
+      "p": "Three rules keep notifications sensible rather than noisy:"
+    },
+    {
+      "bullets": [
+        "**You are never notified of your own changes.** If you are the one who made the edit, you don't get pinged about it — only the *other* followers do.",
+        "**Access is re-checked every time.** If an issue has become private, or you have lost access to its project, you stop receiving notifications about it. The message text includes the issue's title, so OpenTrack makes sure it only ever reaches people who are still allowed to see that issue.",
+        "**A breached service-level target notifies you too.** If an issue you are the assignee or a project manager for passes its resolution deadline, OpenTrack escalates it to you automatically (see the SLA chapter). That arrives as a notification reading __SLA breached — this issue has passed its resolution target.__"
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "EMAIL, IF IT'S SET UP",
+        "text": "If your OpenTrack administrator has configured a mail server, the same notifications are also emailed to you, with a subject line like **[OpenTrack] Issue #42 updated**. If no mail server is set up, notifications still appear in the app — you just won't get email as well. Email delivery is best-effort: a mail hiccup never blocks the change that caused it."
+      }
+    },
+    {
+      "h1": "Reading your notifications"
+    },
+    {
+      "p": "Select **Notifications** in the left navigation (the bell icon) to open your notifications page. It lists what has happened on the issues you follow, **newest first**. Unread items are highlighted with a colored band so they stand out from ones you have already seen."
+    },
+    {
+      "p": "Each row shows:"
+    },
+    {
+      "bullets": [
+        "The **notification text** — a link. Select it to jump straight to the issue it is about.",
+        "A small gray **date and time** to the right of the text, showing when the change happened.",
+        "A **mark read** link on the far right, shown only while the item is still unread."
+      ]
+    },
+    {
+      "screenshot": "The Notifications page: unread items highlighted, each with its text, timestamp, and a 'mark read' link"
+    },
+    {
+      "h2": "Clearing notifications"
+    },
+    {
+      "p": "You have two ways to clear the unread highlight:"
+    },
+    {
+      "steps": [
+        "To clear a single item, select its **mark read** link. The highlight disappears and the __mark read__ link is removed from that row.",
+        "To clear everything at once, select the **Mark all as read** button at the top of the list."
+      ]
+    },
+    {
+      "p": "Selecting the notification's text link opens the issue so you can act on it, but it leaves the item marked as unread — use **mark read** when you actually want to clear it. The list keeps your most recent notifications (up to a couple hundred), so older, already-read items eventually roll off on their own. If you have nothing outstanding, the page simply reads __No notifications.__"
+    },
+    {
+      "h1": "Logging time on an issue"
+    },
+    {
+      "p": "**Time logging** records how much effort an issue took. It is useful for billing a client, for estimating how long similar work will take next time, or just for understanding where the hours actually go. Every entry is visible to everyone who can see the issue, so effort is on the record rather than guessed at."
+    },
+    {
+      "p": "The **Time log** section is near the bottom of every issue page, below the notes and relationships. Anyone with updater permission (or higher) on the project can add an entry."
+    },
+    {
+      "steps": [
+        "Open the issue and scroll down to the **Time log** heading.",
+        "In the entry row, fill in the fields below.",
+        "Select **Log time**. Your entry is added and the running **Total** updates immediately."
+      ]
+    },
+    {
+      "p": "The entry row has these fields:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Field",
+          "What to enter"
+        ],
+        "rows": [
+          [
+            "**Hours**",
+            "The whole hours of effort. Leave it at 0 for anything under an hour."
+          ],
+          [
+            "**Minutes**",
+            "The minutes of effort, on top of the hours. For example, an hour and a half is Hours 1, Minutes 30."
+          ],
+          [
+            "**Date**",
+            "The day the work was done. It defaults to today, but you can back-date an entry to when you actually did the work."
+          ],
+          [
+            "**Note (optional)**",
+            "A short description of what you did — for example __traced the crash to the login form__. Optional, but it makes the log far more useful to read later."
+          ]
+        ],
+        "widths": [
+          1.3,
+          5
+        ]
+      }
+    },
+    {
+      "screenshot": "The Time log entry row with Hours, Minutes, Date, and Note fields and the Log time button"
+    },
+    {
+      "h2": "Reading the time log"
+    },
+    {
+      "p": "Once entries exist, the section shows a **Total** at the top — the sum of everyone's logged time, written in plain form such as __3h 45m__ — followed by a table with one row per entry:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Column",
+          "What it shows"
+        ],
+        "rows": [
+          [
+            "**When**",
+            "The date the work was done."
+          ],
+          [
+            "**Who**",
+            "The person who logged it."
+          ],
+          [
+            "**Time**",
+            "How much time that entry was, in hours and minutes."
+          ],
+          [
+            "**Note**",
+            "The optional description, if one was entered."
+          ],
+          [
+            "**Remove**",
+            "A link (shown to updaters) that deletes that one entry. The Total re-adds itself afterward."
+          ]
+        ],
+        "widths": [
+          1.2,
+          5
+        ]
+      }
+    },
+    {
+      "p": "If nobody has logged anything yet, the section simply reads __No time logged yet.__ There is no timer to start or stop — you record effort after the fact, which keeps the log honest and lets you back-date work you forgot to enter at the time."
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__I pressed Monitor but I'm not getting notifications.__ Confirm the button reads **Monitoring ✓** (solid), not plain **Monitor**. Remember you are never notified about changes *you* make — only changes by other people. Test by having a teammate add a note.",
+        "__I'm getting notifications for an issue I never chose to follow.__ You are notified automatically about issues you **reported** or that are **assigned to you**. That is expected. If you don't want them, they will stop when you are no longer the reporter or assignee.",
+        "__Notifications stopped for one issue.__ You may have lost access to it — for example it was made private, or you were removed from the project. OpenTrack deliberately stops notifying anyone who can no longer see the issue, because the message text includes the issue's title.",
+        "__I'm not getting emails, only in-app notices.__ Email requires a mail server your administrator sets up. Without one, notifications still appear on the **Notifications** page — that part always works.",
+        "__Selecting a notification opened the issue but it's still highlighted as unread.__ Opening the issue does not clear the mark. Select **mark read** on the row (or **Mark all as read**) to clear it.",
+        "__There's no Log time button, or no Remove link.__ Logging and removing time need updater (or higher) permission on the project. With only view access you can read the time log and the total, but not add to it or remove entries.",
+        "__My total looks wrong.__ The **Total** is the sum of *everyone's* entries, not just yours. Check the **Who** column — other people may have logged time too."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,257 @@
+{
+  "order": 20,
+  "title": "The AI Assistant (Optional)",
+  "subtitle": "Smart triage, plain-English search, and thread summaries — what they do, and how they get turned on.",
+  "in_this_chapter": [
+    "What the AI can do — and its firm limits",
+    "The three ✨ helpers and exactly where each appears",
+    "Turning it on: local & free, or a cloud provider with a key",
+    "Getting an API key, the settings to enter, cost, and privacy"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "If your administrator turns it on, extra **✨** buttons appear: **✨ Suggest with AI** on a new issue, **✨ Ask in plain English** on the issues list, and **✨ Summarize thread** on a busy issue. Every result is a **suggestion you can accept or change** — the AI never files or resolves anything on its own."
+      }
+    },
+    {
+      "h1": "What the AI assistant is"
+    },
+    {
+      "p": "OpenTrack can optionally use an **artificial intelligence (AI)** language model to speed up a few chores — proposing how to triage a new bug, turning a plain-English request into search filters, and summarizing a long, noisy issue. It is **off by default** and only ever runs after someone deliberately turns it on and points it at a provider. If it's off, OpenTrack looks and behaves exactly as it always does; the extra buttons simply aren't there."
+    },
+    {
+      "p": "The single most important thing to understand is that everything the AI produces is a **suggestion a person reviews**. It never creates, changes, resolves, or deletes anything by itself. You always see its proposal and decide whether to keep it, edit it, or ignore it. And if a call fails or times out, nothing breaks — you just carry on doing the same thing by hand."
+    },
+    {
+      "h1": "What it can do — the three helpers"
+    },
+    {
+      "p": "There are exactly three AI helpers, each marked with a sparkle (**✨**) so you can spot them. Each lives on a specific page:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Helper",
+          "Where it appears",
+          "What it does"
+        ],
+        "rows": [
+          [
+            "**✨ Suggest with AI**",
+            "The **New Issue** page, next to **Submit Issue**",
+            "Reads the title and description you've typed and proposes a **severity**, **priority**, **category**, and a set of **tags**"
+          ],
+          [
+            "**✨ Ask in plain English**",
+            "The top of the **Issues** list",
+            "Turns a request like __high-priority crashes nobody has touched in a month__ into the normal search filters"
+          ],
+          [
+            "**✨ Summarize thread**",
+            "The **AI summary** card on an individual issue's page",
+            "Gives a plain-language recap of the problem, what's been tried, and what's next"
+          ]
+        ],
+        "widths": [
+          1.9,
+          2.3,
+          3
+        ]
+      }
+    },
+    {
+      "h2": "✨ Suggest with AI (triage a new issue)"
+    },
+    {
+      "p": "On the **New Issue** page, once you've typed at least a **Title** (a description helps too), an extra **✨ Suggest with AI** button sits beside the blue **Submit Issue** button. Clicking it does __not__ create the issue — instead it reads what you've written and fills in the triage fields for you:"
+    },
+    {
+      "steps": [
+        "Type the issue's **Title**, and ideally its **Description**.",
+        "Select **✨ Suggest with AI** (it appears only when the AI is turned on).",
+        "OpenTrack fills in the **Severity**, **Priority**, and **Category** dropdowns with its best guess.",
+        "Any suggested **tags** appear in a blue __✨ Suggested tags: …​__ note — you add those to the issue after you create it.",
+        "Review every field, change anything you disagree with, then select **Submit Issue** to actually create the issue."
+      ]
+    },
+    {
+      "screenshot": "The New Issue page with the ✨ Suggest with AI button and the blue Suggested tags note above the buttons"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "IT ONLY PRE-FILLS THE FORM",
+        "text": "Suggest with AI changes the dropdowns and shows suggested tags — nothing more. The issue isn't saved until you select **Submit Issue** yourself, so you're always free to overrule the AI first. If it can't reach the provider, you'll see __AI couldn't suggest a triage right now.__ and the form is untouched."
+      }
+    },
+    {
+      "h2": "✨ Ask in plain English (search the issues list)"
+    },
+    {
+      "p": "At the top of the **Issues** list, above the usual row of filter dropdowns, is a box labeled **✨ Ask in plain English** with a **Search with AI** button. Type what you're looking for in ordinary words and let the AI translate it into filters:"
+    },
+    {
+      "steps": [
+        "In the **✨ Ask in plain English** box, type a request such as __high-priority crashes nobody has touched in a month__.",
+        "Select **Search with AI**.",
+        "OpenTrack sets the ordinary filters below — **Status**, **Severity**, **Priority**, keyword **Text**, the **Stale** checkbox, and **Project** — to match, and shows the results.",
+        "From there you can adjust any filter by hand and search again, exactly as if you'd set them yourself."
+      ]
+    },
+    {
+      "screenshot": "The Issues list with the ✨ Ask in plain English box above the standard filter dropdowns"
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "IT CAN'T WIDEN YOUR ACCESS",
+        "text": "Plain-English search only ever produces a filter you could have set by hand, over the projects you're **already allowed to see**. It adds no query power and is never a way around OpenTrack's privacy rules. If it can't make sense of your words, you'll see __AI couldn't interpret that search right now__ or a nudge to name a status, severity, priority, keywords, or __stale__."
+      }
+    },
+    {
+      "h2": "✨ Summarize thread (recap a busy issue)"
+    },
+    {
+      "p": "On an individual issue's page, when the AI is on, an **✨ AI summary** card appears with a **Summarize thread** button. A long issue with dozens of notes can be hard to catch up on; this reads the issue and its notes and gives you a short, plain-language recap of the problem, what's already been tried, and what happens next. After the first summary the button reads **Refresh** so you can regenerate it once more has been added. A small reminder underneath — __AI-generated from this issue and its notes — double-check anything important__ — is there because a summary is a convenience, not a substitute for reading the details that matter."
+    },
+    {
+      "h1": "Turning it on — a server task, in two paths"
+    },
+    {
+      "p": "The AI is configured on the **server** (by whoever runs OpenTrack), not from the web pages, because it involves a secret key that must never reach a browser. As a day-to-day user you don't set this up — but it helps to understand the choice, because it decides where your issue text goes. There are two very different ways to run it, and the difference is mostly about **privacy** and **cost**:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Path",
+          "What it means",
+          "Good when"
+        ],
+        "rows": [
+          [
+            "**Local & free** (Ollama or LM Studio)",
+            "A model runs on **your own** computer. No key, no bill, and **the issue text never leaves your machine**.",
+            "Privacy matters, or you'd rather not pay per use. Needs a reasonably capable PC."
+          ],
+          [
+            "**Cloud provider** (Anthropic Claude, OpenAI, Azure, Groq, and others)",
+            "You get an **Application Programming Interface (API)** key from the provider; OpenTrack calls their online service.",
+            "You want the strongest results with no local hardware, and are okay sending issue text to that provider and paying a small per-use fee."
+          ]
+        ],
+        "widths": [
+          2.1,
+          2.6,
+          1.8
+        ]
+      }
+    },
+    {
+      "h2": "Option A — local, free & private (Ollama)"
+    },
+    {
+      "steps": [
+        "On the machine that will run the model, install **Ollama** from `https://ollama.com` (Windows, Mac, or Linux).",
+        "Download a model, for example: `ollama pull llama3.1`. Ollama then serves it locally.",
+        "On the OpenTrack server, set the AI settings to point at it (no key needed), then restart OpenTrack:"
+      ]
+    },
+    {
+      "code": [
+        "OpenTrack__Ai__Enabled=true",
+        "OpenTrack__Ai__Provider=openai",
+        "OpenTrack__Ai__BaseUrl=http://localhost:11434/v1   # or a LAN address like http://192.168.1.50:11434/v1",
+        "OpenTrack__Ai__Model=llama3.1"
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "HOW MUCH COMPUTER DO YOU NEED?",
+        "text": "For OpenTrack's short, occasional AI calls, **memory (RAM) matters most**: about **16 gigabytes (GB)** is the sweet spot (runs a capable 7-to-8-billion-parameter model); 8 GB works but gives weaker suggestions. An **Apple Silicon Mac** (M-series mini) or a machine with an **NVIDIA graphics card** feels snappy; a plain mini-PC's processor works, just slower. You can even run it on the same mini-PC as OpenTrack."
+      }
+    },
+    {
+      "h2": "Option B — a cloud provider (get a key)"
+    },
+    {
+      "p": "Cloud AI is billed to a **developer API account** at the provider, which is **separate** from any monthly chat subscription (an Anthropic API key is __not__ a Claude Pro plan; an OpenAI API key is __not__ ChatGPT Plus). Costs are small — a triage suggestion is typically a fraction of a cent — but set a spend limit where the provider offers one. To get a key (Anthropic Claude shown; OpenAI is nearly identical):"
+    },
+    {
+      "steps": [
+        "Go to `https://console.anthropic.com` — the developer **Console**, not the claude.ai chat site (they're separate accounts even with the same email). Sign in or sign up.",
+        "Open **API Keys** (in Settings), select **Create Key**, name it `OpenTrack`, and **copy the key now** — it's shown only once. It looks like `sk-ant-…`.",
+        "Add a little **credit** under Billing (even a few dollars is plenty for triage) and set a monthly spend limit.",
+        "On the OpenTrack server, enter the settings and restart OpenTrack:"
+      ]
+    },
+    {
+      "code": [
+        "OpenTrack__Ai__Enabled=true",
+        "OpenTrack__Ai__Provider=anthropic",
+        "OpenTrack__Ai__ApiKey=sk-ant-...          # your key — keep it on the server only",
+        "OpenTrack__Ai__Model=claude-haiku-4-5-20251001   # fast and inexpensive"
+      ]
+    },
+    {
+      "p": "For **OpenAI**, use `Provider=openai`, an `sk-…` OpenAI key, and a model like `gpt-4o-mini`. For **Azure OpenAI, Groq, OpenRouter**, or similar, use `Provider=openai`, set `BaseUrl` to that service's address, and use its key and model name. (The one `openai` setting covers every service that speaks OpenAI's common format — which is most of them, including the free local ones.)"
+    },
+    {
+      "table": {
+        "headers": [
+          "Setting",
+          "What it does"
+        ],
+        "rows": [
+          [
+            "`OpenTrack__Ai__Enabled`",
+            "**true** turns the AI on (the ✨ buttons appear); **false** or absent hides it."
+          ],
+          [
+            "`OpenTrack__Ai__Provider`",
+            "**anthropic** for Claude, or **openai** for OpenAI and every other OpenAI-compatible service (including local Ollama/LM Studio)."
+          ],
+          [
+            "`OpenTrack__Ai__ApiKey`",
+            "The provider's secret key. Left blank for a local model, which needs none."
+          ],
+          [
+            "`OpenTrack__Ai__BaseUrl`",
+            "The service address. Point it at a local model or an alternative cloud service; omit it for the provider's default."
+          ],
+          [
+            "`OpenTrack__Ai__Model`",
+            "The exact model name to use, for example `claude-haiku-4-5-20251001`, `gpt-4o-mini`, or `llama3.1`."
+          ]
+        ],
+        "widths": [
+          2.6,
+          4
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "PRIVACY IN ONE LINE",
+        "text": "With a **cloud** provider, generating a suggestion sends that issue's text to that provider — so don't enable a cloud provider for projects whose contents can't leave your environment; use a **local** model instead. The key is read only on the server and is never sent to the browser or stored in the database."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__I don't see any ✨ buttons.__ The AI is **off**, which is the default. It's a server setting; whoever runs OpenTrack has to turn it on and restart the app. Nothing you do in the web pages enables it.",
+        "__✨ Suggest with AI does nothing / says it couldn't suggest.__ You may not have entered a **Title** yet — the button needs at least a title to work from. If you see __AI couldn't suggest a triage right now__, the server couldn't reach the provider; fill the triage fields in by hand and submit as normal.",
+        "__Plain-English search says it couldn't interpret that.__ Try again with clearer wording that names a status, severity, priority, some keywords, or the word __stale__. Remember it can only ever build a filter you could set by hand — it won't find issues outside the projects you're allowed to see.",
+        "__The AI suggested the wrong severity or category.__ That's expected sometimes — every result is just a suggestion. Change the dropdowns to what you want before selecting **Submit Issue**; the AI never has the last word.",
+        "__The thread summary looks incomplete or out of date.__ Select **Refresh** on the **✨ AI summary** card to regenerate it after new notes are added, and always double-check anything important against the actual notes.",
+        "__Is my issue text being sent anywhere?__ Only with a **cloud** provider, and only when you press an ✨ button. With a **local** model (Ollama or LM Studio) the text never leaves the machine. If in doubt, ask whoever runs your server which path is configured."
+      ]
+    }
+  ]
+}

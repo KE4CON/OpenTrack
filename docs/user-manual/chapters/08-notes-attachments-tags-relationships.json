@@ -1,0 +1,276 @@
+{
+  "order": 8,
+  "title": "Notes, Attachments, Tags & Relationships",
+  "subtitle": "Discuss an issue, attach files to it, label it, and connect it to related issues.",
+  "in_this_chapter": [
+    "Where these sections live on the issue page",
+    "Adding notes, formatting them with Markdown, and keeping some private",
+    "Uploading, downloading, and deleting attachments",
+    "Tagging issues with shared, free-form labels",
+    "Linking issues together with the four relationship types",
+    "Troubleshooting the most common snags"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Open any issue. Scroll down to add **Notes** (the running discussion), upload **Attachments** (files and screenshots), add **Tags** (free-form labels), and add **Relationships** (links to other issues). Each of these has its own labeled section on the issue page."
+      }
+    },
+    {
+      "h1": "Where these sections live"
+    },
+    {
+      "p": "Everything in this chapter happens on a single **issue detail page** — the page you land on when you click an issue's title anywhere in OpenTrack, or when you open the web address `issues/` followed by the issue number. Below the issue's main facts (status, severity, reporter, and the written-up description) the page continues downward through a series of clearly headed sections. In top-to-bottom order they are: **Tags** (up near the top, just under the issue's fields), the **Custom fields** section, the write-ups (**Description**, and if filled in **Steps to Reproduce**, **Expected Behavior**, and **Actual Behavior**), then **Attachments**, then **Notes**, then **Relationships**, and finally the automatic sections (**Linked commits**, **Time log**, and **History**). This chapter covers Tags, Attachments, Notes, and Relationships; Custom fields have their own chapter."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "WHO CAN CHANGE THINGS",
+        "text": "Adding notes and uploading attachments is open to anyone who can see the issue. Adding or removing **tags** and **relationships**, and deleting an attachment, requires the **Updater** role (a developer-level account or higher) on that project. If you don't have it, you'll still see everything — you just won't see the add/remove controls."
+      }
+    },
+    {
+      "h1": "Notes — the running discussion"
+    },
+    {
+      "p": "**Notes** are the conversation on an issue: questions, findings, decisions, and the plain record of \"tried this, it didn't work.\" Keeping the discussion attached to the issue — rather than scattered across chat messages and email — means the whole story lives in one place that anyone can read from the top later. The **Notes** section lists every note already added, oldest at the top, each in its own bordered box showing who wrote it, the date and time, and a __Private__ badge if it was marked private. If nothing has been added yet, the section simply reads __No notes yet.__"
+    },
+    {
+      "h2": "Adding a note"
+    },
+    {
+      "steps": [
+        "On the issue page, scroll to the **Notes** heading.",
+        "Click into the box labeled __Add a note…__ and type your message.",
+        "If this note should be seen only by the project's own team, tick the checkbox **Private note (visible to developers and up)** just beneath the box.",
+        "Click **Add Note**. Your note appears immediately at the bottom of the list, stamped with your name and the current time."
+      ]
+    },
+    {
+      "screenshot": "The Notes section: existing notes in bordered boxes, the Add a note box, the Private note checkbox, and the Add Note button"
+    },
+    {
+      "h2": "Formatting a note with Markdown"
+    },
+    {
+      "p": "Notes accept **Markdown**, the same lightweight formatting you can use in an issue's description. You don't have to use any of it — plain typing works fine — but it's there when a note needs structure. The most useful marks are:"
+    },
+    {
+      "table": {
+        "headers": [
+          "You type",
+          "You get"
+        ],
+        "rows": [
+          [
+            "`**important**`",
+            "**important** (bold)"
+          ],
+          [
+            "`` `Ctrl+C` ``",
+            "`Ctrl+C` shown in a fixed-width code font"
+          ],
+          [
+            "A line starting with `- ` or `* `",
+            "A bulleted list item"
+          ],
+          [
+            "Triple back-ticks on their own line, your text, then triple back-ticks again",
+            "A code block — ideal for pasting a log, a stack trace, or a configuration snippet so it keeps its line breaks and spacing"
+          ]
+        ],
+        "widths": [
+          2.6,
+          3.4
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "TIP",
+        "text": "Paste long logs and error output inside a triple-back-tick code block. Without it, the raw text can wrap and collapse into an unreadable run; inside the block it stays exactly as you pasted it."
+      }
+    },
+    {
+      "h2": "Private notes"
+    },
+    {
+      "p": "A **private note** is visible only to project members with a developer-level role or higher — the label on the checkbox says __visible to developers and up__. Use it for internal discussion you don't want a lower-access viewer to see: someone who filed the issue through a public intake form, or a reporter-only account, will not see private notes at all. On the list, a private note is drawn with a warning-colored border and carries a __Private__ badge next to the author's name, so it's always obvious at a glance which notes are internal and which are open."
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "DECIDE BEFORE YOU POST",
+        "text": "Whether a note is private is set when you add it, using the checkbox. Treat that choice as final — post sensitive internal discussion only after you've ticked **Private note**, not after."
+      }
+    },
+    {
+      "h1": "Attachments — files and screenshots"
+    },
+    {
+      "p": "Attach the evidence: a log file, a screenshot of the error, a sample document that reproduces the problem, or a configuration that triggers the bug. The **Attachments** section lists every file already on the issue. Each row shows the **file name** (as a link), the **file size**, and the **name of the person who uploaded it**. Sizes are shown in the friendliest unit — bytes (`B`), kilobytes (`KB`), or megabytes (`MB`). If nothing is attached yet, the section reads __No attachments.__"
+    },
+    {
+      "h2": "Uploading a file"
+    },
+    {
+      "steps": [
+        "Scroll to the **Attachments** heading.",
+        "Use the file picker just below the current list of attachments — click it and choose a file from your computer.",
+        "In the browser version of OpenTrack, click **Upload** to send it. In the desktop app, the upload starts as soon as you pick the file.",
+        "The new file appears in the list, with your name shown as the uploader."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "SIZE LIMIT",
+        "text": "A single attachment can be up to **10 MB**. If a file is larger than that, the upload is refused and an error message is shown; compress the file or trim it (for example, attach only the relevant portion of a large log) and try again."
+      }
+    },
+    {
+      "screenshot": "The Attachments section: a list of files with names, sizes, and uploaders, each with a Delete button, and the file picker below"
+    },
+    {
+      "h2": "Downloading and deleting"
+    },
+    {
+      "p": "To open or save an attachment, click its **file name** in the list — anyone who can see the issue can download any of its attachments. To remove a file that's no longer needed, click the **Delete** button on its row. Deleting requires the **Updater** role, so if you don't see a Delete button next to a file, your account doesn't have permission to remove it. Deletion is immediate and there is no undo, so make sure you have the right file before you click."
+    },
+    {
+      "h1": "Tags — shared, free-form labels"
+    },
+    {
+      "p": "**Tags** are short, free-form labels — __regression__, __customer-reported__, __needs-design__, __good-first-issue__ — that cut across the built-in fields and across projects. Where category and severity are fixed choices, a tag is anything you want it to be. The **Tags** area sits near the top of the issue page, just under the issue's main fields. It shows the issue's current tags as small gray badges, or the word __none__ if it has no tags yet."
+    },
+    {
+      "h2": "Adding a tag"
+    },
+    {
+      "steps": [
+        "Find the **Tags** line near the top of the issue page.",
+        "In the box labeled __add a tag__, start typing. As you type, a drop-down of existing tags appears — these are tags already used anywhere in OpenTrack — so you can pick one and stay consistent instead of inventing a near-duplicate.",
+        "To reuse an existing tag, click it in the drop-down. To create a brand-new tag, just finish typing the new name.",
+        "Click **Add**. The tag appears as a badge on the issue right away. If the tag was new, it's created on the spot and becomes available to every project from then on."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "TAGS ARE INSTANCE-WIDE",
+        "text": "A tag is shared across the whole OpenTrack instance, not tied to one project. That's the point: because __regression__ means the same tag everywhere, you can later filter every project at once by that one label (see the Finding Issues chapter). Watch the type-ahead drop-down to avoid creating __regression__, __Regressions__, and __regressed__ as three separate tags."
+      }
+    },
+    {
+      "h2": "Removing a tag"
+    },
+    {
+      "p": "To take a tag off an issue, use the **Remove a tag…** drop-down next to the add box, choose the tag you want gone, and click **Remove**. This only removes the tag from *this* issue — the tag itself still exists and stays on any other issues that use it. Adding and removing tags both require the **Updater** role; without it you'll see the badges but no add or remove controls."
+    },
+    {
+      "h1": "Relationships — linking issues together"
+    },
+    {
+      "p": "Real work is connected: one bug blocks another from being fixed, two reports turn out to be the same problem, a big task is really the parent of several smaller ones. **Relationships** capture those links so that opening one issue shows you the others it touches. The **Relationships** section lists the issue's current links, each worded from this issue's point of view — for example __blocks #142 — Login screen freezes__ — with the linked issue's number as a clickable link and its project shown in gray. If there are no links yet, the section reads __No related issues.__"
+    },
+    {
+      "h2": "The four relationship types"
+    },
+    {
+      "p": "When you add a link you pick its type. There are four, and each one automatically shows the correct wording on **both** issues — the issue you add it from, and the issue you point it at. The table shows what you pick and how it reads from each side:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Type you pick",
+          "Shows on this issue as",
+          "Shows on the other issue as",
+          "Use it when"
+        ],
+        "rows": [
+          [
+            "**related to**",
+            "related to",
+            "related to",
+            "Two issues are connected but neither controls the other. The wording is the same from both sides."
+          ],
+          [
+            "**duplicate of**",
+            "duplicate of",
+            "has duplicate",
+            "This issue is the same problem as another one that's already filed. Point the newer/duplicate one at the original."
+          ],
+          [
+            "**parent of**",
+            "parent of",
+            "child of",
+            "This issue is a larger effort and the other is a piece of it. The other issue will read __child of__ this one."
+          ],
+          [
+            "**blocks**",
+            "blocks",
+            "blocked by",
+            "This issue must be done before the other can move. The other issue will read __blocked by__ this one."
+          ]
+        ],
+        "widths": [
+          1.4,
+          1.4,
+          1.6,
+          3
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "PICK THE RIGHT DIRECTION",
+        "text": "Direction matters for **duplicate of**, **parent of**, and **blocks**. Ask yourself which issue is the original, the parent, or the blocker, and add the link from that side (or from whichever side makes the sentence read true). If you get it backwards, remove the link and add it again the other way. Only **related to** reads the same in both directions."
+      }
+    },
+    {
+      "h2": "Adding a link"
+    },
+    {
+      "steps": [
+        "Scroll to the **Relationships** heading.",
+        "In the row of controls, open the **type** drop-down and choose __related to__, __duplicate of__, __parent of__, or __blocks__.",
+        "In the box marked __issue #__, type the number of the other issue you want to link to.",
+        "Click **Add**. A confirmation message appears, and the link now shows on this issue's list — and, worded from its own side, on the other issue's list too."
+      ]
+    },
+    {
+      "screenshot": "The Relationships section: the list of existing links, the type drop-down, the issue-number box, and the Add button"
+    },
+    {
+      "h2": "Removing a link"
+    },
+    {
+      "p": "To remove a relationship, use the **Remove a link…** drop-down next to the add controls. It lists each current link by its wording and the other issue's number — for example __blocks #142__. Choose the one you want to remove and click **Remove**. The link disappears from both issues at once. As with tags, adding and removing relationships requires the **Updater** role."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "RELATED, AUTOMATICALLY",
+        "text": "Separately from the links you add by hand, an issue page may show a __Possibly related__ box listing issues with similar titles. That's a suggestion OpenTrack generates for you — it is not a relationship until you deliberately add one using the steps above."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__I don't see the boxes to add a tag or link an issue.__ Those controls require the **Updater** role on the project. If you can read the issue but only see the existing tags and links (not the add/remove controls), your account is view-only for that project. Ask a project Manager to raise your role.",
+        "__My private note is showing to everyone / isn't private.__ Whether a note is private is set by the **Private note** checkbox at the moment you add it. Check the note in the list — a private note has a warning-colored border and a __Private__ badge. If it's missing those, the checkbox wasn't ticked; there's no toggle after the fact, so add a fresh private note and, if needed, have a Manager remove the open one.",
+        "__My pasted log looks like a jumbled run of text.__ Wrap it in a triple-back-tick code block (back-ticks on their own line before and after the text). That preserves line breaks and spacing.",
+        "__My upload was refused.__ The file is probably over the **10 MB** limit. Compress it, or attach only the relevant part (for example, the tail of a large log). The error message on the upload box will confirm the reason.",
+        "__There's no Delete button on an attachment.__ Deleting requires the **Updater** role. If you don't have it you can still download the file, but not remove it.",
+        "__I linked the wrong two issues, or the direction is backwards.__ Use the **Remove a link…** drop-down to remove it, then add it again with the correct type or from the correct issue. Remember __duplicate of__, __parent of__, and __blocks__ are directional; __related to__ is not.",
+        "__I typed an issue number to link but got an error.__ Make sure the number is a real issue you're allowed to see, and that you typed the number only (not the `#`). The __issue #__ box already supplies the `#`."
+      ]
+    }
+  ]
+}

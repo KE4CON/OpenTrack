@@ -1,0 +1,252 @@
+{
+  "order": 14,
+  "title": "Automation Rules",
+  "subtitle": "\"When a new issue looks like this, do that\" — handled for you, the moment it's filed.",
+  "in_this_chapter": [
+    "What automation runs on, and exactly when",
+    "Opening the rules editor (Managers)",
+    "Naming a rule and setting its run order",
+    "The conditions: matching a new issue",
+    "The actions: what the rule does",
+    "How rules run in order and can override each other",
+    "Editing, disabling, and deleting rules",
+    "Troubleshooting"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "A **Manager** can set \"when a new issue looks like this, do that\" rules under **Settings → Automation** — so routine sorting (set the priority, assign it, add a tag) happens by itself the instant an issue is filed. A rule runs only on **new** issues, applies its **actions** only if the issue matches **all** its **conditions**, and rules run in order."
+      }
+    },
+    {
+      "h1": "What automation does"
+    },
+    {
+      "p": "An **automation rule** runs the moment a **new issue is created** in the project. If the new issue matches the rule's **conditions**, the rule's **actions** are applied to it automatically. It is a way to bake your triage habits into the system so routine sorting happens without anyone lifting a finger — every crash report tagged and prioritized the second it lands, every issue in a certain category assigned to the right person, day or night."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "NEW ISSUES ONLY",
+        "text": "Rules fire **once**, at creation time. They do not re-run when an existing issue is later edited, and changing a rule does not reach back and re-sort issues that already exist. Automation is about catching issues as they arrive, not tidying up old ones."
+      }
+    },
+    {
+      "h1": "Opening the rules editor"
+    },
+    {
+      "p": "Automation is set per project, and only a **Manager** on that project can create or change rules. Opening the page without the Manager role shows __You need the Manager role on this project to manage automation rules.__ and nothing editable."
+    },
+    {
+      "steps": [
+        "Open the project, go to **Settings**, and select **Automation** across the top. The page is titled **Automation rules — __ProjectName__**.",
+        "The top of the page lists any **Existing rules**; the bottom is the form for adding a new one (or editing an existing one).",
+        "Fill in the form and select **Add rule** (or **Save changes** when editing)."
+      ]
+    },
+    {
+      "screenshot": "The Automation rules page: a table of existing rules above, the add/edit form below"
+    },
+    {
+      "h1": "The rule's name and run order"
+    },
+    {
+      "p": "Every rule starts with three basic settings at the top of the form:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Field",
+          "What it does"
+        ],
+        "rows": [
+          [
+            "**Rule name**",
+            "A label so you can recognize the rule later — for example __Auto-tag crashes__. It is for your eyes only and has no effect on what the rule does."
+          ],
+          [
+            "**Run order**",
+            "A number that decides the order rules run in. **Lower numbers run first.** When several rules could touch the same new issue, order matters (see below)."
+          ],
+          [
+            "**Enabled**",
+            "A checkbox. Uncheck it to switch a rule off without deleting it — handy for pausing a rule you might want back later."
+          ]
+        ],
+        "widths": [
+          1.3,
+          5
+        ]
+      }
+    },
+    {
+      "h1": "The conditions — \"When a new issue matches\""
+    },
+    {
+      "p": "The first card in the form, headed **When a new issue matches**, is where you describe which issues the rule should act on. You can set any mix of the four conditions below. A rule fires only when the new issue matches **all** of the conditions you set — they are combined with \"and,\" not \"or.\" Leave any condition on **Any** (or blank) to ignore it."
+    },
+    {
+      "table": {
+        "headers": [
+          "Condition",
+          "How it matches"
+        ],
+        "rows": [
+          [
+            "**Title or description contains**",
+            "A text box. The rule matches if the words you type appear anywhere in the new issue's title or its description. Leave it blank (__any text__) to ignore text entirely."
+          ],
+          [
+            "**Category is**",
+            "A dropdown of the project's categories, plus **Any**. Pick one to match only issues filed in that category."
+          ],
+          [
+            "**Severity is**",
+            "A dropdown of the severity levels (Feature, Trivial, Text, Tweak, Minor, Major, Crash, Block), plus **Any**. Pick one to match only issues at that severity."
+          ],
+          [
+            "**Priority is**",
+            "A dropdown of the priorities (None, Low, Normal, High, Urgent, Immediate), plus **Any**. Pick one to match only issues at that priority."
+          ]
+        ],
+        "widths": [
+          1.6,
+          5
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "A RULE WITH NO CONDITIONS MATCHES EVERYTHING",
+        "text": "If you leave every condition on **Any**, the rule matches every new issue in the project. That can be exactly what you want — for example a rule that assigns every brand-new issue to a triage lead — but set it deliberately, not by accident."
+      }
+    },
+    {
+      "h1": "The actions — \"Then do\""
+    },
+    {
+      "p": "The second card, headed **Then do**, is where you set what happens to a matching issue. Set as many actions as you like; **leave an action blank (or on \"— leave —\") to skip it**, and the issue keeps whatever it came in with for that field."
+    },
+    {
+      "table": {
+        "headers": [
+          "Action",
+          "What it does to the matching issue"
+        ],
+        "rows": [
+          [
+            "**Set severity**",
+            "Changes the issue's severity to the level you choose."
+          ],
+          [
+            "**Set priority**",
+            "Changes the issue's priority to the level you choose."
+          ],
+          [
+            "**Set status**",
+            "Moves the issue straight to a status — for example jumping a known-good report to __Confirmed__."
+          ],
+          [
+            "**Assign to**",
+            "Assigns the issue to a project member. Note: this is applied only if that person is still a member of the project when the issue is created."
+          ],
+          [
+            "**Add tag**",
+            "Adds a tag to the issue. If the tag doesn't exist yet, it is created automatically."
+          ]
+        ],
+        "widths": [
+          1.5,
+          5
+        ]
+      }
+    },
+    {
+      "screenshot": "The rule form's two cards: 'When a new issue matches' conditions above, 'Then do' actions below"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "A WORKED EXAMPLE",
+        "text": "Rule name **Auto-tag crashes**. Condition: __Title or description contains__ *crash*. Actions: __Set severity__ to Crash, __Set priority__ to High, and __Add tag__ *crash*. From then on, every report that mentions a crash is triaged and labeled the instant it is filed — no manual sorting, at any hour."
+      }
+    },
+    {
+      "h1": "How rules run together"
+    },
+    {
+      "p": "A project can have many rules, and more than one may match the same new issue. When that happens, they run in **run-order** — lowest number first — and a **later matching rule can override an earlier one**. If rule 10 sets the priority to High and rule 20 also matches and sets it to Urgent, the issue ends up Urgent, because 20 ran after 10 and had the last word on priority."
+    },
+    {
+      "p": "This is worth keeping in mind when you build several rules: put broad, general rules earlier (lower numbers) and specific, override rules later (higher numbers), so the specific ones get the final say. If two rules touch *different* fields, order doesn't matter — they simply both apply."
+    },
+    {
+      "h1": "Managing existing rules"
+    },
+    {
+      "p": "The **Existing rules** table at the top of the page lists every rule you have built, with these columns:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Column",
+          "What it shows"
+        ],
+        "rows": [
+          [
+            "**#**",
+            "The run order number (lowest runs first)."
+          ],
+          [
+            "**Name**",
+            "The rule's name."
+          ],
+          [
+            "**When**",
+            "A plain-language summary of the rule's conditions — for example __text contains \"crash\"__ — or __any new issue__ if it has none."
+          ],
+          [
+            "**Then**",
+            "A plain-language summary of the rule's actions — for example __severity → Crash, priority → High, tag → crash__."
+          ],
+          [
+            "**Enabled**",
+            "__Yes__ or __No__, so you can see at a glance which rules are live."
+          ],
+          [
+            "**Edit / Delete**",
+            "Buttons on each row. **Edit** loads the rule back into the form below for changes; **Delete** removes it."
+          ]
+        ],
+        "widths": [
+          1.2,
+          5
+        ]
+      }
+    },
+    {
+      "steps": [
+        "To **change** a rule, select **Edit** on its row. The form at the bottom fills in with that rule's settings and its heading changes to __Edit rule #__. Make your changes and select **Save changes**. Use the **Cancel edit** link to back out without saving.",
+        "To **pause** a rule without losing it, edit it and uncheck **Enabled**, then save. A disabled rule stays in the list (Enabled reads __No__) but never fires.",
+        "To **remove** a rule for good, select **Delete** on its row."
+      ]
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__I can't see or change automation rules.__ Managing rules needs the **Manager** role on that project. If you see __You need the Manager role on this project to manage automation rules__, ask a project manager to make the change or raise your role.",
+        "__My rule didn't fire on an existing issue.__ Rules run only on **new** issues, at creation. They never re-run on issues that already exist, and editing a rule doesn't reach back to re-sort old ones.",
+        "__My rule seems to match issues I didn't intend.__ Check for conditions left on **Any** — those are ignored, so a rule with everything on Any matches *every* new issue. Tighten the conditions you care about.",
+        "__Two of my rules fight over the same field.__ Later rules (higher run-order numbers) override earlier ones. If the result isn't what you want, adjust the run-order numbers so the rule you want to win runs last.",
+        "__The 'Assign to' action didn't stick.__ Assignment is applied only if that person is still a member of the project when the issue is created. If they have since left the project, the assignment is skipped.",
+        "__A new tag appeared that I didn't create.__ The **Add tag** action creates the tag automatically if it doesn't already exist. That is expected — check whether a rule adds that tag.",
+        "__I switched a rule off but it's still listed.__ That is correct. Unchecking **Enabled** pauses a rule without deleting it; it stays in the table with __No__ under Enabled and never fires until you re-enable it. Use **Delete** to remove it entirely."
+      ]
+    }
+  ]
+}

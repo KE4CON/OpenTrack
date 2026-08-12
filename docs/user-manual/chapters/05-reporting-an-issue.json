@@ -1,0 +1,334 @@
+{
+  "order": 5,
+  "title": "Reporting an Issue",
+  "subtitle": "File a new issue with all the detail that makes it fixable — plus the fast lane and the AI-assisted lane.",
+  "in_this_chapter": [
+    "Opening the New Issue form and what you will see",
+    "Every field on the form, in order, with what to put and why",
+    "The Severity, Priority, and Reproducibility choices spelled out",
+    "Writing a description that helps, using Markdown",
+    "Attaching your location for a field problem",
+    "Letting the AI assistant suggest the triage",
+    "The fast lane: Quick add, with duplicate-catching",
+    "Troubleshooting a submission that will not go through"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Open a project, select **New Issue**, type a **Title** and **Description**, set **Severity** and **Priority**, and select **Submit Issue**. Done — a bug is filed and you land on its page. In a hurry? Use **Quick add** and fill in the rest later."
+      }
+    },
+    {
+      "h1": "What this is and what it is for"
+    },
+    {
+      "p": "An __issue__ is OpenTrack's word for a single tracked item — a bug, a defect, a feature request, or any task you want to record and follow to completion. This chapter covers the __New Issue__ form: the place where an issue is born, and your one chance to hand whoever fixes it the context they need. A well-written issue saves everyone time later. You do not have to fill in every field — only **Title** and **Description** are required — but the more you provide, the faster it gets resolved."
+    },
+    {
+      "h1": "Opening the New Issue form"
+    },
+    {
+      "p": "A new issue always belongs to a __project__ (the container that groups related issues — see the Projects chapter), so you start from inside one."
+    },
+    {
+      "steps": [
+        "Open the project you want to file the issue against.",
+        "Select **New Issue**.",
+        "The form opens with the heading __New Issue — [project name]__ at the top, so you can confirm you are filing against the right project before you type a word."
+      ]
+    },
+    {
+      "screenshot": "The New Issue form, empty, with the 'New Issue — [project name]' heading at the top"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "NOTE",
+        "text": "If you land on the form and the heading names the wrong project, go back and open the correct project first. An issue's project is set when you create it from that project's New Issue button."
+      }
+    },
+    {
+      "h1": "The form, field by field"
+    },
+    {
+      "p": "The fields appear top to bottom in the order below. Required fields are marked; everything else is optional and can be added or changed later on the issue's own page."
+    },
+    {
+      "table": {
+        "headers": [
+          "Field",
+          "Required?",
+          "What to put, and why it matters"
+        ],
+        "rows": [
+          [
+            "**Title**",
+            "Yes",
+            "A short, specific summary. `Export button does nothing on the Reports page` beats `export broken`. This single line is what everyone sees in every list, so make it stand on its own."
+          ],
+          [
+            "**Description**",
+            "Yes",
+            "The full story of the problem. Supports **Markdown** formatting (covered below) — ideal for pasting logs, error messages, and stack traces into code blocks. A small note under the box reminds you: __Markdown supported — bold, code, and fenced code blocks for stack traces.__"
+          ],
+          [
+            "**Steps to Reproduce**",
+            "No",
+            "A numbered recipe that makes the problem happen every time. For a bug, this is the single most useful thing you can provide — it lets the fixer see the failure with their own eyes."
+          ],
+          [
+            "**Category**",
+            "No",
+            "A dropdown of the buckets this project defines (for example __UI__, __Backend__, __Docs__). Leave it on __(none)__ if you are unsure. Picking one helps people filter later."
+          ],
+          [
+            "**Expected Behavior**",
+            "No",
+            "What you thought __should__ happen. Stating it plainly removes any guesswork about what 'correct' looks like."
+          ],
+          [
+            "**Actual Behavior**",
+            "No",
+            "What actually happened instead. The gap between Expected and Actual is the bug, stated in one glance."
+          ],
+          [
+            "**Severity**",
+            "No (defaults to Minor)",
+            "How __bad__ the impact is if the problem happens. See the full table below. Severity is about impact, not urgency."
+          ],
+          [
+            "**Priority**",
+            "No (defaults to Normal)",
+            "How __urgent__ it is to act. See the table below. A typo on the front page can be low severity but high priority; a rare crash can be high severity but low priority."
+          ],
+          [
+            "**Reproducibility**",
+            "No (defaults to Have-not-tried)",
+            "How reliably you can trigger the problem. See the table below. It tells whoever fixes it what they are up against."
+          ],
+          [
+            "**Due Date**",
+            "No",
+            "An optional target date, chosen from a date picker. Overdue open issues get flagged on the dashboard and in lists."
+          ],
+          [
+            "**Affects Version**",
+            "No",
+            "The release where the problem shows up, from this project's version list (or __(none)__). Powers the Roadmap view."
+          ],
+          [
+            "**Fix Version**",
+            "No",
+            "The release you expect to resolve it in (or __(none)__). Once set and the issue is resolved, it appears in that release's Changelog."
+          ]
+        ],
+        "widths": [
+          1.6,
+          1.6,
+          4.5
+        ]
+      }
+    },
+    {
+      "h2": "Severity — how bad it is"
+    },
+    {
+      "p": "The **Severity** dropdown lists these choices, from lightest to heaviest impact:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Choice",
+          "What it means"
+        ],
+        "rows": [
+          ["**Feature**", "Not a defect at all — a request for something new to be added."],
+          ["**Trivial**", "A cosmetic nit that barely matters, like a slightly-off margin."],
+          ["**Text**", "A wording, spelling, or label problem — the text is wrong, not the behavior."],
+          ["**Tweak**", "A small adjustment or improvement to something that already mostly works."],
+          ["**Minor**", "A real bug, but with a workaround or limited impact. This is the default."],
+          ["**Major**", "A serious bug that significantly affects the ability to use the feature."],
+          ["**Crash**", "The program (or a part of it) crashes or aborts."],
+          ["**Block**", "A show-stopper — work cannot continue until it is fixed."]
+        ],
+        "widths": [1.3, 5.0]
+      }
+    },
+    {
+      "h2": "Priority — how urgent it is"
+    },
+    {
+      "table": {
+        "headers": ["Choice", "What it means"],
+        "rows": [
+          ["**None**", "No particular urgency assigned yet."],
+          ["**Low**", "Can wait; handle it when convenient."],
+          ["**Normal**", "The standard, everyday level. This is the default."],
+          ["**High**", "Should be handled soon, ahead of normal work."],
+          ["**Urgent**", "Needs attention right away."],
+          ["**Immediate**", "Drop everything — this comes first."]
+        ],
+        "widths": [1.3, 5.0]
+      }
+    },
+    {
+      "h2": "Reproducibility — how reliably it happens"
+    },
+    {
+      "p": "The exact words in the dropdown are shown in bold below (some run together on screen, like __HaveNotTried__):"
+    },
+    {
+      "table": {
+        "headers": ["Choice", "What it means"],
+        "rows": [
+          ["**Always**", "It happens every single time you follow the steps."],
+          ["**Sometimes**", "It happens on some tries but not others."],
+          ["**Random**", "It happens unpredictably, with no pattern you can see."],
+          ["**HaveNotTried**", "You have not yet tried to make it happen again. This is the default."],
+          ["**UnableToReproduce**", "You tried to trigger it again and could not."],
+          ["**NotApplicable**", "Reproducing does not apply — for example, on a feature request."]
+        ],
+        "widths": [1.6, 5.0]
+      }
+    },
+    {
+      "h1": "Writing the description with Markdown"
+    },
+    {
+      "p": "The **Description** box (and the Steps, Expected, and Actual boxes, and Notes later on) understands **Markdown**, a simple way to format plain text by typing a few symbols. You do not have to use any of it, but a little goes a long way — especially fenced code blocks, which keep logs and stack traces neatly lined up instead of turning into a wall of run-together text."
+    },
+    {
+      "table": {
+        "headers": ["Type this", "To get"],
+        "rows": [
+          ["`**important**`", "**important** — bold text for emphasis"],
+          ["`` `Login.cs` ``", "`Login.cs` — inline code, good for file names and short snippets"],
+          ["a line of three backticks, then your log, then a line of three backticks", "a shaded **code block** that keeps logs and stack traces monospaced and unwrapped"],
+          ["`- first` and `- second` on their own lines", "a bulleted list"]
+        ],
+        "widths": [3.2, 3.3]
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "TIP",
+        "text": "Pasting a full error message or stack trace? Wrap it in a fenced code block (three backticks above and below). It stays readable, and OpenTrack will not try to reformat the punctuation inside it."
+      }
+    },
+    {
+      "h1": "Submitting the issue"
+    },
+    {
+      "steps": [
+        "Once the required fields are filled, select **Submit Issue** at the bottom of the form.",
+        "OpenTrack creates the issue and takes you straight to its own page — the full issue view, where notes, attachments, relationships, tags, and history all live.",
+        "From there you can add anything you left off. Nothing is locked in; the issue page is fully editable (with the right role)."
+      ]
+    },
+    {
+      "p": "Next to Submit sits a **Cancel** link. Selecting it abandons the form and returns you to the project without creating anything."
+    },
+    {
+      "screenshot": "The New Issue form filled in, with the Submit Issue button, the Suggest with AI button, and the Cancel link at the bottom"
+    },
+    {
+      "h1": "Optional: attach your location"
+    },
+    {
+      "p": "For a problem tied to a physical place — a device in the field, a site inspection, a piece of equipment — you can pin coordinates to the issue. Near the bottom of the form is a **📍 Attach my location** button with a small line of text beside it that starts out reading __Optional — useful for a problem out in the field.__"
+    },
+    {
+      "steps": [
+        "Select **📍 Attach my location**.",
+        "Your browser or device asks permission to share your location — approve it.",
+        "The text beside the button changes to __Location attached: [latitude], [longitude]__, confirming the coordinates were captured.",
+        "Submit the issue as usual. The location rides along and shows on the issue page with a **view map** link."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "NOTHING IS TRACKED",
+        "text": "Attaching your location captures a single spot at the moment you select the button. OpenTrack does not follow you, and it never updates the location on its own. If you never select the button, no location is recorded."
+      }
+    },
+    {
+      "h1": "Optional: let the AI suggest the triage"
+    },
+    {
+      "p": "If your administrator has turned on the **artificial intelligence (AI)** assistant, an extra **✨ Suggest with AI** button appears beside **Submit Issue**. It reads your Title and Description and proposes a Severity, Priority, Category, and Tags for you to accept or change — a helpful starting point when you are not sure how to classify something."
+    },
+    {
+      "steps": [
+        "Type at least a **Title** (a Description helps the suggestion too).",
+        "Select **✨ Suggest with AI**. This does __not__ create the issue — it only fills the form in for you.",
+        "OpenTrack sets the Severity, Priority, and Category dropdowns to its best guess. Any suggested tags appear in a blue bar reading __✨ Suggested tags: … — add them on the issue after you create it__ (tags are added on the issue's own page, not on this form).",
+        "Review every suggestion, change anything you disagree with, then select **Submit Issue** to actually file it."
+      ]
+    },
+    {
+      "p": "The suggestion is always just a suggestion; you stay in control. The AI Assistant chapter covers it fully, including how an administrator turns it on. If the AI cannot produce a suggestion, a short red message says so and nothing on the form changes."
+    },
+    {
+      "screenshot": "The New Issue form after Suggest with AI ran, showing the dropdowns pre-filled and the suggested-tags bar"
+    },
+    {
+      "h1": "The fast lane: Quick add"
+    },
+    {
+      "p": "When you just need to get a problem written down before you forget it, use **Quick add** (its own page, titled __Quick add a problem__). It asks for the bare minimum so you can capture the thought in seconds — perfect on a phone or mid-meeting — and turns it into a normal issue you or someone else can flesh out later."
+    },
+    {
+      "steps": [
+        "Open **Quick add**. Under the heading a line reads: __Just pick a project and describe it in a few words — everything else can be filled in later.__",
+        "**Project** — choose from the dropdown (__Choose a project…__). If you have set a default project and can still see it, it is pre-selected for you.",
+        "**What's the problem?** — type a one-line title. The box shows an example: __e.g. App crashes when saving an empty note__.",
+        "**More detail (optional)** — add anything else you remember, or leave it blank. Markdown and code blocks work here too.",
+        "Select **Save issue**. OpenTrack files it with sensible defaults (Severity __Minor__, Priority __Normal__, Reproducibility __HaveNotTried__) and opens the new issue's page."
+      ]
+    },
+    {
+      "p": "Two more buttons sit beside Save: **Check for duplicates** (see below) and a **Cancel** link that discards the entry."
+    },
+    {
+      "screenshot": "The Quick add page: project dropdown, 'What's the problem?' box, optional detail box, and the Save issue button"
+    },
+    {
+      "h2": "Catching duplicates before you file"
+    },
+    {
+      "p": "Before saving, you can check whether the problem is already on file. Select **Check for duplicates**. OpenTrack searches for **similar existing issues** and, if it finds any, shows a yellow **Possible duplicates** box listing each match as a link — with its issue number, title, project, and current status. A line underneath asks: __is it one of these already?__"
+    },
+    {
+      "bullets": [
+        "If your problem is already filed, select the matching link and go there instead of creating a second copy — less clutter, and the whole discussion stays in one place.",
+        "If none of them match, the box also says __Not one of these? Go ahead and save.__ — so select **Save issue** with a clear conscience."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "TIP",
+        "text": "The full New Issue form and the issue page also surface possible duplicates for you automatically, so you get a second chance to spot a repeat even if you skip the Quick add check."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__Submit Issue does nothing and red text appears.__ A required field is empty. Both **Title** and **Description** must be filled in; a validation message points at whichever one is missing. Fill it and submit again.",
+        "__The title will not fit.__ Titles have a length limit. Shorten it to a crisp summary and move the detail into the **Description** — that is what the description is for.",
+        "__The heading names the wrong project.__ The project is fixed when you open the form from a project's **New Issue** button. Cancel, open the correct project, and start again.",
+        "__My log or stack trace turned into one run-on paragraph.__ You pasted it as plain text. Wrap it in a fenced code block — three backticks on a line above and below — to keep it monospaced and unwrapped.",
+        "__There is no Suggest with AI button.__ The AI assistant is off for your instance. It only appears when an administrator has enabled it (see the AI Assistant chapter).",
+        "__Attach my location did nothing.__ Your browser or device blocked the location request, or you dismissed the permission prompt. Allow location access and select the button again; success shows as __Location attached: …__ beside the button.",
+        "__Quick add says I lack permission.__ You do not have rights to report an issue on the chosen project. Pick a different project, or ask a Manager to grant you access.",
+        "__Suggest with AI created the issue by accident.__ It should not — that button only fills the form. If an issue was created, you selected **Submit Issue**. Open the new issue and edit or resolve it as needed; issues are never lost."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,221 @@
+{
+  "order": 16,
+  "title": "Roadmap, Changelog & Reports",
+  "subtitle": "See what's planned, what shipped, and how the numbers are trending — all built automatically from your issues.",
+  "in_this_chapter": [
+    "How the \"Fix version\" field drives the Roadmap and Changelog",
+    "Reading the Roadmap: upcoming versions and their progress bars",
+    "Reading the Changelog: what shipped in each released version",
+    "Marking a version released so it moves to the Changelog",
+    "Opening Reports and picking a project",
+    "The three headline numbers and the three charts",
+    "What \"open\" and \"done\" mean in these views",
+    "Troubleshooting empty or surprising views"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Put a **Fix version** on your issues and OpenTrack builds a **Roadmap** (what's coming, with progress bars) and a **Changelog** (what shipped) for the project — no extra bookkeeping. Separately, **Reports** turns your issues into charts: totals, issues created per month, and open issues by status and by severity."
+      }
+    },
+    {
+      "h1": "How it all hangs together"
+    },
+    {
+      "p": "This chapter covers three read-only views that you never have to fill in by hand. They draw themselves from information already on your issues. Two of them — the **Roadmap** and the **Changelog** — are two halves of a single page and are driven entirely by one field on each issue: its **Fix version**. The third — **Reports** — is a separate page of charts driven by the issues you're allowed to see. Get the underlying data right and these views keep themselves current."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "\"OPEN\" vs. \"DONE\"",
+        "text": "Throughout these views, an issue counts as **done** once its status reaches __Resolved__ or __Closed__, and as **open** (still in progress) while its status is below __Resolved__ — that is, __New__, __Feedback__, __Acknowledged__, __Confirmed__, or __Assigned__. The progress bars and the report counts all use that same dividing line."
+      }
+    },
+    {
+      "h1": "Setting up versions"
+    },
+    {
+      "p": "The Roadmap and Changelog only have something to show once your project has **versions** and issues are pointed at them. A version is just a named release — __1.0__, __1.1__, __Spring Release__ — that you create in project Settings. Each version is either **not yet released** (still being worked toward) or **released** (already shipped)."
+    },
+    {
+      "steps": [
+        "A Manager creates versions under **Settings → Versions**, giving each a **Name**, an optional **Description**, an optional **release date**, and a **Released** checkbox.",
+        "On each issue, someone sets the **Fix version** field to the version that issue belongs to — the release it's planned for, or the one it shipped in.",
+        "That's the only bookkeeping. From there, OpenTrack sorts everything onto the Roadmap and Changelog for you."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "FIX VERSION IS THE HOOK",
+        "text": "An issue with no **Fix version** set simply doesn't appear on the Roadmap or Changelog. If you expect to see an issue there and don't, the usual reason is that its Fix version is blank."
+      }
+    },
+    {
+      "h1": "The Roadmap and Changelog page"
+    },
+    {
+      "p": "Open the project and select **Roadmap** (labeled __Roadmap & changelog__ at the top of the page). A gray note reminds you how it's built: __Issues are grouped by the version they're fixed in. Set an issue's \"Fix version\" to place it here.__ The page is split into two stacked sections — **Roadmap** on top, **Changelog** below."
+    },
+    {
+      "h2": "Roadmap — what's coming"
+    },
+    {
+      "p": "The **Roadmap** section lists every **unreleased** version that has issues pointed at it. Each version gets its own card. Reading a card from top to bottom:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Part of the card",
+          "What it shows"
+        ],
+        "rows": [
+          [
+            "**Version name**",
+            "The name you gave the version (for example __1.1__), in the card's heading."
+          ],
+          [
+            "**\"X / Y done\" count**",
+            "How many of the version's issues are done out of the total — for example __3 / 8 done__."
+          ],
+          [
+            "**Green progress bar**",
+            "The same fraction drawn as a bar, so you can gauge at a glance how close the release is."
+          ],
+          [
+            "**Issue list**",
+            "Every issue tagged with this Fix version. Done issues get a green check (__✔__) and a struck-through title; still-open issues get a hollow circle (__○__). Each line shows __#number__, the title (a link to the issue), and its __status · severity__ in small gray text."
+          ]
+        ],
+        "widths": [
+          1.6,
+          4
+        ]
+      }
+    },
+    {
+      "screenshot": "A Roadmap card for an upcoming version, showing the done count, the green progress bar, and the checked and unchecked issue lines"
+    },
+    {
+      "p": "If no unreleased version has any planned issues, the section simply reads __No unreleased versions with planned issues.__ The Roadmap is the place to answer \"what's in the next version, and how far along is it?\""
+    },
+    {
+      "h2": "Changelog — what shipped"
+    },
+    {
+      "p": "The **Changelog** section, below the Roadmap, lists every **released** version and the work that shipped in it. It's your ready-made release notes. Each released version shows:"
+    },
+    {
+      "bullets": [
+        "The **version name** and, if you set one, the words __— released__ followed by the release date.",
+        "A list of the **done issues** for that version (only issues that reached __Resolved__ or __Closed__ appear — unfinished work is left out of the shipped list). Each is a link — __#number__ and title — with its status in small gray text."
+      ]
+    },
+    {
+      "screenshot": "The Changelog section listing released versions, each with its release date and the issues that shipped"
+    },
+    {
+      "p": "If a released version has no done issues recorded, its entry reads __No resolved issues recorded for this version.__ If you have no released versions at all, the whole section reads __No released versions yet. Mark a version \"released\" in project settings to build the changelog.__"
+    },
+    {
+      "h2": "Moving a version from Roadmap to Changelog"
+    },
+    {
+      "p": "A version lives on the **Roadmap** while it's unreleased and jumps to the **Changelog** the moment it's released. To make that move, a Manager marks the version released:"
+    },
+    {
+      "steps": [
+        "Go to **Settings → Versions** on the project.",
+        "Create the version with its **Released** box checked, or delete-and-recreate it as released (versions are edited through the same add controls).",
+        "Return to the **Roadmap** page — the version now appears under **Changelog** instead of Roadmap, with its shipped issues listed."
+      ]
+    },
+    {
+      "h1": "Reports"
+    },
+    {
+      "p": "**Reports** is a separate page — reached from **Reports** in the left-hand navigation, not from inside a single project — that turns your pile of individual issues into trends you can act on. Everything on it is drawn only from issues you're allowed to see, so two people may see slightly different numbers depending on their access."
+    },
+    {
+      "h2": "Choosing what to report on"
+    },
+    {
+      "steps": [
+        "Select **Reports** in the left navigation.",
+        "At the top, use the **Project** dropdown to pick a single project, or leave it on **All projects** to report across everything you can see.",
+        "Select **Show**. The page redraws for your choice."
+      ]
+    },
+    {
+      "screenshot": "The Reports page: the Project dropdown and Show button at top, the three headline number cards, and the charts below"
+    },
+    {
+      "h2": "The three headline numbers"
+    },
+    {
+      "p": "Across the top sit three large-number cards:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Card",
+          "What it counts"
+        ],
+        "rows": [
+          [
+            "**Total**",
+            "Every issue in the selected scope, regardless of status."
+          ],
+          [
+            "**Open**",
+            "Issues still in progress — status below __Resolved__ (New, Feedback, Acknowledged, Confirmed, or Assigned)."
+          ],
+          [
+            "**Resolved this month**",
+            "Issues that became done (reached __Resolved__ or __Closed__) and were last updated in the current calendar month."
+          ]
+        ],
+        "widths": [
+          1.8,
+          4
+        ]
+      }
+    },
+    {
+      "h2": "The three charts"
+    },
+    {
+      "p": "Below the headline numbers are three bar charts. Together they answer \"is the workload growing, and where is it piling up?\""
+    },
+    {
+      "bullets": [
+        "**Issues created per month** — one bar per month, showing how many issues were filed. Watch whether the bars are rising (more coming in) or falling (inflow easing).",
+        "**Open by status** — the open issues broken out by their status, so you can see whether they're stuck in triage, waiting on Feedback, or sitting Assigned.",
+        "**Open by severity** — the open issues broken out by severity — from __Feature__ and __Trivial__ up through __Major__, __Crash__, and __Block__ — so you can see how much of the backlog is serious."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "THE CHARTS ARE ABOUT OPEN WORK",
+        "text": "Two of the three charts count only **open** issues. Something you resolved last week won't inflate the __Open by status__ or __Open by severity__ bars — those are a picture of what's still on your plate, not a running history."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__My Roadmap or Changelog is empty.__ The most common cause is that issues have no **Fix version**. Set the Fix version on the issues you expect to see. The page also needs versions to exist at all — create them under **Settings → Versions**.",
+        "__A version isn't showing on the Roadmap.__ The Roadmap only lists **unreleased** versions that have at least one issue pointed at them. Check that the version isn't marked released, and that at least one issue has it as its Fix version.",
+        "__A finished version won't appear in the Changelog.__ Mark it **Released** under **Settings → Versions**. Unreleased versions never appear in the Changelog no matter how much work is done.",
+        "__A shipped version shows \"No resolved issues recorded.\"__ Only **done** issues (status __Resolved__ or __Closed__) count as shipped. Issues still open under that version are hidden from the changelog list. Move them to Resolved/Closed if they really did ship.",
+        "__The Reports numbers look too low.__ Reports only counts issues you're allowed to see. If you don't have access to a project, its issues won't be in your totals. Someone with broader access will see larger numbers.",
+        "__\"Resolved this month\" seems wrong.__ It counts issues that are done **and** were last updated this calendar month. An issue resolved last month, or one reopened and touched again this month, can shift what's counted.",
+        "__A chart looks empty.__ If there are no open issues in the selected scope, the __Open by status__ and __Open by severity__ charts have nothing to draw. Switch the **Project** dropdown to a project that has open work, or to **All projects**."
+      ]
+    }
+  ]
+}

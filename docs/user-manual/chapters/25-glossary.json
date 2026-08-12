@@ -1,0 +1,327 @@
+{
+  "order": 25,
+  "title": "Glossary",
+  "subtitle": "Plain-language definitions of every term and acronym used across OpenTrack and this manual.",
+  "in_this_chapter": [
+    "How to read this glossary",
+    "Core terms: issue, project, note, tag, relationship",
+    "The status fields: severity, priority, status, resolution, reproducibility",
+    "Roles: Viewer through Administrator",
+    "Service levels, automation, and workflow",
+    "Field and technical terms: PWA, GPS, QR, CSV, JSON, Markdown, webhook, Git, API"
+  ],
+  "blocks": [
+    {
+      "h1": "How to read this glossary"
+    },
+    {
+      "p": "OpenTrack borrows a fair amount of vocabulary from the world of bug tracking, and this manual uses those words because the app's own screens do too. This glossary is here so you never have to guess what one means. Skim it once, then come back whenever a word in another chapter — or a label on screen — leaves you unsure."
+    },
+    {
+      "p": "Definitions are short and practical, aimed at what the term means when you're actually using OpenTrack, not at textbook precision. Terms are listed alphabetically across the tables below. Acronyms are spelled out in full the first time they appear."
+    },
+    {
+      "h1": "Terms A through F"
+    },
+    {
+      "table": {
+        "headers": [
+          "Term",
+          "Meaning"
+        ],
+        "rows": [
+          [
+            "**Administrator**",
+            "The most powerful role — and a __global__ one, not tied to a single project. An administrator runs the whole instance: every project, every user account, and the server-level settings. Usually the person who installed OpenTrack."
+          ],
+          [
+            "**API**",
+            "Application Programming Interface. A doorway that lets another program talk to OpenTrack directly — read or create issues, for example — rather than a person clicking around the screens. Useful for scripts and custom integrations."
+          ],
+          [
+            "**At-risk**",
+            "An SLA state meaning a target (like a response or resolution deadline) is approaching but not yet missed — a heads-up to act before it becomes a breach. See __SLA__ and __breach__."
+          ],
+          [
+            "**Automation**",
+            "Rules a project **Manager** sets up so OpenTrack does routine things by itself when an issue changes — for example, notify someone or set a field when an issue reaches a certain status. Configured on a project's **Automation** screen."
+          ],
+          [
+            "**Backup / export**",
+            "Saving a copy of your OpenTrack data to a file you keep — for safekeeping, or to move it elsewhere. Exports come in formats like CSV and JSON. Found under **Backup & export** in the navigation."
+          ],
+          [
+            "**Board (Kanban)**",
+            "A card-and-column view of a project's issues, where each column is a status and each card an issue you can drag from one column to the next. \"Kanban\" is the Japanese word for the signboard this style of board is named after."
+          ],
+          [
+            "**Breach**",
+            "An SLA target that has been missed — a deadline passed without the required response or resolution. The opposite of on-track; the step past __at-risk__."
+          ],
+          [
+            "**Category**",
+            "An optional label that sorts issues within a project by area — for example \"UI,\" \"Database,\" or \"Docs.\" Categories are defined per project by a Manager."
+          ],
+          [
+            "**Changelog**",
+            "A per-version list of what was fixed or added, built from the issues tied to that version. Handy for telling users what changed in a release. See __Version__ and __Roadmap__."
+          ],
+          [
+            "**Closed**",
+            "An issue **status** meaning the issue is finished and filed away — resolved and no longer needing attention. See __Status__."
+          ],
+          [
+            "**Commit**",
+            "A single saved change in a **Git** repository (a snapshot of edited code with a message). OpenTrack can link commits to issues so you can see the code that fixed a bug. See __Git__."
+          ],
+          [
+            "**CSV**",
+            "Comma-Separated Values. A plain-text spreadsheet format — rows of data with commas between the columns — that opens in Excel or any spreadsheet app. One of OpenTrack's export formats."
+          ],
+          [
+            "**Custom field**",
+            "An extra field a Manager adds to a project beyond the built-in ones, to capture information particular to that project. A custom field has a type — **Text**, **Number**, **Date**, or a fixed **list** of choices. See __Custom field type__."
+          ],
+          [
+            "**Custom field type**",
+            "The kind of data a custom field holds: **Text** (free words), **Number**, **Date** (a calendar date), or **Enum** (one value picked from a set list defined on the field)."
+          ],
+          [
+            "**Developer**",
+            "A role: everything an Updater can do, plus being **assigned** issues and moving them through the workflow — the person who actually does the work of fixing an issue."
+          ],
+          [
+            "**Dashboard**",
+            "Your home screen. Across every project you can see, it shows how many issues are **open**, **overdue**, and **stale**, with links to jump straight to each group."
+          ],
+          [
+            "**Due date**",
+            "An optional date by which an issue should be handled. Issues past their due date count as **overdue** on the dashboard."
+          ]
+        ],
+        "widths": [
+          1.5,
+          5.0
+        ]
+      }
+    },
+    {
+      "h1": "Terms G through N"
+    },
+    {
+      "table": {
+        "headers": [
+          "Term",
+          "Meaning"
+        ],
+        "rows": [
+          [
+            "**Git**",
+            "The most common version-control system for source code — the tool that tracks every change to a codebase. OpenTrack can connect to a project's Git repository so commits mentioning an issue show up on it. See __Commit__, __Repository__."
+          ],
+          [
+            "**GPS**",
+            "Global Positioning System. The satellite system a phone or tablet uses to find where it is. On the New Issue form, **📍 Attach my location** uses GPS to stamp the issue with your current coordinates. See the *Mobile, Tablets & the Field* chapter."
+          ],
+          [
+            "**HTTP / HTTPS**",
+            "The language web pages travel in. **HTTPS** is the encrypted, padlocked form (the \"S\" is for Secure). OpenTrack can require HTTPS so sign-ins and issue contents aren't sent in the clear."
+          ],
+          [
+            "**Import**",
+            "Bringing data into OpenTrack from a file or another tracker (such as Mantis). The counterpart to __export__. Found under **Import** in the navigation."
+          ],
+          [
+            "**Issue**",
+            "The core record in OpenTrack — one bug, task, or request. Everything else (notes, tags, history, time logs, relationships) hangs off an issue. Also called a ticket or a bug."
+          ],
+          [
+            "**JSON**",
+            "JavaScript Object Notation. A structured text format that programs read easily. OpenTrack uses it for exports and for the full, detailed shape of a webhook message. See __Webhook__."
+          ],
+          [
+            "**Manager**",
+            "A role: everything a Developer can do, plus configuring the project — members, categories, versions, custom fields, automation, SLA targets, workflow, integrations, Git, and public intake."
+          ],
+          [
+            "**Markdown**",
+            "A simple way to add formatting to plain text using ordinary characters — `**bold**`, `` `code` ``, and ```` ``` ```` fenced blocks for stack traces. OpenTrack renders Markdown in descriptions and notes."
+          ],
+          [
+            "**Monitor**",
+            "To follow an issue you're not otherwise involved in, so you're notified when it changes. Click **Monitor** on an issue to start; updates show under **Notifications**."
+          ],
+          [
+            "**Note**",
+            "A comment on an issue. Notes carry the discussion and running history of the work. A note can be marked **private** so only the project team (not public reporters) sees it."
+          ],
+          [
+            "**Notification**",
+            "An in-app update telling you something changed on an issue you report, are assigned, or monitor. The bell in the navigation shows a red count of unread ones."
+          ]
+        ],
+        "widths": [
+          1.5,
+          5.0
+        ]
+      }
+    },
+    {
+      "h1": "Terms O through R"
+    },
+    {
+      "table": {
+        "headers": [
+          "Term",
+          "Meaning"
+        ],
+        "rows": [
+          [
+            "**Overdue**",
+            "An issue whose **due date** has passed while it's still open. Counted on the dashboard so nothing quietly slips by its deadline."
+          ],
+          [
+            "**PDF**",
+            "Portable Document Format. A \"looks the same everywhere\" document file. You can print an issue or save it as a PDF from its print page. See the *Printing, Preferences & Administration* chapter."
+          ],
+          [
+            "**Priority**",
+            "How __urgent__ an issue is — how soon it should be dealt with. OpenTrack's levels run **None**, **Low**, **Normal**, **High**, **Urgent**, and **Immediate**. Contrast with __Severity__ (how __bad__ it is)."
+          ],
+          [
+            "**Private issue**",
+            "An issue hidden from lower-access viewers (such as a public reporter) while staying visible to the project team. Marked with the **private** flag; use it for anything sensitive."
+          ],
+          [
+            "**Project**",
+            "A container for issues — one product, system, or area of work — with its own members, settings, categories, versions, and rules. Access is granted per project."
+          ],
+          [
+            "**Public intake**",
+            "A project setting that opens a public report form so anyone — no account needed — can file a problem, often by scanning a printed **QR code**. See the *Public Trouble-Ticket Intake & QR Posters* chapter."
+          ],
+          [
+            "**PWA**",
+            "Progressive Web App. A website built well enough to install and run like a regular app, with its own home-screen icon and a full-screen window. OpenTrack is a PWA, so you can install it on a phone or tablet with no app store."
+          ],
+          [
+            "**QR code**",
+            "Quick Response code. The square barcode you scan with a phone camera. A project can print one that opens its public report form instantly. See __Public intake__."
+          ],
+          [
+            "**Relationship**",
+            "A link between two issues that records how they relate: **related to**, **duplicate of** (shown as \"has duplicate\" from the other side), **parent of** / **child of**, or **blocks** / **blocked by**."
+          ],
+          [
+            "**Reporter**",
+            "A role: file new issues, and read and comment on the issues they're allowed to see. The entry-level working role."
+          ],
+          [
+            "**Reproducibility**",
+            "How reliably a bug can be made to happen again. OpenTrack's values: **Always**, **Sometimes**, **Random**, **Have not tried**, **Unable to reproduce**, and **Not applicable**."
+          ],
+          [
+            "**Repository (repo)**",
+            "The store of a project's source code that **Git** manages. OpenTrack links a project to its repository so commits can reference issues. See __Git__, __Commit__."
+          ],
+          [
+            "**Resolution**",
+            "__How__ an issue ended, recorded when it's closed out: **Open**, **Fixed**, **Reopened**, **Unable to reproduce**, **Not fixable**, **Duplicate**, **Not a bug**, **Suspended**, or **Won't fix**. Different from __Status__, which is where it is in the flow."
+          ],
+          [
+            "**Roadmap**",
+            "A forward-looking view grouping a project's open issues by the **version** they're targeted for — what's planned for each upcoming release. See __Version__, __Changelog__."
+          ]
+        ],
+        "widths": [
+          1.5,
+          5.0
+        ]
+      }
+    },
+    {
+      "h1": "Terms S through Z"
+    },
+    {
+      "table": {
+        "headers": [
+          "Term",
+          "Meaning"
+        ],
+        "rows": [
+          [
+            "**Service worker**",
+            "A small background helper the PWA installs to remember pages you've opened, so they stay viewable if the network drops. It's what makes OpenTrack usable through brief connection gaps in the field."
+          ],
+          [
+            "**Severity**",
+            "How __serious__ or damaging an issue is. OpenTrack's scale runs **Feature**, **Trivial**, **Text**, **Tweak**, **Minor**, **Major**, **Crash**, and **Block**. Contrast with __Priority__ (how __soon__ to act)."
+          ],
+          [
+            "**SLA**",
+            "Service Level Agreement. A promise about how quickly issues get a response or a fix. OpenTrack tracks each issue against its SLA target and flags ones that are **at-risk** or in **breach**. See the *Service Level Agreements* chapter."
+          ],
+          [
+            "**Stale**",
+            "An open issue that hasn't been touched in a long time — effectively forgotten. The dashboard counts stale issues so they can be revisited before they rot."
+          ],
+          [
+            "**Status**",
+            "Where an issue sits in its life: **New**, **Feedback**, **Acknowledged**, **Confirmed**, **Assigned**, **Resolved**, or **Closed**. Contrast with __Resolution__ (how it ended)."
+          ],
+          [
+            "**Steps to reproduce**",
+            "The recipe for making a bug happen — the ordered actions someone can follow to see the problem for themselves. A field on the issue, and the single most useful thing a reporter can provide."
+          ],
+          [
+            "**Sticky**",
+            "A flag that pins an important issue to the top of the list so it doesn't scroll away. Set by someone with the right role."
+          ],
+          [
+            "**Tag**",
+            "A free-form label you attach to an issue to group or find it later — lighter and more flexible than a category. An issue can have many tags."
+          ],
+          [
+            "**Ticket**",
+            "Another word for an __issue__ — especially one filed through public intake. Same record, different name."
+          ],
+          [
+            "**Time log**",
+            "A record of the minutes spent on an issue. Entries add up to a total shown on the issue and in reports, for anyone tracking effort."
+          ],
+          [
+            "**Updater**",
+            "A role: everything a Reporter can do, plus editing issues — changing fields, adding tags, and tidying details."
+          ],
+          [
+            "**Version**",
+            "A named release of a project's product. Issues can note the version they **affect** and the version they're **fixed** in, which feeds the roadmap and changelog."
+          ],
+          [
+            "**Viewer**",
+            "The lowest role: read-only access to the issues they're allowed to see, with no ability to file or change anything."
+          ],
+          [
+            "**Webhook**",
+            "An automatic message OpenTrack sends to another service when something happens on a project — shaped for **Slack**, **Discord**, or a **Generic** structured JSON payload. Set up by a Manager under integrations. See __JSON__."
+          ],
+          [
+            "**Workflow**",
+            "The set of rules governing which status an issue can move to next, and who may move it. Configured per project, it keeps issues from skipping steps in a way the team hasn't agreed to."
+          ]
+        ],
+        "widths": [
+          1.5,
+          5.0
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "SEVERITY VS. PRIORITY, ONE MORE TIME",
+        "text": "These two trip people up more than any other pair. **Severity** is how __bad__ the problem is (a crash is severe). **Priority** is how __soon__ you'll deal with it (a crash almost nobody hits might still be low priority). They're set independently on purpose."
+      }
+    }
+  ]
+}

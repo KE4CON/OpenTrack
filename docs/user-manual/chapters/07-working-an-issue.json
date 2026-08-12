@@ -1,0 +1,196 @@
+{
+  "order": 7,
+  "title": "Working an Issue",
+  "subtitle": "Edit its fields, move it through its statuses, assign it to a person, and resolve or close it the right way.",
+  "in_this_chapter": [
+    "Opening the Edit screen and every field you can change",
+    "The Sticky and Private flags",
+    "The status life-cycle and what each status means",
+    "Assigning work to a person",
+    "The resolution choices and what each one says",
+    "Resolving, closing, and what happens to finished issues",
+    "Troubleshooting saves that fail or moves that are blocked"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Select **Edit** to change any field. Move the issue along its **Status** (New → … → Resolved → Closed), set an **Assignee**, and when it is done pick a **Resolution** that says how it ended. Select **Save Changes** — every change is written to the History automatically."
+      }
+    },
+    {
+      "h1": "What this is and who can do it"
+    },
+    {
+      "p": "Filing an issue records the problem; __working__ it is everything that happens afterward — refining the details, handing it to a person, walking it through its stages, and finally marking it done. All of that happens on the __Edit__ screen. Editing requires an updater role or higher, so if you do not see an **Edit** button on an issue, you do not currently have permission to change it (ask a Manager). Everything you change here is stamped into the issue's History automatically, with your name and the time."
+    },
+    {
+      "h1": "Opening the Edit screen"
+    },
+    {
+      "steps": [
+        "Open the issue and select **Edit** (near the title).",
+        "The Edit form opens under the heading __Edit Issue__, with __[project name] / Issue #[number]__ above it so you know which issue you are changing.",
+        "The form comes pre-filled with the issue's current values — you are changing what is there, not starting blank."
+      ]
+    },
+    {
+      "screenshot": "The Edit Issue form, pre-filled, showing the text fields and the Status / Severity / Priority dropdowns"
+    },
+    {
+      "h1": "The fields you can change"
+    },
+    {
+      "p": "The Edit form gathers every changeable field of the issue in one place. From top to bottom:"
+    },
+    {
+      "table": {
+        "headers": ["Field", "What it is"],
+        "rows": [
+          ["**Title**", "The one-line summary (required — it cannot be left empty)."],
+          ["**Description**", "The full write-up (required). Markdown is supported, exactly as on the New Issue form."],
+          ["**Steps to Reproduce**", "The recipe to trigger the problem."],
+          ["**Expected Behavior**", "What should happen."],
+          ["**Actual Behavior**", "What happens instead."],
+          ["**Status**", "Where the issue is in its life-cycle (see the table below)."],
+          ["**Severity**", "How bad the impact is (Feature, Trivial, Text, Tweak, Minor, Major, Crash, Block)."],
+          ["**Priority**", "How urgent it is (None, Low, Normal, High, Urgent, Immediate)."],
+          ["**Resolution**", "How the issue ended, once resolved (see the table below)."],
+          ["**Assignee**", "The person responsible for the issue — __Unassigned__, or any member of the project."],
+          ["**Category**", "The project bucket, or __(none)__."],
+          ["**Reproducibility**", "How reliably it can be triggered (Always, Sometimes, Random, HaveNotTried, UnableToReproduce, NotApplicable)."],
+          ["**Due Date**", "An optional target date."],
+          ["**Affects Version**", "The release the problem appears in, or __(none)__."],
+          ["**Fix Version**", "The release that resolves it, or __(none)__."],
+          ["**Sticky**", "A checkbox that pins the issue to the top of the project's issue list (see below)."],
+          ["**Private**", "A checkbox that hides the issue from lower-access viewers (see below)."]
+        ],
+        "widths": [1.9, 4.6]
+      }
+    },
+    {
+      "steps": [
+        "Change any of the fields above.",
+        "Select **Save Changes** at the bottom. You return to the issue page with your changes in place, and each one recorded in the History.",
+        "Or select **Cancel** to discard everything and go back untouched."
+      ]
+    },
+    {
+      "h2": "The Sticky and Private flags"
+    },
+    {
+      "p": "Two checkboxes near the bottom deserve special mention because they change how the issue behaves rather than just describing it:"
+    },
+    {
+      "bullets": [
+        "**Sticky** — labeled __Sticky (pinned to top of project issue list)__. Turn it on to pin an important issue to the top of the list so it does not scroll away as newer issues pile up. Use it sparingly, for the one or two things everyone needs to see.",
+        "**Private** — hides the issue from lower-access viewers (for example a public reporter) while keeping it fully visible to the project team. Use it for anything sensitive. A private issue shows a yellow __Private issue__ badge on its page."
+      ]
+    },
+    {
+      "h1": "The status life-cycle"
+    },
+    {
+      "p": "An issue moves through **statuses** as work progresses. You change the status from the **Status** dropdown on the Edit screen. The usual path runs from New at the top to Closed at the bottom:"
+    },
+    {
+      "table": {
+        "headers": ["Status", "What it means"],
+        "rows": [
+          ["**New**", "Just filed; nobody has looked at it yet."],
+          ["**Feedback**", "Waiting on more information — usually a question back to the reporter before work can continue."],
+          ["**Acknowledged**", "Seen and accepted as something worth looking at, but not yet reproduced."],
+          ["**Confirmed**", "Reproduced and verified as a real problem."],
+          ["**Assigned**", "Handed to a specific person to work on."],
+          ["**Resolved**", "The work is done, paired with a **Resolution** that says how (see below)."],
+          ["**Closed**", "Confirmed resolved and filed away — the end of the line."]
+        ],
+        "widths": [1.7, 4.8]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "YOUR PROJECT MAY RESTRICT THE MOVES",
+        "text": "By default any status change is allowed. If a Manager has set up **workflow rules** (see the Workflow Rules chapter), only the moves they permit go through — try a disallowed one and the save is rejected with an explanation. This keeps issues flowing through your process in the intended order."
+      }
+    },
+    {
+      "h1": "Assigning work"
+    },
+    {
+      "p": "Set the **Assignee** dropdown to the person who will handle the issue. The dropdown lists __Unassigned__ plus every member of the project. Assigning is how work stops being 'someone should' and becomes 'this person will':"
+    },
+    {
+      "bullets": [
+        "The assignee is notified that the issue is now theirs.",
+        "The issue shows up as theirs across the app — on their dashboard, in filters, and on the board.",
+        "Assigning typically goes hand in hand with moving the **Status** to __Assigned__."
+      ]
+    },
+    {
+      "h1": "Resolving and closing"
+    },
+    {
+      "p": "When the work is finished, you record __how__ it ended using the **Resolution** dropdown, and move the status along to Resolved and then Closed."
+    },
+    {
+      "steps": [
+        "Set **Status** to **Resolved**.",
+        "Choose a **Resolution** that describes the outcome (the choices are in the table below).",
+        "Optionally set **Fix Version** so the issue appears in that release's Changelog.",
+        "Select **Save Changes**.",
+        "Once everyone is satisfied that it is truly done, open Edit again and set **Status** to **Closed**."
+      ]
+    },
+    {
+      "h2": "The resolution choices"
+    },
+    {
+      "p": "The **Resolution** dropdown offers these outcomes (some words run together on screen, like __WontFix__):"
+    },
+    {
+      "table": {
+        "headers": ["Resolution", "What it says about the outcome"],
+        "rows": [
+          ["**Open**", "Not resolved yet — the starting value while work is still going on."],
+          ["**Fixed**", "The problem was corrected. The most common resolution for a real bug."],
+          ["**Reopened**", "It was resolved before, but the problem came back or was not actually fixed, so it is active again."],
+          ["**UnableToReproduce**", "The team could not make the problem happen, so there was nothing to fix."],
+          ["**NotFixable**", "The problem is real but cannot be fixed (for example, it is caused by something outside the project)."],
+          ["**Duplicate**", "The same problem is already tracked in another issue; this one is closed in favor of that one."],
+          ["**NotABug**", "The reported behavior is actually correct or intended — nothing needs changing."],
+          ["**Suspended**", "Work is paused indefinitely — set aside for now rather than finished."],
+          ["**WontFix**", "A deliberate decision not to fix it, even though it is a genuine issue."]
+        ],
+        "widths": [1.9, 4.6]
+      }
+    },
+    {
+      "p": "Resolved and Closed issues drop out of the __open__ counts and the default lists, so your working views stay focused on what is still active. But they are never deleted — they remain fully searchable, and their History stays intact, so you can always look back and see exactly how a past problem was handled."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "TIP",
+        "text": "Closing is not the end of the record. If a closed problem resurfaces, you can reopen it: set the **Status** back to an active state and the **Resolution** to __Reopened__, so the history shows the full round-trip."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__There is no Edit button on the issue.__ You lack permission to change it. Editing needs an updater role or higher; ask a Manager to grant it.",
+        "__Save Changes was rejected with a message about the status.__ A workflow rule blocks that particular status move. Pick a status the rule allows, or ask a Manager which transitions are permitted (see the Workflow Rules chapter).",
+        "__Save Changes failed saying someone else changed the issue.__ Another person saved edits while you had the form open, so OpenTrack stopped your save to avoid overwriting their work. Go back to the issue, re-open Edit to load the latest values, and redo your change on top of theirs.",
+        "__The title will not save.__ Both **Title** and **Description** are required and cannot be blank, and the title has a length limit. Fill them in and keep the title short.",
+        "__The person I want is not in the Assignee dropdown.__ Only members of this project appear there. Add them to the project first (see the Projects chapter), then assign.",
+        "__I resolved the issue but it still shows as open.__ Setting a **Resolution** alone is not enough — you also need to move the **Status** to **Resolved** (and later **Closed**). Check the Status dropdown.",
+        "__A closed issue disappeared from my list.__ Closed and Resolved issues are hidden from the default open-only views. They are not gone — search for the issue or turn off the open-only filter to see it again.",
+        "__My change is not showing on the issue page.__ Make sure you selected **Save Changes** and not **Cancel**. If the save went through, the change also appears as a new row in the issue's History."
+      ]
+    }
+  ]
+}

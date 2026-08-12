@@ -1,0 +1,226 @@
+{
+  "order": 2,
+  "title": "The Dashboard",
+  "subtitle": "Your at-a-glance answer to “where should I look first?”",
+  "in_this_chapter": [
+    "What the dashboard is for and how to open it",
+    "The four summary tiles at the top, one by one",
+    "Understanding “open,” “overdue,” and “stale”",
+    "The color cues that flag trouble",
+    "The By project and Recently updated lists",
+    "The Quick add button and the Live auto-refresh switch",
+    "Jumping from the dashboard straight into the work",
+    "Troubleshooting an empty or puzzling dashboard"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "The **Dashboard** is your home screen. Across every project you can see, it shows how many issues are **open**, **overdue**, and **stale** (quietly forgotten), plus a severity breakdown, a per-project table, and a list of what changed most recently — all with links to jump straight in."
+      }
+    },
+    {
+      "h1": "What the dashboard is for"
+    },
+    {
+      "p": "The **Dashboard** is your home base — the first thing to open at the start of a session. It gathers, in one place, a summary of everything you're allowed to see across **all** your projects, so you can spot where attention is needed without opening each project one by one. Every number on it is already filtered to what your role lets you see: you will never see counts for projects or issues you don't have access to."
+    },
+    {
+      "p": "To open it, select **Home** in the left navigation (in the desktop app this entry is labeled **Dashboard**). The page title reads __Dashboard__."
+    },
+    {
+      "screenshot": "The Dashboard: the row of summary tiles across the top, with the By project and Recently updated sections below"
+    },
+    {
+      "h1": "The four summary tiles"
+    },
+    {
+      "p": "Across the top sits a row of four cards (they stack into a single column on a narrow screen). Reading left to right:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Tile",
+          "What it shows",
+          "Plain meaning"
+        ],
+        "rows": [
+          [
+            "**Open issues**",
+            "One big number: the total count of open issues across every project you can see.",
+            "How much unfinished work is on the books right now."
+          ],
+          [
+            "**Overdue**",
+            "A big number with the note __Open past their due date.__ The whole tile turns red when the count is above zero.",
+            "Work that has already blown its deadline — the most time-sensitive pile."
+          ],
+          [
+            "**Stale**",
+            "A big number with the note __Open, untouched 30+ days.__ The tile takes on a warning (amber) tint when the count is above zero. The whole tile is a link.",
+            "Open issues nobody has touched in over a month — the stuff quietly slipping through the cracks."
+          ],
+          [
+            "**Open by severity**",
+            "A set of small colored pills, one per severity, each reading the severity name and its count (for example __Major: 4__).",
+            "How your open work splits by how bad each issue is — a quick way to spot serious ones hiding inside a healthy-looking total."
+          ]
+        ],
+        "widths": [
+          1.5,
+          3.1,
+          2.6
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "THREE WORDS WORTH KNOWING",
+        "text": "**Open** — the issue isn't resolved or closed yet. **Overdue** — it has a due date that has already passed and it's still open. **Stale** — it's open but nobody has touched it in over 30 days, so it may have quietly fallen through the cracks. Stale is about *silence*; overdue is about a *deadline*. An issue can be one, both, or neither."
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "LET THE COLORS DO THE TRIAGE",
+        "text": "You don't have to read every number. A **red** Overdue tile or an **amber** Stale tile is the dashboard waving a hand at you. If both are calm-colored and the counts are zero, there's nothing on fire — glance at *Open by severity* and move on."
+      }
+    },
+    {
+      "h2": "Reading the severity pills"
+    },
+    {
+      "p": "The **Open by severity** tile color-codes each pill so the worst categories stand out. The exact severities come from your issues, but the coloring follows this pattern:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Pill color",
+          "Severity level"
+        ],
+        "rows": [
+          [
+            "Red",
+            "The most serious — a blocker or a crash."
+          ],
+          [
+            "Amber",
+            "Major — significant but not show-stopping."
+          ],
+          [
+            "Blue",
+            "Minor — small problems."
+          ],
+          [
+            "Gray",
+            "Everything else (for example, trivial or cosmetic)."
+          ]
+        ],
+        "widths": [
+          1.5,
+          5.0
+        ]
+      }
+    },
+    {
+      "p": "If there are no open issues at all, this tile simply reads __No open issues.__ instead of showing pills."
+    },
+    {
+      "h1": "The two lists below the tiles"
+    },
+    {
+      "p": "Under the tiles are two side-by-side lists that turn the summary numbers into places you can actually go."
+    },
+    {
+      "h2": "By project"
+    },
+    {
+      "p": "A small table with one row per project that has open work. Its columns are:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Column",
+          "What it means"
+        ],
+        "rows": [
+          [
+            "**Project**",
+            "The project name, shown as a link. Select it to jump to that project's issue list."
+          ],
+          [
+            "**Open**",
+            "How many open issues that project has."
+          ],
+          [
+            "**Overdue**",
+            "How many of those are past due. This number turns red and bold when it's above zero, so a struggling project catches your eye."
+          ]
+        ],
+        "widths": [
+          1.6,
+          4.9
+        ]
+      }
+    },
+    {
+      "p": "If no project has any open issues, this section reads __No open issues in any project.__"
+    },
+    {
+      "h2": "Recently updated"
+    },
+    {
+      "p": "A list of the issues that changed most recently — a fast way back to whatever you or your team just touched. Each row shows the issue number and title as a link (for example __#42 Login button misaligned__), and underneath it the project name and current status (like __Website · New__). Off to the right is the date and time it was last updated, in your computer's local time. Select any row to open that issue. If nothing has happened yet, the list reads __No activity yet.__"
+    },
+    {
+      "screenshot": "The By project table and the Recently updated list side by side"
+    },
+    {
+      "h1": "The controls at the top of the dashboard"
+    },
+    {
+      "p": "Just above the tiles are two handy controls:"
+    },
+    {
+      "bullets": [
+        "**＋ Quick add a problem** — a button that jumps straight to the Quick add form, so you can log something the moment you notice it without leaving the dashboard.",
+        "**Live** — a small checkbox labeled __Live__. Tick it and the dashboard refreshes itself automatically whenever something changes, so the numbers stay current while you watch. Leave it unticked and the page holds still until you reload it."
+      ]
+    },
+    {
+      "h1": "Using the dashboard"
+    },
+    {
+      "steps": [
+        "Select **Home** (or **Dashboard** in the desktop app) in the left navigation.",
+        "Scan the four tiles first. Check whether **Overdue** is red or **Stale** is amber.",
+        "Glance at **Open by severity** for any red pills — a pile of serious issues deserves attention even if the total looks fine.",
+        "In **By project**, find the project carrying the most overdue work and select its name to dive in.",
+        "Or, in **Recently updated**, select an issue to pick up wherever the team just left off.",
+        "Select the **Stale** tile to jump straight to a filtered list of only the stale issues, so you can revive or close them."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "THE STALE TILE IS A SHORTCUT",
+        "text": "Because the whole **Stale** tile is a link, selecting it takes you directly to the Issues list already filtered to show only stale items. It's the quickest way to work through the forgotten pile in one sitting."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__The dashboard says “Nothing to show yet.”__ You either belong to no projects yet, or no issues have been logged. Select the **Create a project** link in that message (or **Projects** in the menu) to get started. Once issues exist, the tiles fill in.",
+        "__My counts look lower than a teammate's.__ That's expected. Every number is filtered to your access. If you can't see a project, its issues never reach your totals — see *People & Roles*.",
+        "__The numbers don't update when something changes.__ Tick the **Live** checkbox at the top to turn on auto-refresh, or simply reload the page.",
+        "__A project I know has bugs isn't in the By project table.__ That table lists only projects with **open** issues. If everything in it is resolved or closed, it won't appear here.",
+        "__The Overdue tile is red but I don't see due dates anywhere.__ Overdue counts only issues that have a due date set and have passed it. Open the project's issue list to find which ones carry due dates.",
+        "__A time in Recently updated looks wrong by a few hours.__ Times are shown in your computer's local time zone. If your device's clock or time zone is off, these will be too — fix the device's date-and-time settings."
+      ]
+    }
+  ]
+}

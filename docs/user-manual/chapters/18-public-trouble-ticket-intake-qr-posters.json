@@ -1,0 +1,205 @@
+{
+  "order": 18,
+  "title": "Public Trouble-Ticket Intake & QR Posters",
+  "subtitle": "Let anyone report a problem without an account — by link or by scanning a code — and have it arrive as a normal issue.",
+  "in_this_chapter": [
+    "What public intake is and when to use it",
+    "Turning it on for a project (Managers only)",
+    "The public report link and the status-lookup link",
+    "What the reporter sees on the report form",
+    "The thank-you page and the reference number",
+    "How a reporter checks their ticket's status later",
+    "Printing a Quick Response (QR) code poster for a physical place",
+    "Turning intake off, and troubleshooting"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Turn on **public intake** under **Settings → Public trouble-ticket intake** so people **without an account** can report a problem — through a link or a scannable **Quick Response (QR)** poster. Their reports arrive as normal issues (status __New__) for you to triage. It's off by default and is a **Manager** setting."
+      }
+    },
+    {
+      "h1": "What public intake is"
+    },
+    {
+      "p": "**Public trouble-ticket intake** lets people who have **no OpenTrack account** submit a problem to a project through a simple \"Report a problem\" web page. It's built for a helpdesk, a club, an event, a workshop, or field reports from the general public — anyone you want to be able to flag a problem without giving them a login. Submissions arrive as ordinary issues in your project, ready to triage exactly like any other. It's **off by default**, and you turn it on one project at a time."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "MANAGERS ONLY",
+        "text": "Turning intake on or off, and printing the poster, are **Manager** actions. If you open project Settings and can't change these controls, you're not a Manager on the project — ask one to set it up."
+      }
+    },
+    {
+      "h1": "Turning it on"
+    },
+    {
+      "steps": [
+        "Open the project and select **Settings**.",
+        "Scroll to the bottom, to the **Public trouble-ticket intake** heading.",
+        "Read the short explanation: __Let anyone submit a problem without an account through a public \"Report a problem\" page — handy for a helpdesk, a club, or field reports. Submissions arrive as normal issues. Off by default.__",
+        "Check the current **Status** line — it reads either __Off__ or __On__.",
+        "Select **Turn on public intake**.",
+        "The status flips to **On** and two links appear."
+      ]
+    },
+    {
+      "screenshot": "The Public trouble-ticket intake section of Settings, showing the Status line, the two links, the Printable QR poster button, and the on/off button"
+    },
+    {
+      "p": "Once intake is on, the section shows you what to share:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Link",
+          "What it's for"
+        ],
+        "rows": [
+          [
+            "**Public link** (ends in __/report/__ and the project number)",
+            "The \"Report a problem\" form. Share this with anyone who should be able to submit a ticket. It opens in a new tab so you can preview it."
+          ],
+          [
+            "**Status link** (ends in __/report/status__)",
+            "Where a reporter can come back later to check on a ticket they filed. Same page for everyone; individual tickets are protected by reference number plus email."
+          ]
+        ],
+        "widths": [
+          2.6,
+          4
+        ]
+      }
+    },
+    {
+      "h1": "What the reporter sees"
+    },
+    {
+      "p": "Anyone who opens the public link gets a plain, account-free form titled __Report a problem — __ProjectName____, with the note __Tell us what's wrong. You don't need an account. Leave your email if you'd like updates.__ The fields are:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Field",
+          "Required?",
+          "What it's for"
+        ],
+        "rows": [
+          [
+            "**Your name**",
+            "Optional",
+            "So you know who reported it. Can be left blank."
+          ],
+          [
+            "**Your email**",
+            "Optional",
+            "Only needed if the reporter wants to check status later or get updates. No email means they can't look the ticket up afterward."
+          ],
+          [
+            "**Summary**",
+            "Required (marked with a red __*__)",
+            "A short description of the problem — this becomes the issue's title."
+          ],
+          [
+            "**Details**",
+            "Optional",
+            "The fuller story: what happened, what they were doing, anything else that helps."
+          ]
+        ],
+        "widths": [
+          1.5,
+          1.4,
+          4
+        ]
+      }
+    },
+    {
+      "p": "When they select **Submit report**, the submission lands in your project as a new issue at status __New__, alongside everything your team files internally."
+    },
+    {
+      "screenshot": "The public \"Report a problem\" form with its name, email, summary, and details fields"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "SPAM PROTECTION IS BUILT IN",
+        "text": "The form carries a hidden \"honeypot\" field that real people never see and never fill in. Automated spam bots tend to fill every field, including that one — and OpenTrack silently drops those submissions. Your reporters don't have to do anything; this just quietly keeps junk out of your project."
+      }
+    },
+    {
+      "h1": "The thank-you page and reference number"
+    },
+    {
+      "p": "After a successful submission the reporter sees a **Thank you** page: __Your report was received. Your reference number is #number.__ It tells them to keep that number and offers a link to __check its status__ anytime, plus a **Submit another** button to file a second report. That **reference number** is the ticket's issue number — the reporter's key to looking it up later (together with the email they used)."
+    },
+    {
+      "h1": "How a reporter checks status later"
+    },
+    {
+      "p": "The status-lookup page (the __/report/status__ link) lets a reporter check on a ticket without an account and without seeing anyone else's tickets. It's titled __Check your ticket__ with the note __Enter the reference number you were given and the email you used.__"
+    },
+    {
+      "steps": [
+        "The reporter opens the status link.",
+        "They enter the **Reference number** they were given (for example, __42__).",
+        "They enter the **Email you used** — it must match the email on the original report.",
+        "They select **Check status**.",
+        "If both match, a green box shows __Ticket #number__, its title, and its current **Status**. If they don't match, a yellow note reads __No matching ticket found. Double-check the reference number and the email address you submitted with.__"
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "EMAIL IS THE KEY",
+        "text": "A reporter can only look a ticket up if they gave an **email** when they filed it, and they must enter that same email plus the reference number to see it. Reference-number-only lookups don't work — this is what keeps one person from browsing another's tickets. If a reporter left the email blank, they won't be able to check status afterward."
+      }
+    },
+    {
+      "h1": "Print a QR poster"
+    },
+    {
+      "p": "For a physical place — a workshop, a trailhead, an event booth, a piece of equipment — OpenTrack can print a poster with a **Quick Response (QR) code** (the square, scannable barcode). People point a phone camera at it and the report form opens on their phone, already pointed at your project; no typing a web address."
+    },
+    {
+      "steps": [
+        "With intake turned **on**, in that same **Public trouble-ticket intake** section select **📱 Printable QR poster**.",
+        "The poster page opens. It reads __Spot a problem?__ across the top, __Scan to report it — __ProjectName____ beneath, a large QR code in the middle, and the plain-text link underneath for anyone who'd rather type it. A gray line reassures readers: __No account needed — it takes less than a minute.__",
+        "Select the **🖨️ Print** button (top right) to print it.",
+        "Post the printed page where people can reach it. Scanning the code opens the report form pre-pointed at this project."
+      ]
+    },
+    {
+      "screenshot": "The printable QR intake poster: the \"Spot a problem?\" heading, the project name, the large QR code, and the fallback link"
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "TURN INTAKE ON BEFORE YOU PRINT",
+        "text": "If public intake is **off** for the project, the poster page shows a warning — __Public intake is currently off for this project, so this QR code won't accept reports yet__ — and the code will lead to a page that declines submissions. Turn intake on under **Settings → Public trouble-ticket intake** first, then print. The Print button and warning don't appear on the printed copy, only on screen."
+      }
+    },
+    {
+      "h1": "Turning it off"
+    },
+    {
+      "p": "To stop accepting public reports, return to **Settings → Public trouble-ticket intake** and select **Turn off public intake**. The status flips back to **Off**, the links and poster button disappear, and the public report form starts telling visitors __This project isn't accepting public submissions right now.__ Issues already submitted stay in your project — turning intake off only stops new ones."
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__I can't find the intake controls, or they're not clickable.__ These are Manager-only. If you're not a Manager on the project, ask one to turn intake on and print the poster.",
+        "__The public link says \"isn't accepting public submissions right now.\"__ Intake is off for that project. A Manager turns it on under **Settings → Public trouble-ticket intake**.",
+        "__The QR poster shows a warning about intake being off.__ Same cause — turn intake on first, then print. The QR code won't accept reports until intake is on.",
+        "__A reporter can't check their ticket's status.__ Status lookup needs **both** the reference number and the **same email** used on the report. If they left email blank when filing, there's no way to look it up. If they're sure of both, confirm they're using the exact email address they typed originally.",
+        "__A reporter lost their reference number.__ Without it (plus the email), they can't self-check status. They can submit a fresh report, or a team member can find the original issue inside the project and update them directly.",
+        "__Public submissions aren't arriving.__ Confirm intake shows **On** in Settings, and that reporters are using the current public link for the right project. Submissions land as new issues at status __New__ — check your project's New issues.",
+        "__I'm worried about spam.__ The form's hidden honeypot field silently drops obvious bot submissions, so most junk never becomes an issue. Genuine-looking spam that slips through is triaged and closed like any other issue."
+      ]
+    }
+  ]
+}
