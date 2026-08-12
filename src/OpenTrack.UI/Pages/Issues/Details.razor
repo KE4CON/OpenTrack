@@ -56,6 +56,15 @@ else
         <div class="col-md-3"><strong>Category:</strong> @(issue.CategoryName ?? "—")</div>
         <div class="col-md-3"><strong>Updated:</strong> @issue.UpdatedAt.ToString("g")</div>
     </div>
+
+    @if (issue.Latitude is { } lat && issue.Longitude is { } lon)
+    {
+        <div class="mb-3">
+            <strong>📍 Location:</strong> @lat.ToString("0.00000"), @lon.ToString("0.00000")
+            <a class="ms-1" href="https://www.openstreetmap.org/?mlat=@lat.ToString(System.Globalization.CultureInfo.InvariantCulture)&mlon=@lon.ToString(System.Globalization.CultureInfo.InvariantCulture)#map=17/@lat.ToString(System.Globalization.CultureInfo.InvariantCulture)/@lon.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+               target="_blank" rel="noopener noreferrer">view map</a>
+        </div>
+    }
     <div class="row mb-3">
         <div class="col-md-3"><strong>Resolution:</strong> @issue.Resolution</div>
         <div class="col-md-3"><strong>Due:</strong> @(issue.DueDate is { } d ? d.ToString("d") : "—")</div>

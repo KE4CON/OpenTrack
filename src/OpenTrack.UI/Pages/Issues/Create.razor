@@ -119,6 +119,18 @@ else
             <div class="alert alert-info py-1">✨ Suggested tags: @string.Join(", ", aiSuggestedTags) — add them on the issue after you create it.</div>
         }
 
+        <div class="mb-3">
+            @* JS (geo-capture.js) fills these hidden inputs from the browser's location on click. *@
+            <input type="hidden" name="model.Latitude" value="@model.Latitude" />
+            <input type="hidden" name="model.Longitude" value="@model.Longitude" />
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-geo-capture data-geo-status="geoStatus">
+                📍 Attach my location
+            </button>
+            <span id="geoStatus" class="text-muted small ms-2">
+                @(model.Latitude is { } la && model.Longitude is { } lo ? $"Location attached: {la:0.00000}, {lo:0.00000}" : "Optional — useful for a problem out in the field.")
+            </span>
+        </div>
+
         <button type="submit" name="Action" value="save" class="btn btn-primary">Submit Issue</button>
         @if (aiEnabled)
         {
@@ -177,7 +189,8 @@ else
                 model.Title, model.Description, model.StepsToReproduce,
                 model.ExpectedBehavior, model.ActualBehavior, model.CategoryId,
                 model.Severity, model.Priority, model.Reproducibility, model.DueDate,
-                model.AffectsVersionId, model.FixVersionId));
+                model.AffectsVersionId, model.FixVersionId,
+                model.Latitude, model.Longitude));
             Nav.NavigateTo($"issues/{id}");
         }
         catch (InvalidOperationException ex)
@@ -210,5 +223,7 @@ else
         public DateTime? DueDate { get; set; }
         public int? AffectsVersionId { get; set; }
         public int? FixVersionId { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
     }
 }

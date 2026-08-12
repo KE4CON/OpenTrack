@@ -201,6 +201,12 @@ else
                     — share this with people who should be able to submit tickets. They can check status at
                     <a href="report/status" target="_blank">@statusUrl</a>.
                 </p>
+                <p class="mb-2">
+                    <a class="btn btn-outline-secondary btn-sm" href="projects/@Id/intake-poster">
+                        📱 Printable QR poster
+                    </a>
+                    <span class="text-muted small ms-1">— print and post it so people can scan to report from their phone.</span>
+                </p>
             }
             <EditForm Model="intakeForm" OnValidSubmit="ToggleIntake" FormName="intake">
                 <button type="submit" class="btn @(intakeEnabled ? "btn-outline-danger" : "btn-primary")">

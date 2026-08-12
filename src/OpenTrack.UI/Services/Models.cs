@@ -157,13 +157,15 @@ public record IssueDetail(
     int? AffectsVersionId, string? AffectsVersionName,
     int? FixVersionId, string? FixVersionName,
     Guid RowVersion,
-    IReadOnlyList<IssueNoteView> Notes);
+    IReadOnlyList<IssueNoteView> Notes,
+    double? Latitude = null, double? Longitude = null);
 
 public record CreateIssueInput(
     string Title, string Description, string? StepsToReproduce,
     string? ExpectedBehavior, string? ActualBehavior, int? CategoryId,
     IssueSeverity Severity, IssuePriority Priority, IssueReproducibility Reproducibility,
-    DateTime? DueDate, int? AffectsVersionId, int? FixVersionId);
+    DateTime? DueDate, int? AffectsVersionId, int? FixVersionId,
+    double? Latitude = null, double? Longitude = null);
 
 public record UpdateIssueInput(
     string Title, string Description, string? StepsToReproduce,

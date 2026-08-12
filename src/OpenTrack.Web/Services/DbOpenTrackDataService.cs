@@ -476,7 +476,8 @@ public class DbOpenTrackDataService(
             i.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
                 .OrderBy(n => n.CreatedAt)
                 .Select(n => new IssueNoteView(n.Id, n.Author.UserName ?? "unknown", n.Text, n.IsPrivate, n.CreatedAt))
-                .ToList());
+                .ToList(),
+            i.Latitude, i.Longitude);
     }
 
     public async Task<int> CreateIssueAsync(int projectId, CreateIssueInput input, CancellationToken ct = default)
@@ -499,6 +500,7 @@ public class DbOpenTrackDataService(
             ActualBehavior = input.ActualBehavior, CategoryId = input.CategoryId,
             Severity = input.Severity, Priority = input.Priority, Reproducibility = input.Reproducibility,
             DueDate = input.DueDate, AffectsVersionId = input.AffectsVersionId, FixVersionId = input.FixVersionId,
+            Latitude = input.Latitude, Longitude = input.Longitude,
             ReporterId = access.UserId, Status = IssueStatus.New,
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };

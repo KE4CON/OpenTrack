@@ -55,6 +55,11 @@ public class Issue
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DueDate { get; set; }
 
+    /// <summary>Optional location where the problem is (captured in the browser for field/mobile reports).
+    /// Null unless the reporter chose to attach their location.</summary>
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+
     /// <summary>When the SLA-breach escalation was sent for this issue, so the background scanner notifies
     /// once rather than every tick. Null = not yet escalated.</summary>
     public DateTime? SlaBreachNotifiedAt { get; set; }
