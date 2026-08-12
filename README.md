@@ -111,6 +111,12 @@ OpenTrack is licensed under the **GNU Affero General Public License v3.0 (AGPL-3
 
 In short: you're free to use, modify, and self-host OpenTrack. If you distribute a modified version **or run one as a network service**, you must make your source code available under the same license. This keeps OpenTrack and its improvements open for everyone, including in hosted deployments.
 
+## Roadmap
+
+v1 is complete and security-audited. Candidate features for the next round (2FA,
+audit log, pagination, SSO, email-to-ticket, and more) are tracked in
+[docs/V2_ROADMAP.md](docs/V2_ROADMAP.md).
+
 ## Acknowledgments
 
 Inspired by [MantisBT](https://www.mantisbt.org/), whose feature set defined the bar OpenTrack aims to meet. Built with [.NET](https://dotnet.microsoft.com/) and [Blazor](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor).
