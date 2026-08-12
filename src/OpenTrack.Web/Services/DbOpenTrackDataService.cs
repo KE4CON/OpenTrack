@@ -18,9 +18,11 @@ using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
 using OpenTrack.Infrastructure.Bulk;
 using OpenTrack.Core.Querying;
+using OpenTrack.Core.Sla;
 using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Automation;
+using OpenTrack.Infrastructure.Sla;
 using OpenTrack.Infrastructure.Checklist;
 using OpenTrack.Infrastructure.CustomFields;
 using OpenTrack.Infrastructure.Dashboard;
@@ -218,6 +220,51 @@ public class DbOpenTrackDataService(
         r.Name, r.IsEnabled, r.SortOrder,
         r.WhenTextContains, r.WhenSeverity, r.WhenPriority, r.WhenCategoryId,
         r.SetSeverity, r.SetPriority, r.SetStatus, r.AssignToUserId, r.AddTag);
+
+    public async Task<IReadOnlyList<SlaTargetView>> GetSlaPoliciesAsync(int projectId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var items = await SlaPolicyOperations.ListForProjectAsync(db, access, projectId, ct);
+        return items.Select(p => new SlaTargetView(p.Priority, p.TargetHours)).ToList();
+    }
+
+    public async Task<string?> SaveSlaTargetAsync(int projectId, IssuePriority priority, int? hours, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        return await SlaPolicyOperations.SetAsync(db, access, projectId, priority, hours, ct);
+    }
+
+    public async Task<SlaBoardView> GetSlaBoardAsync(CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var board = await SlaBoard.BuildAsync(db, access, DateTime.UtcNow, ct);
+        static IReadOnlyList<SlaBoardItemView> Map(IReadOnlyList<SlaBoardRow> rows) =>
+            rows.Select(r => new SlaBoardItemView(r.Id, r.ProjectId, r.ProjectName, r.Title, r.Priority,
+                r.AssigneeName, r.CreatedAtUtc, r.DueUtc, r.Status)).ToList();
+        return new SlaBoardView(Map(board.Breached), Map(board.AtRisk));
+    }
+
+    public async Task<SlaIssueView?> GetIssueSlaAsync(int issueId, CancellationToken ct = default)
+    {
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        var issue = await db.Issues.AsNoTracking().Include(i => i.Project)
+            .FirstOrDefaultAsync(i => i.Id == issueId, ct);
+        if (issue is null) return null;
+        var ctx = access.For(issue.ProjectId);
+        if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+            return null;
+
+        int? hours = await db.SlaPolicies.AsNoTracking()
+            .Where(p => p.ProjectId == issue.ProjectId && p.Priority == issue.Priority)
+            .Select(p => (int?)p.TargetHours).FirstOrDefaultAsync(ct);
+        var a = SlaCalculator.Evaluate(issue.Priority, issue.CreatedAt,
+            SlaCalculator.IsOpen(issue.Status), DateTime.UtcNow, hours);
+        return new SlaIssueView(a.Status, a.DueUtc);
+    }
 
     public async Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default)
     {

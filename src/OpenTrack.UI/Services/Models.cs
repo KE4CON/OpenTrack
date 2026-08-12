@@ -11,6 +11,7 @@
 
 using OpenTrack.Core.Enums;
 using OpenTrack.Core.Querying;
+using OpenTrack.Core.Sla;
 
 namespace OpenTrack.UI.Services;
 
@@ -72,6 +73,20 @@ public record TagView(int Id, string Name);
 
 /// <summary>A user's saved issue filter — a name plus the issue-list query string to apply.</summary>
 public record SavedFilterView(int Id, string Name, string Query);
+
+/// <summary>A project's SLA target for one priority: resolve within this many hours of creation.</summary>
+public record SlaTargetView(IssuePriority Priority, int TargetHours);
+
+/// <summary>One open issue on the SLA board (at-risk or breached), with its due-by time.</summary>
+public record SlaBoardItemView(
+    int Id, int ProjectId, string ProjectName, string Title, IssuePriority Priority,
+    string? AssigneeName, DateTime CreatedAtUtc, DateTime DueUtc, SlaStatus Status);
+
+/// <summary>The SLA board: breached issues then at-risk issues, each most-overdue-first.</summary>
+public record SlaBoardView(IReadOnlyList<SlaBoardItemView> Breached, IReadOnlyList<SlaBoardItemView> AtRisk);
+
+/// <summary>A single issue's SLA standing (for the detail page).</summary>
+public record SlaIssueView(SlaStatus Status, DateTime? DueUtc);
 
 /// <summary>A project automation rule ("when a new issue matches → do"). Used for both read (Id set) and
 /// write (Id = 0 means create). Null conditions/actions mean "don't care" / "no action".</summary>

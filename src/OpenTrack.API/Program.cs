@@ -117,5 +117,6 @@ app.MapPreferenceEndpoints();
 app.MapReportEndpoints();
 app.MapAiEndpoints();
 app.MapAutomationEndpoints();
+app.MapSlaEndpoints();
 
 app.Run();

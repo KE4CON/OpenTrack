@@ -273,6 +273,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(r => r.AddTag).HasMaxLength(FieldLimits.TagName);
         });
 
+        // ---- SlaPolicy (one row per project+priority) ----
+        b.Entity<SlaPolicy>(e =>
+        {
+            e.HasOne(s => s.Project).WithMany().HasForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(s => new { s.ProjectId, s.Priority }).IsUnique();
+        });
+
         // ---- TimeLog ----
         b.Entity<TimeLog>(e =>
         {
@@ -340,4 +347,5 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<TimeLog> TimeLogs => Set<TimeLog>();
     public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
     public DbSet<AutomationRule> AutomationRules => Set<AutomationRule>();
+    public DbSet<SlaPolicy> SlaPolicies => Set<SlaPolicy>();
 }

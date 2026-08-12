@@ -1,0 +1,75 @@
+@page "/sla"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+@using OpenTrack.Core.Sla
+
+<PageTitle>SLA status</PageTitle>
+
+<h1 class="h3 mb-1">SLA status</h1>
+<p class="text-muted">
+    Open issues that have missed, or are close to missing, their service-level target (the resolve-by time
+    set for their priority). "SLA" = <em>service-level agreement</em> — a target for how quickly issues get
+    resolved. Managers set targets per project under <strong>Settings → SLA targets</strong>.
+</p>
+
+@if (board is null)
+{
+    <p><em>Loading&hellip;</em></p>
+}
+else if (board.Breached.Count == 0 && board.AtRisk.Count == 0)
+{
+    <div class="alert alert-success">Nothing is breaching or at risk right now. 🎉</div>
+}
+else
+{
+    <h2 class="h5 text-danger">Breached (@board.Breached.Count)</h2>
+    @if (board.Breached.Count == 0) { <p class="text-muted">None.</p> }
+    else { @Table(board.Breached, overdue: true) }
+
+    <h2 class="h5 text-warning-emphasis mt-4">At risk (@board.AtRisk.Count)</h2>
+    @if (board.AtRisk.Count == 0) { <p class="text-muted">None.</p> }
+    else { @Table(board.AtRisk, overdue: false) }
+}
+
+@code {
+    private SlaBoardView? board;
+
+    protected override async Task OnInitializedAsync() => board = await Data.GetSlaBoardAsync();
+
+    private RenderFragment Table(IReadOnlyList<SlaBoardItemView> rows, bool overdue) => @<table class="table table-sm table-hover align-middle">
+        <thead>
+            <tr>
+                <th>#</th><th>Project</th><th>Title</th><th>Priority</th><th>Assignee</th>
+                <th>Due (UTC)</th><th>@(overdue ? "Overdue by" : "Due in")</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in rows)
+            {
+                var delta = r.DueUtc - DateTime.UtcNow;
+                <tr>
+                    <td>@r.Id</td>
+                    <td>@r.ProjectName</td>
+                    <td><a href="issues/@r.Id">@r.Title</a></td>
+                    <td>@r.Priority</td>
+                    <td>@(r.AssigneeName ?? "Unassigned")</td>
+                    <td>@r.DueUtc.ToString("g")</td>
+                    <td>
+                        <span class="badge @(overdue ? "text-bg-danger" : "text-bg-warning")">
+                            @Humanize(overdue ? -delta : delta)
+                        </span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>;
+
+    // Compact "2d 3h" style for a positive TimeSpan.
+    private static string Humanize(TimeSpan t)
+    {
+        if (t < TimeSpan.Zero) t = TimeSpan.Zero;
+        if (t.TotalDays >= 1) return $"{(int)t.TotalDays}d {t.Hours}h";
+        if (t.TotalHours >= 1) return $"{(int)t.TotalHours}h {t.Minutes}m";
+        return $"{t.Minutes}m";
+    }
+}
