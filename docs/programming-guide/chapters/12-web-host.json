@@ -1,0 +1,181 @@
+{
+  "order": 12,
+  "title": "The Web Host: Blazor Server, Identity & Endpoints",
+  "subtitle": "How the browser-facing app boots up — how it renders the shared screens live over a connection, how it signs people in with a cookie, how it registers the shared access rules, and the handful of extra 'endpoints' it maps for jobs the screens can't do alone, including the inbound Git webhook.",
+  "in_this_chapter": [
+    "What a 'host' is and what OpenTrack.Web's startup file is responsible for",
+    "Blazor Server: rendering the shared pages live over a persistent connection",
+    "ASP.NET Core Identity and cookie sign-in — how the web app knows who you are",
+    "Registering the four role policies inline, the same four every host registers",
+    "Wiring the shared data seam to its database-backed body",
+    "Migrate-on-startup and the bootstrap administrator",
+    "The extra minimal-API endpoints: attachments, export, import, activity, checklist, public intake",
+    "The inbound Git webhook: unauthenticated to the outside, but signature-verified"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "A running program needs a __host__ — a startup file that assembles all the parts, wires them together, and presses go. `OpenTrack.Web` is the host for the browser experience. Its `Program.cs` is the recipe: it registers every service the app needs, decides how the shared screens are rendered, sets up sign-in, applies any database updates, and finally maps the web addresses the app answers. When you open OpenTrack in a browser, this file is what booted the thing you are looking at."
+    },
+    {
+      "p": "Think of it as the stage manager for a play. The actors (the shared UI screens, the data seam, the access rules) already exist. `Program.cs` is what sets up the stage, hands each actor what it needs, arranges the entrances, and raises the curtain. It contains almost no business logic of its own — its whole job is assembly. This chapter walks that assembly top to bottom and then looks at the small set of side doors (endpoints) the web host opens for tasks the live screens can't handle by themselves."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "OpenTrack.Web boots a Blazor Server app that renders the shared UI live over a persistent connection, signs users in with an ASP.NET Core Identity cookie, plugs the shared data seam into its database-backed body, registers the same four role policies as every other host, and maps a handful of minimal-API endpoints — including a signature-verified inbound Git webhook — for the stream-and-form jobs the screens can't do inline."
+      }
+    },
+    { "h2": "Blazor Server: the shared screens, rendered live" },
+    {
+      "p": "The first thing the recipe sets up is how the shared pages are drawn. OpenTrack's web app uses __Blazor Server__, and the very first registration says so:"
+    },
+    {
+      "code": "builder.Services.AddRazorComponents()\n    .AddInteractiveServerComponents();"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "Blazor is Microsoft's framework for building interactive web screens in C# instead of JavaScript. In the 'Server' flavor, the page's logic runs on the server, and a live connection to the browser ships button clicks up and screen updates down in real time. A 'Razor component' is one reusable piece of such a screen. The upshot: the browser shows the page, but the C# driving it runs on the server — which is exactly why the web host can reach the database directly."
+      }
+    },
+    {
+      "p": "This is the reason the web body of the data seam (Chapter 11) can talk straight to the database: the code behind each page is running on the server, right next to the data. Later in the file the components are actually mapped, and — importantly — the shared UI assembly is pulled in so the same pages the desktop uses are the pages the web serves:"
+    },
+    {
+      "code": "app.MapRazorComponents<App>()\n    .AddInteractiveServerRenderMode()\n    .AddAdditionalAssemblies(typeof(OpenTrack.UI.AssemblyMarker).Assembly);"
+    },
+    {
+      "p": "That `AddAdditionalAssemblies(...OpenTrack.UI...)` line is the seam paying off: the web host renders components that physically live in the shared `OpenTrack.UI` project, not in a web-only copy."
+    },
+    { "h2": "Identity: how the web app knows who you are" },
+    {
+      "p": "Next the recipe sets up sign-in, using __ASP.NET Core Identity__ — Microsoft's built-in user-accounts system. It handles the account records, password hashing, the login and registration screens, and the sign-in cookie your browser carries so you don't log in on every click. OpenTrack registers its data layer and Identity together:"
+    },
+    {
+      "code": "var connectionString = builder.Configuration.ResolveOpenTrackConnectionString();\nbuilder.Services.AddOpenTrackInfrastructure(connectionString);\n// ...\nbuilder.Services.AddOpenTrackIdentity();"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "Identity here means the accounts system: who can sign in and how their password is stored. A 'cookie' is a small token the browser holds and sends back on each request, so the server recognizes you after you log in. A 'claim' is a labeled fact about the signed-in user carried alongside that cookie (their id, their name, their role) so the app doesn't have to re-read the database to answer 'who is this and what may they do?' on every click."
+      }
+    },
+    {
+      "p": "One registration deserves a spotlight because it ties directly into the access rules: on sign-in, OpenTrack stamps the user's role onto their identity as a claim, so permission checks can read it instantly without a database round trip:"
+    },
+    {
+      "code": "// Adds the user's OpenTrack.Role as a claim on sign-in so [Authorize(Policy = \"...\")] and\n// AuthorizeView can check it without an extra DB round trip on every request.\nbuilder.Services.AddScoped<IUserClaimsPrincipalFactory<OpenTrack.Core.Entities.User>, RoleClaimsPrincipalFactory>();"
+    },
+    { "h2": "The four role policies, registered inline" },
+    {
+      "p": "OpenTrack expresses its coarse role gates as four named __authorization policies__ — `RequireUpdater`, `RequireDeveloper`, `RequireManager`, `RequireAdministrator`. Each simply asks: is the signed-in user's role at least this rank? The web host registers all four right here:"
+    },
+    {
+      "code": "builder.Services.AddAuthorizationBuilder()\n    .AddPolicy(\"RequireUpdater\", p => p.RequireAssertion(ctx => WebRoleCheck(ctx, UserRole.Updater)))\n    .AddPolicy(\"RequireDeveloper\", p => p.RequireAssertion(ctx => WebRoleCheck(ctx, UserRole.Developer)))\n    .AddPolicy(\"RequireManager\", p => p.RequireAssertion(ctx => WebRoleCheck(ctx, UserRole.Manager)))\n    .AddPolicy(\"RequireAdministrator\", p => p.RequireAssertion(ctx => WebRoleCheck(ctx, UserRole.Administrator)));\n\nstatic bool WebRoleCheck(...AuthorizationHandlerContext ctx, UserRole minimum)\n{\n    var roleClaim = ctx.User.FindFirst(\"OpenTrack.Role\")?.Value;\n    return roleClaim is not null\n        && Enum.TryParse<UserRole>(roleClaim, out var role)\n        && (int)role >= (int)minimum;\n}"
+    },
+    {
+      "p": "The comment above them notes they are \"shared with OpenTrack.API so both surfaces enforce identical access rules,\" and that they are \"registered inline (rather than via a shared helper) because the DI extension lives in ASP.NET Core packages.\" In other words, all three hosts define the same four policies the same way — you will see the near-identical block in the API host (Chapter 13) and the desktop app (Chapter 14). These four are the __broad__ gates on top of the __fine__, per-project rules from the access-control chapter; both layers are consulted."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Two layers of check, not one",
+        "text": "The role policies here answer 'is this user at least a Manager, anywhere?' — a coarse yes/no on a screen or endpoint. The per-project AccessContext / AccessSnapshot rules from the access-control chapter answer the finer 'may this user do this to THIS project or issue?'. A sensitive action passes both: the policy is the outer door, the per-project rule is the inner one."
+      }
+    },
+    { "h2": "Plugging the seam into its database body" },
+    {
+      "p": "Now the payoff line for Chapter 11. The web host picks which body fills in the shared data seam — and it chooses the database-backed one:"
+    },
+    {
+      "code": "// The shared UI's data seam, backed by direct EF Core access in the web app.\nbuilder.Services.AddScoped<OpenTrack.UI.Services.IOpenTrackDataService, OpenTrack.Web.Services.DbOpenTrackDataService>();"
+    },
+    {
+      "p": "That single registration is the entire difference, on the data side, between the web app and the desktop app. The shared pages ask for `IOpenTrackDataService`; here the web host says \"give them the `DbOpenTrackDataService`.\" The desktop host will say \"give them the HTTP one.\" Same screens, different body, decided in one line."
+    },
+    {
+      "p": "The web host also registers a few things that are genuinely web-only — a background job that scans for overdue SLAs, scheduled database backups, an admin surface for global user management, and rate limiting on the public intake routes so spam can't flood them:"
+    },
+    {
+      "code": "// Background SLA-breach escalation (the always-on web host owns this periodic job).\nbuilder.Services.AddHostedService<OpenTrack.Web.Services.SlaScanner>();\n// Scheduled database backups (opt-in via OpenTrack:Backup).\nbuilder.Services.AddHostedService<OpenTrack.Web.Services.BackupScheduler>();"
+    },
+    {
+      "p": "These live on the web host because it is the always-on server — the natural home for periodic background work. The desktop app, which comes and goes with the user, is the wrong place for a breach scanner."
+    },
+    { "h2": "Build, then migrate on startup" },
+    {
+      "p": "After all the registrations, the recipe builds the app and does one housekeeping step before serving traffic: it applies any pending database migrations and makes sure a bootstrap administrator exists, so a fresh install comes up with a working database and a way to log in:"
+    },
+    {
+      "code": "using (var scope = app.Services.CreateScope())\n{\n    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();\n    db.Database.Migrate();\n    await OpenTrackSeeder.EnsureBootstrapAdminAsync(scope.ServiceProvider, app.Configuration);\n}"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A 'migration' is a recorded change to the database's shape (a new table, a new column). 'Migrate on startup' means the app checks the database against the migrations it knows about and applies any missing ones automatically, so nobody has to run database scripts by hand when they update OpenTrack. The 'bootstrap admin' is the first administrator account, seeded so a brand-new install isn't locked out of itself."
+      }
+    },
+    {
+      "p": "There is also a deliberate deployment choice tucked in here: HTTPS is off by default. OpenTrack is built to run on a trusted home or office LAN over plain HTTP, and the comment warns that forcing an HTTPS redirect with no HTTPS endpoint configured \"would otherwise break access on a plain-HTTP LAN deployment.\" A single setting, `OpenTrack:RequireHttps`, turns on the redirect (and HSTS) for anyone exposing the server beyond that trusted network."
+    },
+    { "h2": "The side doors: minimal-API endpoints" },
+    {
+      "p": "Most of what a user does happens through the live Blazor screens. But a few jobs don't fit the live-screen model — sending a file up, streaming a download, receiving a push from GitHub. For those, the web host maps a handful of __minimal-API endpoints__: plain web addresses that take a request and return a response, no live component involved. They are mapped at the end of `Program.cs`:"
+    },
+    {
+      "code": "// Cookie-authenticated attachment upload/download/delete for the web host.\nOpenTrack.Web.Endpoints.AttachmentWebEndpoints.MapAttachmentWebEndpoints(app);\n// Cookie-authenticated CSV/JSON export downloads for the web host.\nOpenTrack.Web.Endpoints.ExportWebEndpoints.MapExportWebEndpoints(app);\n// Cookie-authenticated MantisBT XML import upload for the web host.\nOpenTrack.Web.Endpoints.ImportWebEndpoints.MapImportWebEndpoints(app);\n// Cookie-authenticated change-token for smart-poll auto-refresh.\nOpenTrack.Web.Endpoints.ActivityWebEndpoints.MapActivityWebEndpoints(app);\n// Cookie-authenticated checklist status endpoint (offline check-off replay target).\nOpenTrack.Web.Endpoints.ChecklistWebEndpoints.MapChecklistWebEndpoints(app);\n// Public (unauthenticated, rate-limited) trouble-ticket intake endpoints.\nOpenTrack.Web.Endpoints.PublicIntakeWebEndpoints.MapPublicIntakeWebEndpoints(app);\n// Inbound Git webhook (unauthenticated but HMAC-verified, rate-limited).\nOpenTrack.Web.Endpoints.GitWebhookEndpoints.MapGitWebhookEndpoints(app);"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A 'minimal API' is a lightweight way to answer a web address with a short function — request in, response out — without the ceremony of controllers. 'Cookie-authenticated' means the endpoint trusts the same sign-in cookie the browser already carries. 'Multipart form' is the format a browser uses to upload a file. These endpoints sit alongside the live pages; the pages link or post to them for the streaming jobs."
+      }
+    },
+    {
+      "p": "The attachment endpoints show the pattern well. Uploading a file is a plain multipart form post (static rendering has no live interactivity to stream bytes through), and downloading is a link — but each one re-checks the same per-project access rules the screens use, before touching a file:"
+    },
+    {
+      "code": "var access = await LoadAccess(http, db, ct);\nif (access is null) return Results.Unauthorized();\nvar issue = await db.Issues.AsNoTracking().Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == issueId, ct);\nif (issue is null) return Results.NotFound();\nvar ctx = access.For(issue.ProjectId);\nif (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))\n    return Results.NotFound();\nif (!ctx.CanAddNote()) return Results.Forbid();"
+    },
+    {
+      "p": "That is the same `AccessSnapshot` / `AccessContext` machinery from the access-control chapter, called from an endpoint instead of a page. The endpoints are a different doorway into the app, but they consult the identical rulebook — no endpoint invents its own permission logic. Downloads add one extra guard: a `nosniff` header so an uploaded HTML or SVG file can't try to execute in the browser when viewed."
+    },
+    { "h2": "The inbound Git webhook: open door, verified caller" },
+    {
+      "p": "The most interesting endpoint is the Git webhook receiver, because it must accept requests from GitHub, which has no OpenTrack account and can't carry a cookie. It is therefore unauthenticated in the usual sense — but it is far from unguarded. Every request is verified with an __HMAC signature__ against the project's stored secret before a single byte of the payload is trusted:"
+    },
+    {
+      "code": "var config = await db.GitIntegrations.AsNoTracking().FirstOrDefaultAsync(g => g.ProjectId == projectId, ct);\nif (config is null || !config.Enabled)\n    return Results.NotFound(); // don't reveal whether the project exists / is configured\n\nvar signature = request.Headers[\"X-Hub-Signature-256\"].ToString();\nif (!GitSignature.IsValid(config.WebhookSecret, body, signature))\n    return Results.NotFound(); // same response as unconfigured — don't reveal which projects have Git enabled"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A 'webhook' is a way for one system to call another the moment something happens — here, GitHub calls OpenTrack whenever code is pushed. HMAC is a signature made by mixing the message with a shared secret; only someone who knows the secret can produce a matching signature, so OpenTrack can confirm the request genuinely came from the configured GitHub project and wasn't forged or altered."
+      }
+    },
+    {
+      "p": "Two details show the security mindset. First, the signature is checked over the __exact raw bytes__ of the body, read once up front — because even a trivial reformat would change the signature. Second, a request that fails the check gets the same `NotFound` as a project with no Git configured: the endpoint refuses to reveal which projects even have Git enabled. Only after the signature passes does it parse the commits and hand them to the shared `GitIntegrationOperations` to link and auto-resolve issues. The route is also rate-limited (`RequireRateLimiting(\"intake\")`) so a flood of forged calls can't hammer the server."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "`OpenTrack.Web` is assembly, not logic — and that is its strength. It renders the shared screens with Blazor Server, knows the user through Identity's cookie, plugs the data seam into its database body in one line, registers the same four role policies every host registers, and opens a small, well-guarded set of endpoints for the jobs live screens can't do. Nothing here reimplements a permission rule or a domain operation; it reaches for the shared pieces the rest of the book describes."
+    },
+    {
+      "p": "The properties to protect: the host stays a wiring file, deferring real work to the shared UI, the shared seam, and the shared rules; every endpoint — even an unauthenticated one — passes through the same access checks or a cryptographic verification before acting; and web-only concerns (background scans, backups, admin) stay on the always-on web host and out of the portable desktop app. When you add an endpoint, copy the attachment pattern: load the access snapshot, check the per-project rule, then act."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "Treat Program.cs as assembly only — register services and map endpoints, never bury business logic here. Any new endpoint must authenticate (a cookie) or authorize (a signature/secret) AND consult the shared AccessContext / AccessSnapshot before it reads or writes; an endpoint that answers a URL without one of those is a hole. And keep the four role policies byte-for-byte in step with the API and desktop hosts — if you change one here, change all three."
+      }
+    }
+  ]
+}

@@ -1,0 +1,167 @@
+{
+  "order": 20,
+  "title": "The AI Assistant: one provider seam, three helpers",
+  "subtitle": "The optional, opt-in AI layer — a single interface with two interchangeable implementations behind it (Anthropic's Claude, or any OpenAI-compatible endpoint including a local Ollama that never leaves your machine) — powering three conveniences: suggesting a triage for a new issue, turning plain-English into a search filter, and summarizing a long thread; all server-side, all best-effort, and every one of them a suggestion a human still owns.",
+  "in_this_chapter": [
+    "What the AI layer is, and the three rules that box it in (opt-in, server-side, best-effort)",
+    "One interface, IAiAssistant, and why every method can return null",
+    "Two providers behind that seam — cloud Claude, or any OpenAI-compatible API incl. local engines",
+    "The provider-agnostic middle: shared prompts and JSON schemas so both speak the same contract",
+    "Helper 1 — smart triage: a suggestion that only ever pre-fills a form",
+    "Helper 2 — plain-English search: turning words into a filter the user could have built by hand",
+    "Helper 3 — thread summary: fed only notes the caller is already allowed to read",
+    "How the same three helpers are reached from both the web app and the API"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "Some jobs in an issue tracker are tedious in a way a language model is genuinely good at: guessing how severe a new bug is, translating a vague request like 'crashes nobody has touched in a month' into concrete filter settings, or reading a forty-comment thread and telling you where it stands. OpenTrack offers all three as __optional__ AI helpers. The key word is optional: the AI is off by default, must be deliberately configured by the server operator, and never does anything a human didn't ask for and can't override."
+    },
+    {
+      "p": "Think of the AI as a smart intern who whispers suggestions. When switched on, the intern can propose a severity, sketch a search from a sentence, or summarize a long conversation. But the intern never files anything, never changes a record, and never sees anything the person they're helping couldn't already see. And the intern is entirely replaceable: you can hire a cloud one (Anthropic's Claude, or OpenAI), or a local one that works inside your own building and tells no one outside anything. The rest of OpenTrack neither knows nor cares which — it only knows there's an intern, or there isn't."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "A single IAiAssistant interface hides which provider is in use (Anthropic or any OpenAI-compatible endpoint, cloud or local); it exposes exactly three helpers — triage, search-interpretation, and summarize — each opt-in, server-side, best-effort (returns null on any failure so nothing is ever blocked), and each producing only a suggestion or a filter a human still controls."
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "An interface is a promise about what methods exist, with no code behind them — a socket that any matching plug can fill. 'Opt-in' means it does nothing unless someone deliberately turns it on. 'Server-side' means the calls happen on OpenTrack's own machine, never in the visitor's browser, so an API key is never exposed. 'Best-effort' means if the AI is off or the call fails, the method quietly returns null and the app carries on as if the feature weren't there. An OpenAI-compatible endpoint is any service that speaks the same request/response shape OpenAI uses — many do, including local engines like Ollama."
+      }
+    },
+    { "h1": "One interface, three promises" },
+    { "h2": "What it does" },
+    {
+      "p": "`IAiAssistant` is the seam the whole feature hangs on. It declares one property and three methods — is the assistant enabled, and the three helpers — and nothing else. Every method returns a nullable value, and that is a design decision, not an accident: null is the universal 'not available' answer that lets every caller degrade gracefully."
+    },
+    {
+      "code": "public interface IAiAssistant\n{\n    bool IsEnabled { get; }\n\n    Task<TriageSuggestion?> SuggestTriageAsync(\n        string title, string? description, IReadOnlyList<string> categories, CancellationToken ct = default);\n\n    Task<SearchCriteria?> InterpretSearchAsync(\n        string query, IReadOnlyList<string> projectNames, CancellationToken ct = default);\n\n    Task<string?> SummarizeIssueAsync(\n        string title, string? description, IReadOnlyList<string> notes, CancellationToken ct = default);\n}"
+    },
+    { "h2": "Why it was built this way" },
+    {
+      "p": "Two forces shaped this interface. First, the AI is genuinely optional, so 'off' must be a first-class state, not an error — hence `IsEnabled` and the nullable returns. The interface summary is explicit: when disabled or unconfigured, \"`IsEnabled` is false and the methods return null, so callers degrade gracefully.\" Second, an AI call is over the network to someone else's model and can fail in a dozen ways; a failure to suggest a severity must never stop you from filing a bug. So the contract itself bakes in 'this might just not answer,' and every caller is written to shrug and move on."
+    },
+    {
+      "p": "There is also a privacy note built into the very type of a suggestion. `TriageSuggestion` — a severity, priority, category, and tags — carries a comment that governs how the whole feature behaves: \"Every field is a suggestion for a human to accept or change — never applied automatically.\" The AI proposes; the person disposes."
+    },
+    { "h1": "Two providers behind the seam" },
+    { "h2": "What it does" },
+    {
+      "p": "Behind the interface sit two implementations. `AnthropicAiAssistant` talks to Anthropic's Messages API. `OpenAiAssistant` talks to any OpenAI-__compatible__ Chat Completions API — and that one class covers a surprising range: OpenAI itself, Azure OpenAI, Groq, OpenRouter, and, importantly, local engines like Ollama and LM Studio running on your own hardware. The only real difference between those is a base URL and whether a key is needed."
+    },
+    { "h2": "Why two, and why this split" },
+    {
+      "p": "Supporting both a first-class Claude integration and 'anything OpenAI-shaped' covers essentially the whole market with two classes instead of a dozen. The local-engine case is the one that matters most for a self-hosted tracker: an operator uneasy about sending issue text to a cloud can point OpenTrack at Ollama on `localhost` and keep every word on their own machine. The configuration class, `AiOptions`, captures all of this in settings that come only from the server's configuration — \"appsettings / environment / user-secrets — never the database or the browser\":"
+    },
+    {
+      "code": "/// <summary>\"anthropic\" (Claude, default) or \"openai\" (any OpenAI-compatible Chat Completions API).</summary>\npublic string Provider { get; set; } = \"anthropic\";\n\npublic string? ApiKey { get; set; }\n\n/// <summary>Model id. Defaults to a fast, inexpensive Claude model; set this to match your provider\n/// (e.g. \"gpt-4o-mini\" for OpenAI, or a local model name like \"llama3.1\" for Ollama).</summary>\npublic string Model { get; set; } = \"claude-haiku-4-5-20251001\";"
+    },
+    {
+      "p": "Note the small but real cleverness in `HasCredentials`: a cloud provider needs a key, but a __local__ OpenAI-compatible engine (identified by a custom `BaseUrl`) needs none — so the code treats 'has a key' OR 'is a local openai endpoint' as usable. That's why a laptop running Ollama with no API key at all can still power the assistant."
+    },
+    { "h2": "How the right one is chosen" },
+    {
+      "p": "Which implementation you get is decided once, at startup, in dependency injection. Both concrete classes are registered as typed HTTP clients (with different timeouts — a local model can be slow to produce its first token, so it gets longer), and then `IAiAssistant` is resolved to whichever one the configured provider names:"
+    },
+    {
+      "code": "services.AddHttpClient<Ai.AnthropicAiAssistant>(c => c.Timeout = TimeSpan.FromSeconds(30));\nservices.AddHttpClient<Ai.OpenAiAssistant>(c => c.Timeout = TimeSpan.FromSeconds(60));\nservices.AddScoped<Ai.IAiAssistant>(sp => options.IsOpenAi\n    ? sp.GetRequiredService<Ai.OpenAiAssistant>()\n    : sp.GetRequiredService<Ai.AnthropicAiAssistant>());"
+    },
+    {
+      "p": "Everything downstream — the web data service, the API endpoints, the pages — only ever asks for `IAiAssistant`. They are blissfully unaware of which provider answered. Swap the provider in configuration and not one line of the feature code changes. This is the same seam pattern the whole app uses for its data service (Chapter 11), applied to the AI."
+    },
+    { "h1": "The provider-agnostic middle: shared prompts and schemas" },
+    { "h2": "What it does" },
+    {
+      "p": "Here is the part that keeps the two providers honest. If the Anthropic path and the OpenAI path each wrote their own prompts and their own idea of the answer's shape, they would slowly diverge — the same issue could get a different triage depending on which provider was configured. So the wording of every prompt, the JSON schema of every answer, and the mapping from the model's reply back to a C# value all live in provider-neutral helper classes: `AiTriage`, `AiSearch`, and `AiSummary`. Both providers call into these."
+    },
+    {
+      "p": "`AiTriage`'s summary states the intent: these pieces are \"shared by the Anthropic and OpenAI-compatible assistants so both speak the same triage contract and stay in lock-step.\" The prompt, the tool schema, and the parsing are written once. The only thing each provider class does differently is the network mechanics — how to wrap that shared prompt and schema in the request its particular API expects."
+    },
+    { "h2": "How it works: strict answers via tool-use" },
+    {
+      "p": "For triage and search, OpenTrack does not just ask the model for prose and hope to parse it. It uses __tool-use__ (also called function-calling): the model is told about a single 'tool' with a strict JSON schema, and instructed to answer only by calling that tool. That forces the reply into a fixed shape the code can map reliably. The schema is one shared object usable by both providers, because Anthropic's `input_schema` and OpenAI's function `parameters` are both JSON-schema:"
+    },
+    {
+      "code": "public static object BuildInputSchema() => new\n{\n    type = \"object\",\n    properties = new Dictionary<string, object>\n    {\n        [\"severity\"] = new { type = \"string\", @enum = Enum.GetNames<IssueSeverity>() },\n        [\"priority\"] = new { type = \"string\", @enum = Enum.GetNames<IssuePriority>() },\n        [\"category\"] = new { type = \"string\" },\n        [\"tags\"] = new { type = \"array\", items = new { type = \"string\" } },\n    },\n};"
+    },
+    {
+      "p": "The two provider classes then differ only in packaging. The Anthropic version puts the tool under `tools` with a `tool_choice` forcing that tool; the OpenAI version wraps the same name/description/schema as a `function`. Compare them side by side and the shared pieces (`toolName`, `toolDesc`, `schema`, the same `prompt`) are identical — only the envelope changes:"
+    },
+    {
+      "code": "// Anthropic\ntools = new object[] { new { name = toolName, description = toolDesc, input_schema = schema } },\ntool_choice = new { type = \"tool\", name = toolName },\n\n// OpenAI-compatible\ntools = new object[]\n{\n    new { type = \"function\", function = new { name = toolName, description = toolDesc, parameters = schema } },\n},\ntool_choice = new { type = \"function\", function = new { name = toolName } },"
+    },
+    {
+      "p": "Parsing back is equally shared and equally defensive. `AiTriage.FromInput` is \"tolerant of missing/unknown values: an unrecognized enum becomes null, and a category is accepted only if it exists on the project.\" So even a model that hallucinates a category name it invented cannot slip it through — the code only accepts a category that really exists:"
+    },
+    {
+      "code": "if (input.TryGetProperty(\"category\", out var c) && c.ValueKind == JsonValueKind.String)\n{\n    var raw = c.GetString();\n    // Only accept a category that actually exists on the project.\n    cat = categories.FirstOrDefault(x => string.Equals(x, raw, StringComparison.OrdinalIgnoreCase));\n}"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "Tool-use / function-calling is a way of asking a model to answer by 'calling a function' whose arguments must match a schema you supply, instead of replying in free text. You get back structured data (fields you named) rather than a paragraph you'd have to parse. JSON schema is just a description of the allowed shape — which fields, what types, which values are permitted. Both Anthropic and OpenAI accept the same schema shape, which is exactly why one definition can serve both."
+      }
+    },
+    {
+      "p": "One more shared guard lives in `AiText.Cap`: every piece of user text is truncated before it is put in a prompt, so a caller \"can't drive an arbitrarily large (billable) request to the AI provider.\" The title is capped at 500 characters, the description at 4000, a search query at 500. Cost and abuse are bounded at the prompt, once, for both providers."
+    },
+    { "h1": "The three helpers in action" },
+    { "h2": "Helper 1 — smart triage: a suggestion, never a decision" },
+    {
+      "p": "On the new-issue screen, when the assistant is enabled, a 'Suggest with AI' button appears. Pressing it does not create the issue — it __pre-fills__ the form. The page's own comment says so, and the handler treats every returned field as optional, applying only what came back and leaving the rest untouched:"
+    },
+    {
+      "code": "// The \"Suggest with AI\" button pre-fills the form instead of creating the issue.\nif (model.Action == \"ai\")\n{\n    var s = await Data.SuggestTriageAsync(ProjectId, model.Title, model.Description);\n    if (s is null) { error = \"AI couldn't suggest a triage right now.\"; }\n    else\n    {\n        if (s.Severity is { } sv) model.Severity = sv;\n        if (s.Priority is { } pr) model.Priority = pr;\n        if (s.Category is { } cat)\n            model.CategoryId = categories.FirstOrDefault(c => string.Equals(c.Name, cat, StringComparison.OrdinalIgnoreCase))?.Id;\n        aiSuggestedTags = s.Tags;\n    }\n}"
+    },
+    {
+      "p": "The user still reviews and submits. If the AI is off or the call fails, `s` is null and the form is simply left as the human typed it — the feature's absence is invisible, exactly the graceful degradation the interface promised."
+    },
+    { "h2": "Helper 2 — plain-English search, with no new powers" },
+    {
+      "p": "The second helper turns a sentence into a set of filter fields. Its result type, `SearchCriteria`, is carefully scoped, and its summary explains the safety property in one breath: these fields \"map one-to-one onto the issue list's existing query-string filter, so natural-language search can only ever produce a filter the user could have built by hand — no new query power, no ACL bypass.\" The AI is a nicer way to drive the existing search, not a new search that skips the rules."
+    },
+    {
+      "p": "The prompt teaches the model the app's own vocabulary — for instance that 'stale', 'idle', 'untouched', or 'nobody has touched' all mean the existing `stale=true` filter — and, crucially, the __project__ it may match is constrained to a list of names the caller can actually see. That list is built with the same `WhereVisibleTo` filter from Chapter 8, so the model is never even shown a project the user isn't allowed to know exists:"
+    },
+    {
+      "code": "// Constrain any project match to the caller's visible projects.\nvar projectNames = await db.Projects.AsNoTracking()\n    .WhereVisibleTo(access).OrderBy(p => p.Name).Select(p => p.Name).ToListAsync(ct);\nvar c = await ai.InterpretSearchAsync(req.Query, projectNames, ct);"
+    },
+    { "h2": "Helper 3 — thread summary, fed only what you may read" },
+    {
+      "p": "The third helper summarizes an issue thread. This one is the most privacy-sensitive, because it hands the model the issue's comments — and some comments may be private. The guard is that the summarizer is only ever given notes the caller is __already__ allowed to see; the AI cannot become a way to launder a private note into a summary. In the web data service the summary reuses the same access-checked loader the detail page uses, and the interface itself documents that the notes passed in are 'already-ACL-filtered'."
+    },
+    {
+      "p": "The API endpoint makes the filtering visible line by line: it loads the issue, refuses (as a plain not-found, so it doesn't even leak that a private issue exists) if the caller can't view it, and then feeds the model only the notes that pass `CanViewNote`:"
+    },
+    {
+      "code": "var ctx = access.For(issue.ProjectId);\nif (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))\n    return Results.NotFound(); // don't leak existence of a private issue\n\n// Only feed the model notes this caller may see.\nvar notes = issue.Notes.Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))\n    .OrderBy(n => n.CreatedAt)\n    .Select(n => $\"{n.Author.UserName ?? \"unknown\"}: {n.Text}\")\n    .ToList();\nvar summary = await ai.SummarizeIssueAsync(issue.Title, issue.Description, notes, ct);"
+    },
+    {
+      "p": "Unlike triage and search, the summary asks for plain prose, not a tool call — so `AiSummary.BuildPrompt` just requests a few plain-language sentences and the provider classes return the model's text. The access discipline, though, is identical to everything else: the AI sees exactly what the human calling it sees, and not one note more."
+    },
+    { "h2": "Reached the same way from both hosts" },
+    {
+      "p": "Because everything hangs off `IAiAssistant`, both front doors reach the three helpers through the same seam. The web app's `DbOpenTrackDataService` implements `IsAiEnabledAsync`, `SuggestTriageAsync`, `InterpretIssueSearchAsync`, and `SummarizeIssueAsync` by calling the injected `ai`. The desktop app reaches identical logic through the API's `/api/ai` endpoints, which are grouped behind `RequireAuthorization()` — the AI helpers are never anonymous — and repeat the same access checks before calling the assistant. Two hosts, one interface, one set of rules."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The AI layer is a model of how to add a powerful-but-risky capability without letting it corrode the rest of the system. It is fenced by three consistent rules: __opt-in__ (off by default, configured only by the operator, never touching the database or browser for its secrets), __server-side__ (calls and keys stay on OpenTrack's machine, and a local engine can keep the data there too), and __best-effort__ (every method returns null on any failure, so the AI's absence or malfunction is always survivable)."
+    },
+    {
+      "p": "Two structural choices make it maintainable. The provider seam means adding or swapping a model is a configuration change, not a code change — and the provider-agnostic prompt/schema/parse helpers mean the two providers can never quietly disagree. And the safety choices reuse the authorities that already exist: search can only build a filter the user could build by hand, and the summarizer is fed only notes the caller may already read. The AI got no special powers and no private access; it was bolted onto the existing rails, not around them."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "If you add a fourth AI helper, keep the four invariants: put its prompt, schema, and parsing in a shared provider-agnostic class so both providers stay in lock-step; cap the user text you send; return null on any failure so callers degrade; and feed the model only data the calling user is already entitled to — reuse AccessContext and WhereVisibleTo, never work around them. The AI is an intern that whispers suggestions; never let it become one that files them or reads what it shouldn't."
+      }
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "order": 13,
+  "title": "The API Host: a Minimal API for the Desktop App",
+  "subtitle": "How OpenTrack.API boots as a separate network service the desktop app calls — signing people in with bearer tokens instead of cookies, registering the same four role policies as every host, checking the same per-project access rules at every endpoint, and grouping its many routes by topic.",
+  "in_this_chapter": [
+    "What the API host is for and why it exists as its own program",
+    "Bearer-token Identity — the same accounts, a different way to prove who you are",
+    "One database, shared with the web app",
+    "The same four role policies, registered inline again — and why 'again'",
+    "ApiAccess and ApiRoleCheck: the tiny bridge into the shared access rules",
+    "How each endpoint re-checks the per-project ACL, exactly like the web app",
+    "The endpoint groups and the /api/auth/me lookup the desktop needs after login"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "The desktop app has no database and can't run the shared screens' server-side logic on the user's laptop. It needs something to call over the network — a service that holds the data, enforces the rules, and answers requests. That service is `OpenTrack.API`, and it is a separate program with its own startup file, `Program.cs`, booted independently of the web app."
+    },
+    {
+      "p": "If the web host (Chapter 12) is a stage that both renders the play and stores the script, the API host is a librarian at a service window: it holds the same books (the same database), it checks your credentials, and it hands back exactly what you're entitled to — but it draws no scenery of its own. It returns data, not pages. The desktop app is its customer. This chapter walks the API's boot sequence, shows how it proves who you are without a browser cookie, and shows that every one of its endpoints leans on the very same access rules the web app uses."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "OpenTrack.API is a standalone minimal-API service over the same database as the web app; it authenticates callers with bearer tokens instead of cookies, registers the identical four role policies, and — through the tiny ApiAccess and ApiRoleCheck helpers — re-checks the same per-project AccessSnapshot / AccessContext rules at every endpoint, so the desktop app is held to exactly the same permissions as the browser."
+      }
+    },
+    { "h2": "Bearer tokens: the same accounts, proven differently" },
+    {
+      "p": "The web app knows you by a cookie your browser carries. A desktop app has no browser cookie jar, so the API proves identity a different way: __bearer tokens__. You log in once, the API hands back a token, and the desktop app shows that token on every later request. Crucially, it is the __same accounts__ — the same users, in the same database — just a different way of presenting them. The registration says exactly that:"
+    },
+    {
+      "code": "// Bearer-token Identity for the API (desktop/thin-client consumers) — separate auth\n// scheme from OpenTrack.Web's cookie-based Identity, but backed by the same AppDbContext\n// and User type, so an account works identically whether signing in via the web app or\n// the desktop app.\nbuilder.Services.AddIdentityApiEndpoints<User>(options =>\n    {\n        options.SignIn.RequireConfirmedAccount = false;\n        options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;\n    })\n    .AddEntityFrameworkStores<AppDbContext>();"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A 'bearer token' is a pass issued at login: whoever bears (holds) it is treated as that user, so the app attaches it to each request instead of logging in again. An 'auth scheme' is simply the method used to prove identity — cookie here, bearer token there. Both schemes read the same user table, so your one OpenTrack account works in the browser and in the desktop app alike."
+      }
+    },
+    {
+      "p": "The API shares one more thing with the web host: the role-claim factory that stamps the user's OpenTrack role onto their identity, so permission checks can read it without a database trip. Same class, registered in both hosts:"
+    },
+    {
+      "code": "builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, RoleClaimsPrincipalFactory>();"
+    },
+    {
+      "p": "And it points at the same database via the same helper the web app uses, which is what makes \"one OpenTrack, two front doors\" literally true — there is one set of data underneath both:"
+    },
+    {
+      "code": "// OpenTrack data layer (shared SQLite database with OpenTrack.Web).\nvar connectionString = builder.Configuration.ResolveOpenTrackConnectionString();\nbuilder.Services.AddOpenTrackInfrastructure(connectionString);"
+    },
+    { "h2": "The same four role policies, once more" },
+    {
+      "p": "Here is the block you saw in the web host, near-identical, in the API host — the same four coarse role gates:"
+    },
+    {
+      "code": "builder.Services.AddAuthorizationBuilder()\n    .AddPolicy(\"RequireUpdater\", p => p.RequireAssertion(ctx => ApiRoleCheck.HasRoleAtLeast(ctx, UserRole.Updater)))\n    .AddPolicy(\"RequireDeveloper\", p => p.RequireAssertion(ctx => ApiRoleCheck.HasRoleAtLeast(ctx, UserRole.Developer)))\n    .AddPolicy(\"RequireManager\", p => p.RequireAssertion(ctx => ApiRoleCheck.HasRoleAtLeast(ctx, UserRole.Manager)))\n    .AddPolicy(\"RequireAdministrator\", p => p.RequireAssertion(ctx => ApiRoleCheck.HasRoleAtLeast(ctx, UserRole.Administrator)));"
+    },
+    {
+      "p": "The comment beside it explains the \"why again\": the policies are \"shared with OpenTrack.Web so both surfaces enforce identical access rules,\" and are \"kept inline here so the API doesn't need to reference the Blazor UI project.\" This is a deliberate trade. The four policies are so tiny — parse the role claim, compare to a minimum — that copying the definition into each host is cheaper and cleaner than forcing the API to depend on the web/UI projects just to borrow four lines. The names, the ranks, and the logic are identical; only the enclosing method name differs (`ApiRoleCheck.HasRoleAtLeast` here, `WebRoleCheck` there, `DesktopRoleCheck` in the desktop)."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Why copy instead of share, just this once",
+        "text": "Everywhere else, OpenTrack shares rules ruthlessly to prevent drift. The role policies are the one spot it copies — because sharing them would drag a UI-framework dependency into a plain data service. The safety net is that the shared, weighty rules (the per-project AccessContext) are NOT copied; those four one-line policies are the only duplicated authorization code, and their names are constants (AuthorizationPolicies) so a typo can't silently create a fifth policy."
+      }
+    },
+    { "h2": "The tiny bridge: ApiAccess and ApiRoleCheck" },
+    {
+      "p": "The API never writes its own permission logic for the important decisions — the per-project ones. It routes into the shared authority through two small helpers in `ApiAuthorization.cs`. The first, `ApiAccess`, loads the caller's whole access picture — the same `AccessSnapshot` the web app builds — and its comment is explicit that it uses the very same rules:"
+    },
+    {
+      "code": "/// <summary>Loads the caller's per-project access snapshot for endpoint authorization,\n/// using the exact same rules as the web/EF path.</summary>\npublic static class ApiAccess\n{\n    public static async Task<AccessSnapshot?> LoadAsync(ClaimsPrincipal user, AppDbContext db, CancellationToken ct = default)\n    {\n        var identity = user.GetAccessIdentity();\n        return identity is null ? null : await AccessSnapshot.LoadAsync(db, identity.Value, ct);\n    }\n}"
+    },
+    {
+      "p": "The second, `ApiRoleCheck`, is the one-line role-threshold test the four policies above call. It reads the role claim and compares it to the required minimum — the same shape as the web host's `WebRoleCheck`:"
+    },
+    {
+      "code": "public static class ApiRoleCheck\n{\n    public static bool HasRoleAtLeast(AuthorizationHandlerContext ctx, UserRole minimum)\n    {\n        var roleClaim = ctx.User.FindFirst(\"OpenTrack.Role\")?.Value;\n        return roleClaim is not null\n            && Enum.TryParse<UserRole>(roleClaim, out var role)\n            && (int)role >= (int)minimum;\n    }\n}"
+    },
+    {
+      "p": "Between them, these two little classes are the API's entire relationship to authorization. `ApiRoleCheck` powers the coarse policy gates; `ApiAccess` loads the snapshot that the fine, per-project checks run against. Neither contains a rule of its own — they are couplings to the shared machinery, not new machinery."
+    },
+    { "h2": "Every endpoint re-checks the per-project rules" },
+    {
+      "p": "The API's endpoints are grouped by topic (projects, issues, and so on) and mapped near the end of `Program.cs`. Each group requires authentication, and then each endpoint inside it loads the access snapshot and consults the per-project rule for the thing being touched — exactly as the web body did. Compare a project endpoint with its web-app twin and they read the same:"
+    },
+    {
+      "code": "group.MapGet(\"/{id:int}\", async (int id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>\n{\n    var access = await ApiAccess.LoadAsync(user, db, ct);\n    if (access is null) return Results.Unauthorized();\n\n    var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);\n    if (project is null || !access.For(project.Id).CanViewProject(project.IsPublic))\n        return Results.NotFound();\n\n    return Results.Ok(new ProjectDetailDto(...));\n});"
+    },
+    {
+      "p": "That `access.For(project.Id).CanViewProject(...)` is the identical per-project decision the web app makes; the only difference is the wrapper. And where the web body throws or returns null, the API returns HTTP statuses — `Results.Unauthorized()`, `Results.NotFound()`, `Results.Forbid()` — which, as Chapter 11 showed, the desktop's HTTP body translates right back into the same exceptions the web body would have thrown. A forbidden write returns a clean 403:"
+    },
+    {
+      "code": "group.MapPut(\"/{id:int}/public-intake\", async (int id, SetPublicIntakeRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>\n{\n    var access = await ApiAccess.LoadAsync(user, db, ct);\n    if (access is null) return Results.Unauthorized();\n    if (!access.For(id).CanManageProject()) return Results.Forbid();\n    // ...\n});"
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The anti-drift payoff, restated for the API",
+        "text": "The API contains no hand-written per-project permission rule. Every endpoint calls ApiAccess.LoadAsync to get the shared AccessSnapshot and then the shared AccessContext methods (CanViewProject, CanManageProject, CanViewIssue, ...). So the desktop app, reaching OpenTrack through the API, is held to precisely the same rules as a browser reaching it through the web app. There is nowhere for a second, looser copy of the rules to live."
+      }
+    },
+    {
+      "p": "Some endpoints add the coarse policy on top as a fast outer gate — for example, creating a project (which isn't scoped to an existing project) both requires the Manager policy and re-checks a global-Manager rank inside, belt and suspenders:"
+    },
+    {
+      "code": "group.MapPost(\"/\", async (CreateProjectRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>\n{\n    var access = await ApiAccess.LoadAsync(user, db, ct);\n    if (access is null) return Results.Unauthorized();\n    if (!access.GlobalAtLeast(UserRole.Manager)) return Results.Forbid();\n    // ...\n}).RequireAuthorization(AuthorizationPolicies.RequireManager);"
+    },
+    { "h2": "The endpoint groups, and the login the desktop needs" },
+    {
+      "p": "The bottom of `Program.cs` reads like a table of contents for the whole API — each line maps one topical group of routes:"
+    },
+    {
+      "code": "app.MapProjectEndpoints();\napp.MapProjectSettingsEndpoints();\napp.MapIssueEndpoints();\napp.MapAttachmentEndpoints();\napp.MapNotificationEndpoints();\napp.MapDashboardEndpoints();\napp.MapChecklistEndpoints();\napp.MapSavedFilterEndpoints();\napp.MapPreferenceEndpoints();\napp.MapReportEndpoints();\napp.MapAiEndpoints();\napp.MapAutomationEndpoints();\napp.MapSlaEndpoints();\napp.MapGitEndpoints();"
+    },
+    {
+      "p": "Each of those groups mirrors a slice of the `IOpenTrackDataService` menu — the desktop's HTTP body calls into exactly these routes. Two auth-related routes sit above them. The Identity login/register/refresh endpoints are mapped under `/api/auth`, and then a small custom route, `/api/auth/me`, answers a question the desktop specifically needs after signing in:"
+    },
+    {
+      "code": "// \"Who am I\" — returns the signed-in user's id, name, and OpenTrack role. The desktop client\n// calls this right after login (the Identity /login token is opaque, so the client can't read\n// the role from the token itself). Requires a valid bearer token.\napp.MapGet(\"/api/auth/me\", (System.Security.Claims.ClaimsPrincipal user) =>\n{\n    var id = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;\n    var name = user.Identity?.Name ?? user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;\n    var role = user.FindFirst(\"OpenTrack.Role\")?.Value;\n    return Results.Ok(new { id, name, role });\n}).RequireAuthorization();"
+    },
+    {
+      "p": "This exists because the token the API hands out at login is __opaque__ — it is an encrypted blob, not something the desktop app can read the role out of. So right after logging in, the desktop calls `/api/auth/me` to learn its own id, name, and role, which it then feeds into the role policies on its side (Chapter 14). It is a small but telling seam between the two hosts: the API is the authority on who you are and what rank you hold, and it tells the desktop so the desktop's UI can light up the right controls."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Same HTTPS-off-by-default posture",
+        "text": "Like the web host, the API defaults HTTPS off for trusted-LAN plain-HTTP deployments and turns on a redirect only when OpenTrack:RequireHttps is set. The comment adds a matching instruction for the desktop: when you enable HTTPS on the server, point the desktop client's ApiBaseUrl at the https:// address so tokens are never sent in the clear."
+      }
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The API host proves that a completely separate program, reached over the network with a different authentication scheme, can nonetheless enforce byte-for-byte the same permissions as the browser app — because it borrows those permissions instead of rewriting them. Bearer tokens replace the cookie; the four role policies are copied verbatim; and every meaningful decision defers to the shared `AccessSnapshot` and `AccessContext` through the two-line `ApiAccess` and `ApiRoleCheck` bridges. One database, one rulebook, two doors."
+    },
+    {
+      "p": "The properties to protect: the API stays a data service — it returns DTOs, never pages, and holds no UI dependency; every endpoint loads the shared snapshot and checks the per-project rule before acting, returning honest HTTP statuses the desktop can translate; and the only duplicated authorization is the four tiny role policies, whose names live in the `AuthorizationPolicies` constants so they can't fork by accident. Add an endpoint and the recipe is fixed: require auth on the group, load `ApiAccess`, check the per-project rule, then act."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "A new API endpoint must call ApiAccess.LoadAsync and consult the shared AccessContext (CanView.../CanManage...) for the exact item it touches — never invent a permission check here, and never trust the desktop to have checked. Return Forbid/NotFound/Unauthorized so the desktop's HTTP body can mirror the web body's behavior. Keep the four role policies identical to the web and desktop hosts; if the ranks ever need to change, change all three in the same commit."
+      }
+    }
+  ]
+}

@@ -1,0 +1,171 @@
+{
+  "order": 15,
+  "title": "Issues End to End",
+  "subtitle": "Following one bug report from the New Issue form, through the shared data-service seam, into the database — then the edits and status changes that follow — and how each project's own workflow rules decide which status moves are allowed.",
+  "in_this_chapter": [
+    "What an issue is, as a row of data, and the small vocabulary it is built from",
+    "The New Issue form: what the operator fills in and what the software fills in for them",
+    "The create path: the permission check, the id-smuggling scrub, and the single atomic save",
+    "Why the issue and its first history row are written together, or not at all",
+    "Editing an issue: the fields anyone may change and the privileged fields that silently hold",
+    "Statuses as an ordered menu, and the per-project workflow that fences the moves between them",
+    "How the same workflow gate is enforced on every write path — web, API, board, bulk, and Git"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "An __issue__ is the single most important thing OpenTrack holds: one report of one problem — a bug, a task, a request. Everything else in the product exists to help you file one, find one, work one, and close one. This chapter follows a single issue on its whole journey: born in the __New Issue__ form, carried across the shared data-service seam, written into the database, and then edited and moved through a series of __statuses__ (New, Acknowledged, Resolved, and so on) until it is done."
+    },
+    {
+      "p": "Think of an issue like a paper work-order on a clipboard. When it is first created, some boxes are filled in by the person reporting the problem (the title, what happened, how bad it is) and some are stamped by the system itself (who filed it, when, and a starting status of __New__). As the work-order moves around the shop, people write on it — but only in the boxes they are allowed to, and it can only move to the next station if the shop's posted routing chart permits that move. This chapter is about where each of those rules physically lives in the code."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "Creating and editing an issue always runs through one shared data-service method that checks permission, scrubs any cross-project ids, records the change in history, and saves atomically — and any change of status is additionally gated by the project's own workflow, a check both the web app and the API call so they can never disagree about which moves are legal."
+      }
+    },
+    { "h2": "The issue, as data" },
+    {
+      "p": "Before the journey, the destination. An issue is a plain C# class, `Issue`, whose properties are the columns it will occupy in the database. The human-entered fields sit at the top; the machine-managed ones lower down. A few of them:"
+    },
+    {
+      "code": "public class Issue\n{\n    public int Id { get; set; }\n\n    public string Title { get; set; } = string.Empty;\n    public string Description { get; set; } = string.Empty;\n    public string? StepsToReproduce { get; set; }\n\n    public IssueStatus Status { get; set; } = IssueStatus.New;\n    public IssueSeverity Severity { get; set; } = IssueSeverity.Minor;\n    public IssuePriority Priority { get; set; } = IssuePriority.Normal;\n\n    public bool IsPrivate { get; set; }\n    public bool IsSticky { get; set; }\n\n    public int ProjectId { get; set; }\n    public int ReporterId { get; set; }\n    public int? AssigneeId { get; set; }\n\n    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;\n    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;\n}"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "An entity is a C# class whose objects map one-to-one to rows in a database table — an Issue object is a row in the Issues table. An enum (short for enumeration) is a fixed menu of named choices; IssueStatus, IssueSeverity, and IssuePriority are all enums, so a status can only ever be one of a small, known set of values, never a free-typed string. A property is one named box on the object (Title, Status). The int? with a question mark means the value is optional — an issue may have no assignee, so AssigneeId can be empty."
+      }
+    },
+    {
+      "p": "Notice `Status`, `Severity`, and `Priority` are not free text — each is one of those fixed menus. That is deliberate and load-bearing: because a status is always one of a known handful of values, the workflow rules later in this chapter can talk about moves between them with total confidence. There is no such thing as a mistyped status."
+    },
+    { "h2": "The New Issue form: what you fill in, what the software fills in" },
+    {
+      "p": "The journey starts in `Create.razor`, the __New Issue__ page. It is an ordinary web form: a title, a description (with a note that Markdown is supported for stack traces), steps to reproduce, and dropdowns for severity, priority, category, versions, and an optional due date. There is even an optional __Attach my location__ button for a problem out in the field. Crucially, the form does __not__ ask for a status, a reporter, or a created-date — those are the system's to stamp, not yours."
+    },
+    {
+      "p": "When you press __Submit Issue__, the page does not touch the database itself. It gathers the boxes you filled into a small input record and hands them to the shared data service — the one seam both the web app and the desktop app go through:"
+    },
+    {
+      "code": "var id = await Data.CreateIssueAsync(ProjectId, new CreateIssueInput(\n    model.Title, model.Description, model.StepsToReproduce,\n    model.ExpectedBehavior, model.ActualBehavior, model.CategoryId,\n    model.Severity, model.Priority, model.Reproducibility, model.DueDate,\n    model.AffectsVersionId, model.FixVersionId,\n    model.Latitude, model.Longitude));\nNav.NavigateTo($\"issues/{id}\");"
+    },
+    {
+      "p": "The page's whole responsibility is to collect input and, if the service refuses (throws), to show the message. It carries no knowledge of who may create an issue or how the row is written. That knowledge lives one layer down, in the data service — which is where the real work happens."
+    },
+    { "h2": "The create path, step by step" },
+    {
+      "p": "`CreateIssueAsync` in `DbOpenTrackDataService` is where a form submission becomes a database row. Read it as a short checklist it runs top to bottom. First it loads the target project and asks the access authority (from Chapter 8) two questions — may this user even see the project, and are they at least a Reporter on it?"
+    },
+    {
+      "code": "var ctx = access.For(projectId);\nif (!ctx.CanViewProject(project.IsPublic))\n    throw new UnauthorizedAccessException(\"You do not have access to this project.\");\nif (!ctx.CanCreateIssue(project.IsPublic))\n    throw new UnauthorizedAccessException(\"Reporting an issue requires the Reporter role on this project.\");"
+    },
+    {
+      "p": "Only after permission is settled does it build the row. And before trusting the category and version ids the form sent, it scrubs them — because a hand-crafted request could try to attach this issue to a category that belongs to a __different__ project:"
+    },
+    {
+      "code": "// Drop any category/version ids that don't belong to this project (cross-project id smuggling).\nvar (catId, avId, fvId) = await IssueScope.SanitizeAsync(\n    db, projectId, input.CategoryId, input.AffectsVersionId, input.FixVersionId, ct);"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "\"Id smuggling\" is a common attack shape: a form legitimately shows you a dropdown of this project's categories, but the raw request underneath is just numbers, and a malicious client can send a number pointing at another project's category. Sanitizing means the server re-checks that every id actually belongs where it claims to, and quietly drops any that do not — so it never trusts the shape of the request over the facts in the database."
+      }
+    },
+    {
+      "p": "Now it stamps the fields that are the system's to own — the reporter is the signed-in user, the status is `New`, and both timestamps are now — and then does the subtle, important part: it adds the __first history row__ to the issue's own history collection before saving, so the issue and the record that it was created are written in a single database save."
+    },
+    {
+      "code": "issue.ReporterId = access.UserId; issue.Status = IssueStatus.New;\nissue.CreatedAt = DateTime.UtcNow; issue.UpdatedAt = DateTime.UtcNow;\n\n// Add the creation-history row via the navigation collection so the issue and its history\n// persist in a SINGLE SaveChanges — atomic, no half-written issue with no history.\nissue.History.Add(new IssueHistory\n{\n    UserId = access.UserId, FieldChanged = \"Status\",\n    OldValue = null, NewValue = IssueStatus.New.ToString(), ChangedAt = DateTime.UtcNow\n});\ndb.Issues.Add(issue);\nawait db.SaveChangesAsync(ct);"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Why 'atomic' matters here",
+        "text": "\"Atomic\" means all-or-nothing: because the issue and its first history entry are handed to one SaveChanges call, the database writes both or neither. There is never a moment where an issue exists with no record of how it came to be. If the save fails, nothing is written at all. This is the same discipline you want any time two facts must be true together."
+      }
+    },
+    {
+      "p": "Two final touches run after the row exists and has an id: the project's __automation rules__ get a chance to auto-tag or auto-assign the brand-new issue (Chapter 17), and interested people are notified. Then the new issue's id is returned, and the page redirects you to it. The clipboard has been created, stamped, filed, and pinned to the right board."
+    },
+    { "h2": "Editing an issue: who may change what" },
+    {
+      "p": "Editing lives in `Edit.razor` and, underneath, `UpdateIssueAsync`. The page pre-loads the current values into a form (only once, guarded by a hidden `Loaded` flag, so your in-progress typing is not clobbered on a re-render) and adds the controls a creator does not get: __Status__, __Resolution__, __Assignee__, and checkboxes for __Sticky__ and __Private__. On save it hands the values to the same seam and catches the three ways an edit can be refused."
+    },
+    {
+      "p": "The data service's `UpdateIssueAsync` is stricter than create, because editing is more powerful. It first re-checks that the user may even see this issue (returning silently — not-found — if not) and then that they are at least an Updater. But the interesting design is what happens with the __privileged__ fields. Ordinary fields (title, description, severity) are simply overwritten. Assignment and the privacy/sticky flags, though, are only applied if the caller actually holds that right — otherwise the existing value silently stands:"
+    },
+    {
+      "code": "// Privileged fields: silently keep the existing value if the caller lacks the right, so a\n// crafted request can never escalate (the UI already hides these controls by role).\nif (ctx.CanAssignIssue() && await IsAssignableAsync(db, issue.ProjectId, input.AssigneeId, ct))\n    issue.AssigneeId = input.AssigneeId;\nif (ctx.CanSetIssuePrivacy())\n    issue.IsPrivate = input.IsPrivate;\nif (ctx.CanSetIssueSticky())\n    issue.IsSticky = input.IsSticky;"
+    },
+    {
+      "p": "This is defense in depth. The web UI already hides the assignee dropdown from someone who cannot assign — but the server does not __trust__ that the control was hidden. If a crafted request tries to set an assignee it has no right to set, the line simply does not run and the old value remains. The UI hiding is a convenience; this server check is the actual security. And, as with create, any change to status or assignee appends a history row, and a meaningful change (not every trivial edit) fires a notification — so a wall of email does not follow every typo fix."
+    },
+    { "h2": "Statuses, and the workflow that fences them" },
+    {
+      "p": "Here is the heart of the chapter. An issue's status is drawn from the fixed `IssueStatus` menu, and the menu is __ordered__ — its numbers climb, which lets the rest of the system reason about \"open\" versus \"done\" with a single comparison:"
+    },
+    {
+      "code": "public enum IssueStatus\n{\n    New = 10,\n    Feedback = 20,\n    Acknowledged = 30,\n    Confirmed = 40,\n    Assigned = 50,\n    Resolved = 80,\n    Closed = 90\n}"
+    },
+    {
+      "p": "By default an issue can move from any status to any other — a small team may not want ceremony. But many teams want discipline: no jumping straight from __New__ to __Closed__ without acknowledging it first, for instance. That is what a __workflow__ is: a per-project list of the specific status moves that are allowed. Define even one, and the project's workflow becomes \"restricted\" — from then on __only__ the listed moves are permitted. Define none, and it stays open. The whole feature is one small entity and one class of rules, `WorkflowOperations`, whose own summary states the intent:"
+    },
+    {
+      "code": "public readonly record struct WorkflowTransitionItem(int Id, IssueStatus FromStatus, IssueStatus ToStatus);\n\n/// Per-project workflow rules: the set of allowed status transitions. Defining any turns the project's\n/// workflow \"restricted\"; defining none leaves it open (the default). Managing rules is Manager-only;\n/// the allow-check is used by every issue-status write path so the API, web, board, and bulk actions all\n/// enforce the same workflow."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A transition is one arrow on a routing chart: a move from one status (the \"from\") to another (the \"to\"), e.g. Acknowledged → Resolved. A workflow is the whole set of allowed arrows for a project. \"Restricted\" simply means the chart is now the law — a move with no matching arrow is refused. A record struct is a small, immutable value that just bundles a few fields together; here, the id of one allowed arrow plus its from and to."
+      }
+    },
+    {
+      "p": "Managing the arrows is Manager-only — a project Manager adds and removes them on the project's __Settings__ page, which calls `AddWorkflowTransitionAsync` / `DeleteWorkflowTransitionAsync`. Each add refuses two obvious mistakes (a status to itself, or a duplicate arrow) and refuses anyone below Manager outright:"
+    },
+    {
+      "code": "if (!access.For(projectId).CanManageProject())\n    throw new UnauthorizedAccessException(\"Managing the workflow requires the Manager role on this project.\");\nif (from == to) return \"Pick two different statuses.\";\nif (await db.WorkflowTransitions.AnyAsync(w =>\n        w.ProjectId == projectId && w.FromStatus == from && w.ToStatus == to, ct))\n    return \"That transition is already allowed.\";"
+    },
+    { "h2": "The one gate every status change passes through" },
+    {
+      "p": "The rule that actually decides whether a move is legal is a single method, `IsAllowedAsync`. It is written to be generous in exactly two cases — when the status is not changing at all, and when the project has defined no workflow — and otherwise to permit only a move that appears in the list:"
+    },
+    {
+      "code": "public static async Task<bool> IsAllowedAsync(\n    AppDbContext db, int projectId, IssueStatus from, IssueStatus to, CancellationToken ct = default)\n{\n    if (from == to) return true;\n    var any = await db.WorkflowTransitions.AsNoTracking().AnyAsync(w => w.ProjectId == projectId, ct);\n    if (!any) return true; // no workflow defined => open\n    return await db.WorkflowTransitions.AsNoTracking()\n        .AnyAsync(w => w.ProjectId == projectId && w.FromStatus == from && w.ToStatus == to, ct);\n}"
+    },
+    {
+      "p": "In the edit path, this gate is consulted the moment a status change is detected, and a disallowed move is rejected before any field is written:"
+    },
+    {
+      "code": "// Enforce the project's workflow (if it defines one) before accepting a status change.\nif (input.Status != originalStatus &&\n    !await WorkflowOperations.IsAllowedAsync(db, issue.ProjectId, originalStatus, input.Status, ct))\n    throw new InvalidOperationException(\n        $\"Changing status from {originalStatus} to {input.Status} isn't allowed by this project's workflow.\");"
+    },
+    {
+      "p": "Now the payoff, and the reason the gate is a shared method rather than code pasted into the edit page. An issue's status can be changed from more than one place: the web edit form, the desktop app's API, a Git commit that auto-resolves an issue, and a bulk action that moves many issues at once. Every one of them calls the very same `IsAllowedAsync`. The API host's issue endpoint uses the identical line the web path does:"
+    },
+    {
+      "code": "// OpenTrack.API/Endpoints/IssueEndpoints.cs\nif (req.Status != originalStatus &&\n    !await WorkflowOperations.IsAllowedAsync(db, issue.ProjectId, originalStatus, req.Status, ct))\n    return Results.BadRequest(\n        $\"Changing status from {originalStatus} to {req.Status} isn't allowed by this project's workflow.\");"
+    },
+    {
+      "p": "And so do `BulkOperations` (skipping any issue whose requested move is not allowed, rather than failing the whole batch) and `GitIntegrationOperations` (a commit only auto-resolves an issue if a move to __Resolved__ is a legal transition). There is exactly one definition of \"is this status move allowed?\" in the whole codebase, and five callers lean on it. That is the same anti-drift design you saw with permissions: write the rule once, in the shared layer, and let every surface defer to it."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "An issue's life is a chain of small, deliberate seams. The form collects but does not decide. The data service decides — permission first, then a scrub of untrusted ids, then a single atomic save that records history alongside the row. Editing overwrites the ordinary fields but silently holds the privileged ones unless the caller truly holds the right, so a hidden UI control is never mistaken for a security boundary. And every status change, from whichever of the five entry points, squeezes through one shared workflow gate."
+    },
+    {
+      "p": "The rules that must not erode: statuses stay a fixed, ordered menu (so \"open\", \"done\", and \"is this move legal\" are simple, reliable comparisons); the create and edit paths stay in the shared data service rather than in a page, so both hosts get the same checks; untrusted ids are always re-scoped to the project on the server; and the workflow check stays a single method that every write path calls. Add a sixth way to change a status someday and the safe move is not to write a fresh allow-check — it is to call `IsAllowedAsync` like everyone else."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "If you add any new path that changes an issue's status — a new endpoint, a new automation, a new integration — route it through WorkflowOperations.IsAllowedAsync, and route the write itself through the shared data service so it inherits the permission checks, the id-scrubbing, and the history record. Never let a page or an endpoint grow its own private copy of these rules; that is precisely the drift this layering was built to prevent."
+      }
+    }
+  ]
+}

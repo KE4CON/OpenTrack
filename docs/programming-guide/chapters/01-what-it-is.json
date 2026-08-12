@@ -1,0 +1,145 @@
+{
+  "order": 1,
+  "title": "What OpenTrack Is, and How to Read This Book",
+  "subtitle": "A plain introduction to the program this book explains — a self-hosted issue tracker written in C# on .NET 10 and licensed under the AGPL v3 — plus who the book is for, the What-then-Why-then-How rhythm every chapter follows, and the rules that keep the book trustworthy as the code keeps changing.",
+  "in_this_chapter": [
+    "What OpenTrack is, in one breath: a shared, self-hosted place to track bugs and issues",
+    "The exact technology it is built on, and what each piece buys the project",
+    "What the AGPL v3 license means for anyone who runs or changes it — read from the real license header",
+    "Who this book is written for, and how a non-programmer and a programmer each get what they need",
+    "The What -> Why -> How rhythm every chapter uses, and the callouts that explain jargon",
+    "How the book itself is maintained: stable section numbers, dated amendments, Markdown as the living source"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "__OpenTrack__ is a bug and issue tracker: a shared place where a team writes down the things that are broken, the things that need doing, and the state of each one as it moves from reported to fixed. If you have ever used a to-do list where every item has an owner, a priority, and a history of who changed what — that is the shape of it. OpenTrack's own README states the goal plainly: it aims for \"full feature parity\" with MantisBT, a long-established tracker, \"rebuilt on a modern .NET stack.\""
+    },
+    {
+      "p": "The word that matters most in the description is __self-hosted__. OpenTrack is not a service you rent from someone else's servers; it is a program you run on your own machine — a small office server, a Raspberry Pi, a spare mini-PC on the local network. You hold the database, you hold the data, and nobody else does. The README puts the promise this way: it is \"yours to run and change — self-hosted, no vendor lock-in.\" This book is the guided tour of how that program is built on the inside, and — just as important — __why__ it is built the way it is."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "OpenTrack is a self-hosted issue tracker written entirely in C# on .NET 10, delivered as a web app, a matching desktop app, and a network API — all sharing one codebase and one database — and released under the AGPL v3, a license that keeps every improvement open even when the program is run as a network service."
+      }
+    },
+    { "h2": "What it is built on, and why that choice" },
+    {
+      "p": "OpenTrack is written in __C#__ (the programming language) running on __.NET 10__ (the platform that executes it). That single choice is deliberate and it echoes through the whole design. Because C# runs the browser screens (through a framework called __Blazor__), the behind-the-scenes service, and the desktop app alike, there is only one language to learn and one body of code to maintain. The README calls this \"one language, top to bottom — C# for the backend, the API, and the UI (via Blazor). No separate JavaScript framework to maintain.\""
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A framework is a ready-made skeleton of code you build on top of, so you write only the parts unique to your program. Blazor is Microsoft's framework for building web-page screens in C# instead of JavaScript. The UI (user interface) is everything you see and click. An API (application programming interface) is a program's service door — a way for other programs, like the desktop app, to ask it to do things over a network. A database is the organized store where all the issues, projects, and users are kept on disk."
+      }
+    },
+    {
+      "p": "The pieces are all current, long-term-support versions, which the shared build file pins on purpose. Every project in the solution inherits the same settings from one file, `Directory.Build.props`, including that they all target .NET 10 and turn on the compiler's safety features:"
+    },
+    {
+      "code": "<PropertyGroup>\n    <LangVersion>latest</LangVersion>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n    <TargetFramework Condition=\"'$(TargetFramework)' == ''\">net10.0</TargetFramework>\n</PropertyGroup>"
+    },
+    {
+      "p": "That `<Nullable>enable</Nullable>` line is a small thing with a large payoff: it tells the C# compiler to warn whenever a value might be missing (a \"null\") where the code expects something real. It is a seatbelt for a whole category of crash, switched on for every project at once because it is set in the one shared file rather than repeated (and eventually forgotten) in each. You will see this pattern — decide once, in one place, apply everywhere — again and again; it is arguably the central habit of the entire codebase."
+    },
+    { "h2": "What the license means: AGPL v3, from the real header" },
+    {
+      "p": "OpenTrack is released under the __GNU Affero General Public License, version 3__ — AGPL v3 for short. The shared metadata file declares it (`<PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>`), and every single C# source file opens with the same ten-line notice so the terms travel with the code no matter where a file ends up:"
+    },
+    {
+      "code": "// OpenTrack — open-source issue tracker\n// Copyright (C) 2026 KE4CON\n//\n// This program is free software: you can redistribute it and/or modify it under\n// the terms of the GNU Affero General Public License as published by the Free\n// Software Foundation, either version 3 of the License, or (at your option) any\n// later version. This program is distributed WITHOUT ANY WARRANTY; without even\n// the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n// See the GNU Affero General Public License <https://www.gnu.org/licenses/> for\n// more details."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "\"Open source\" means the source code — the human-readable instructions the program is made of — is published for anyone to read, use, and change. \"Copyleft\" is a stricter promise on top of that: anyone who passes the program on must pass the source along too, under the same terms, so it can never be quietly closed up again. The AGPL adds one extra clause aimed at network software specifically, covered next."
+      }
+    },
+    {
+      "p": "In everyday terms the license grants a lot and asks one thing in return. You are free to run OpenTrack, read its code, change it, and give your changes to others. The catch that makes the AGPL different from ordinary open-source licenses is the __A__, for Affero: if you run a modified version as a service that other people reach over a network, you must offer them your modified source too. The README states it directly: \"if you distribute a modified version __or run one as a network service__, you must make your source code available under the same license.\" For a self-hosted tracker — a program whose whole point is to be reached over a network — that clause is the one that keeps the project and its improvements open for everyone."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "Why this matters to a maintainer",
+        "text": "If you fork OpenTrack, add features, and stand it up for a team to use over the network, the AGPL asks you to make your version's source available to those users. Keeping the copyright header intact at the top of every file — and not stripping it when you copy code between files — is the simplest way to stay on the right side of the license. The header is load-bearing, not decoration."
+      }
+    },
+    { "h2": "Who this book is for" },
+    {
+      "p": "This book is written for three kinds of reader at once, and the outline says so up front: \"developers, future maintainers, and the curious — a non-programmer should be able to follow the story, while a programmer gets enough depth to work confidently.\" Those goals only sound like they are in tension. The way the book holds them together is that the __story__ of each subsystem — what it does and why it was built that way — is told in plain language anyone can follow, while the __proof__ of each claim is a real excerpt from the actual code, sitting right there for a programmer to check and build on."
+    },
+    {
+      "p": "So if you do not write code, read the prose and the analogies and skim past the code blocks; you will still come away understanding how OpenTrack works and why its author made the calls they did. If you do write code, the same chapters give you exact class names, file paths, and quoted source, so you can open the files yourself and start working. Nobody is asked to read a different book — the plain-language layer and the deep layer are stacked in the same pages."
+    },
+    {
+      "p": "There is a deeper purpose underneath all of it, stated in the outline's goal: \"a complete picture of how and why the code was written, so the project can live on after the author.\" A working program is only half of what a lone author leaves behind; the other half is the reasoning — the dead ends avoided, the trade-offs accepted, the rules that must not be broken. Code shows the __what__. This book is where the __why__ is written down so it is not lost."
+    },
+    { "h2": "How to read this book: What, then Why, then How" },
+    {
+      "p": "Every chapter follows the same three-beat rhythm, and knowing it in advance makes the whole book easier to navigate. The outline fixes the standard: each section answers \"__What it does -> Why it was built this way -> How it works__.\" The pattern is not decoration; it is the promise that you will never be shown a clever mechanism without first being told what problem it solves and why the obvious alternative was passed over."
+    },
+    {
+      "bullets": [
+        "__What it does__ — the plain-language purpose of the piece, before any code. If you only read these, you get an accurate mental map of the whole system.",
+        "__Why it was built this way__ — the reasoning and the trade-off. This is the part that usually gets lost when only code survives, and the part this book most wants to preserve.",
+        "__How it works__ — the real mechanism, grounded in exact excerpts copied from the source files, so the explanation can be checked against the truth and never drifts into fiction."
+      ]
+    },
+    {
+      "p": "Two more conventions run throughout. Chapters open with a \"__What This Is / What It Is For__\" section and close with \"__Why It Matters / Design Takeaways__,\" so you always know where you are: the opening tells you what you are about to learn, and the closing distills the handful of ideas worth carrying away — usually ending in a __maintainer's rule__, a single sentence naming the thing a future editor must not break. And the first time a technical word appears, a callout labeled \"__Jargon, in plain words__\" defines it in everyday terms, the way this chapter has already done for framework, database, and copyleft."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "The callout boxes, decoded",
+        "text": "Colored boxes flag things worth pausing on. A note explains or defines. A tip offers a practical shortcut or a reason something helps. An important box marks a load-bearing idea you should not skim past. A warning marks a place where a careless change causes real damage. When you see one, slow down — it is there because the sentence matters more than the ones around it."
+      }
+    },
+    { "h2": "How the book is maintained" },
+    {
+      "p": "A book about living code goes stale unless it is maintained with discipline, so OpenTrack's guide borrows the same rules its documentation uses everywhere. There are three, and they work together."
+    },
+    {
+      "p": "First, __Markdown is the living source of truth, and the Word document is generated from it__. The chapters are written as structured data files (the very `chapters/*.json` files this book is built from); a build script turns them into a readable Markdown document and, from the same source, into a styled Word `.docx` for people who prefer it. The outline states the pipeline directly: \"`chapters/*.json` -> `PROGRAMMING_GUIDE.md`\" plus \"a styled Word `.docx` ... generated from the same chapter JSON.\" You never hand-edit the Word file, because it is an output; you edit the source, and both documents are regenerated. That way the two can never disagree — exactly the same anti-drift instinct the code itself is built on."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "Markdown is a plain-text way of writing formatted documents — a few simple marks for headings, bold, and lists — that stays readable as raw text and lives comfortably inside a code repository. \"Source of truth\" means the one authoritative copy that every other copy is generated from; when they differ, it wins. A .docx is a Microsoft Word file."
+      }
+    },
+    {
+      "p": "Second, __section numbers are stable, and improvements are added rather than renumbered__. Chapter 8 is always chapter 8. When the code grows a new subsystem or an old explanation needs correcting, the book does not shuffle every number down the line — which would break every cross-reference ever written. Instead it uses __dated amendments__. The outline spells out the mechanism: \"Stable section numbers; dated amendments (`AMENDS §X`, `ADDS §Z`) with an Amendments Register — improvements are added, never renumbered.\""
+    },
+    {
+      "bullets": [
+        "__AMENDS §X__ — a dated note that revises or corrects what an existing section said, without moving it. The original number stays put; the amendment rides alongside it.",
+        "__ADDS §Z__ — a dated note introducing new material as a new section, appended rather than inserted, so nothing after it shifts.",
+        "__The Amendments Register__ — a running list of every AMENDS and ADDS, so the history of the book's own changes is visible in one place, the same way an issue's edit history is visible in the tracker."
+      ]
+    },
+    {
+      "p": "Third, and underlying both, the book is kept __in the repository, beside the code it describes__. It is not a wiki on some other server that slowly falls behind; it lives in the same version-controlled home as the source, so a change to the code and the change to its explanation can travel together. The final, dedicated chapter of the book (§24) is about this maintenance discipline itself — a book that takes its own longevity seriously enough to document how it stays alive."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "Everything in this opening chapter is really one idea seen from several angles: OpenTrack is built to __outlast any single person's memory of it__. The one-language stack keeps the whole thing learnable. The AGPL keeps it and its improvements open. The book keeps the reasoning — the why behind the what — from evaporating when the author moves on. Even the small choices, like the shared build file and the copyright header on every file, are bets that a decision made once and applied everywhere will survive better than a decision scattered and repeated."
+    },
+    {
+      "p": "As you read on, hold onto the three-beat rhythm — What, then Why, then How — because the rest of the book earns its keep in the middle beat. Plenty of documents can tell you what code does; you can often read that from the code itself. The rare and valuable thing, the thing worth preserving, is why it was done that way and what would break if you changed it. That is the promise this book is trying to keep on every page."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "Treat the Markdown chapter sources as the one true copy: edit them, never the generated Word file, and regenerate both. When you improve a section, AMEND or ADD with a date and log it in the Register — never renumber. Keep the AGPL header at the top of every source file intact. The whole point of this book is to preserve the reasoning behind the code; a maintenance habit that lets the explanation drift from the code defeats it."
+      }
+    }
+  ]
+}

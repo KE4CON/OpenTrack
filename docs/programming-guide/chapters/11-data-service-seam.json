@@ -1,0 +1,157 @@
+{
+  "order": 11,
+  "title": "The IOpenTrackDataService Seam",
+  "subtitle": "One interface that the shared screens talk to, with two completely different bodies behind it — the web app fills it in by reaching straight into the database, the desktop app fills it in by making network calls — so the very same Blazor pages run, unchanged, in both places.",
+  "in_this_chapter": [
+    "What a 'seam' is and why the shared UI is written against one interface it doesn't own",
+    "The one interface: a plain list of every data operation the screens can ask for",
+    "The rule that keeps the pages identity-agnostic — nobody passes 'who is asking' as a parameter",
+    "The web body: direct database access, per-operation, guarded by the shared access rules",
+    "The desktop body: the same method names turned into HTTP calls to the API",
+    "How the two bodies agree on errors so a page reacts identically on either host",
+    "Why this seam is the pivot the whole three-host design turns on"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "__OpenTrack__ has one set of screens — the pages you click through to list projects, open an issue, add a note, manage members. Those screens live in a single project, `OpenTrack.UI`, and they are shared: the web app in your browser and the desktop app on your Windows or Mac both show the exact same pages. That raises an obvious question. The web app has a database sitting right next to it; the desktop app does not — it is a small program on your laptop that has to reach a server over the network. So how can one set of screens work in two such different worlds?"
+    },
+    {
+      "p": "The answer is a __seam__: `IOpenTrackDataService`. It is a single interface — a written list of every data operation a screen could ever ask for (\"get the projects,\" \"create an issue,\" \"add a note\") — with no actual code behind the operations. The screens are written to talk only to this list. Each host then supplies its own body for the list: the web app's body reaches into the database; the desktop app's body makes network calls. The screens never know which body they got. That is the whole trick, and this chapter is about how it is written and why it is shaped this way."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "An interface is a contract: a list of named operations with their inputs and outputs, but no working code. A class that 'implements' the interface promises to provide a real body for every operation on the list. A 'seam' is a deliberate line drawn through a program where you can swap what is on one side without disturbing the other. 'Dependency injection' (DI) is the mechanism that, at startup, decides which real class fills in an interface and hands it to whatever asked for the interface — so the screens receive whichever body the host chose."
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "The shared screens depend on one interface, IOpenTrackDataService, and never on a concrete data source; the web app implements it with direct database access and the desktop app implements it with HTTP calls, so the identical pages run in both hosts and neither the pages nor the interface know or care which body is behind them."
+      }
+    },
+    { "h2": "Why write the screens against a list they don't own" },
+    {
+      "p": "The plain reason is reuse. Writing an issue tracker's screens is the bulk of the work — the forms, the validation, the layout, the little confirmations. Doing that twice, once for the web and once for the desktop, would mean two copies drifting apart forever. So OpenTrack writes the screens once and makes them depend on nothing more specific than \"something that can fetch and change OpenTrack data.\" That \"something\" is the interface. Whoever is hosting the screens plugs in the appropriate \"something\" at startup."
+    },
+    {
+      "p": "The interface's own summary comment states this outright — the pages depend only on the interface, so the same components run in both hosts:"
+    },
+    {
+      "code": "/// <summary>\n/// The single data-access seam for OpenTrack's shared Blazor UI. The web app implements\n/// this with direct EF Core access (DbOpenTrackDataService); the desktop app implements it\n/// by calling OpenTrack.API over HTTP (HttpOpenTrackDataService). The CRUD pages depend\n/// only on this interface, so the exact same components run in both hosts.\n/// ...\n/// </summary>\npublic interface IOpenTrackDataService"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "CRUD is shorthand for the four everyday things software does to stored records: Create, Read, Update, Delete. A 'CRUD page' is just a screen that creates, shows, edits, or removes something — an issue, a project, a note. EF Core (Entity Framework Core) is the library the web app uses to turn C# into database queries; you will meet it in depth in the Infrastructure chapters."
+      }
+    },
+    { "h2": "The interface itself: one flat menu of operations" },
+    {
+      "p": "`IOpenTrackDataService` is long but not complicated — it is a menu. Each line names one operation, says what it needs, and says what it hands back. There is no logic here, only promises. A representative slice:"
+    },
+    {
+      "code": "// Projects\nTask<IReadOnlyList<ProjectRow>> GetProjectsAsync(CancellationToken ct = default);\nTask<ProjectDetail?> GetProjectAsync(int id, CancellationToken ct = default);\nTask<int> CreateProjectAsync(CreateProjectInput input, CancellationToken ct = default);\nTask UpdateProjectAsync(int id, UpdateProjectInput input, CancellationToken ct = default);\n\n// Issues\nTask<IReadOnlyList<IssueRow>> GetIssuesAsync(IssueFilter filter, CancellationToken ct = default);\nTask<IssueDetail?> GetIssueAsync(int id, CancellationToken ct = default);\nTask<int> CreateIssueAsync(int projectId, CreateIssueInput input, CancellationToken ct = default);\nTask AddIssueNoteAsync(int issueId, string text, bool isPrivate = false, CancellationToken ct = default);"
+    },
+    {
+      "p": "A few things are worth reading off these lines. Every operation returns a `Task` — it is asynchronous, meaning the screen can ask for the data and stay responsive while it arrives, rather than freezing. Every operation takes a `CancellationToken` — a little 'never mind' handle, so if you navigate away mid-load the work can be dropped. And the inputs and outputs are plain view models (`ProjectRow`, `IssueDetail`, `CreateIssueInput`) that carry no hint of a database or a network. The menu describes __what__ the screens want, never __how__ it is fetched."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "'Asynchronous' (async) work is work you start now and collect later, without standing still while it runs. A Task is C#'s receipt for such work — 'the answer will be here shortly.' A 'view model' is a small, plain data holder shaped for a screen to display, with no behavior of its own. The trailing 'Async' on method names is a naming convention that flags them as asynchronous."
+      }
+    },
+    { "h2": "The rule that keeps the pages identity-agnostic" },
+    {
+      "p": "There is one design decision on this interface easy to miss and important to preserve: __no operation is told who is asking.__ Look again — `GetProjectsAsync` takes only a cancellation token; `GetIssueAsync` takes only an id. Nowhere does a page pass in \"and by the way, the current user is Jim.\" That is deliberate, and the interface comment explains why:"
+    },
+    {
+      "code": "/// The current-user identity is NOT passed in per-call: each implementation resolves it\n/// from its own context (the web app from the authenticated ClaimsPrincipal; the desktop\n/// app from the signed-in API session). This keeps the pages identity-agnostic."
+    },
+    {
+      "p": "Why go to that trouble? Because \"who is signed in\" is answered very differently on the two hosts. In the browser, the web app knows the user from an authentication cookie; on the desktop, the user is whoever holds the bearer token from the API login. If every page had to fetch the identity and thread it into every call, each page would have to understand both mechanisms — and the screens would stop being neutral. Instead, each host's body figures out the current user on its own, from its own context, and the pages simply ask for data as if identity were somebody else's job. It is."
+    },
+    { "h2": "The web body: reach into the database, guarded" },
+    {
+      "p": "The web app's body is `DbOpenTrackDataService`. Its job is to answer each menu item using direct database access — but never blindly. Every read is filtered to what the signed-in user may see, and every write is checked against the shared access rules first (the very rules from the access-control chapter). Its summary says both halves plainly:"
+    },
+    {
+      "code": "/// EF Core-backed implementation of IOpenTrackDataService for the web app.\n/// Creates a short-lived AppDbContext per operation via the factory ... and enforces the\n/// same per-project access rules as the Web API by calling the shared AccessContext /\n/// VisibilityQueries from OpenTrack.Core/Infrastructure. Reads the current user from\n/// the authenticated Blazor Server circuit."
+    },
+    {
+      "p": "Notice how it resolves identity on its own. A small private helper opens a fresh database context and, in the same breath, loads the caller's access snapshot — so every operation begins already knowing both the database and who is asking, without the page ever supplying either:"
+    },
+    {
+      "code": "private async Task<(AppDbContext Db, AccessSnapshot Access)> OpenAsync(CancellationToken ct)\n{\n    var identity = await RequireIdentityAsync();\n    var db = await dbFactory.CreateDbContextAsync(ct);\n    var access = await AccessSnapshot.LoadAsync(db, identity, ct);\n    return (db, access);\n}"
+    },
+    {
+      "p": "With that in hand, a menu item like \"get the projects\" is a database query that filters to the visible set before it ever builds a result:"
+    },
+    {
+      "code": "public async Task<IReadOnlyList<ProjectRow>> GetProjectsAsync(CancellationToken ct = default)\n{\n    var (db, access) = await OpenAsync(ct);\n    await using var _ = db;\n    return await db.Projects.AsNoTracking()\n        .WhereVisibleTo(access)\n        .OrderBy(p => p.Name)\n        .Select(p => new ProjectRow(...))\n        .ToListAsync(ct);\n}"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Why a fresh database context each time",
+        "text": "The comment notes that a single long-lived context 'would live for the whole Blazor Server circuit and is not thread-safe.' A Blazor Server page stays connected for as long as it is open, and several actions can overlap. Sharing one database handle across all of them invites corruption, so each operation opens its own short-lived one and disposes it at the end (the `await using var _ = db;` line). Cheap, safe, and simple."
+      }
+    },
+    {
+      "p": "Reads and writes handle a denial differently, and on purpose. A read the user isn't entitled to returns nothing — null or an empty list — so the page renders \"not found\" rather than admitting the thing exists. A forbidden write throws `UnauthorizedAccessException`. The interface comment frames this as defense in depth: the screens already hide controls the user can't use, so a throw here is the backstop for a request that should never have been made."
+    },
+    { "h2": "The desktop body: the same menu, turned into HTTP calls" },
+    {
+      "p": "The desktop app's body is `HttpOpenTrackDataService`. It answers the exact same menu, but it owns no database. Each operation becomes a network call to `OpenTrack.API`, the separate service the desktop talks to. Its summary calls it a thin client — the API already returns data shaped to match the UI's view models, so most methods are barely more than send-request-and-deserialize:"
+    },
+    {
+      "code": "/// HTTP-backed implementation of IOpenTrackDataService for the desktop app.\n/// Calls OpenTrack.API over HTTP (thin client). The API's DTOs are shaped to match the\n/// UI's view models, so most calls are near-passthrough deserialization. The authenticated\n/// bearer token is attached by AuthTokenHandler on the underlying HttpClient,\n/// so this class stays identity-agnostic just like the DB-backed version."
+    },
+    {
+      "p": "Put the two bodies of the same menu item side by side and the parallel is the whole point. \"Get the projects\" on the web ran a filtered database query; on the desktop it is one line that asks the server for the already-filtered list:"
+    },
+    {
+      "code": "public async Task<IReadOnlyList<ProjectRow>> GetProjectsAsync(CancellationToken ct = default) =>\n    await http.GetFromJsonAsync<List<ProjectRow>>(\"/api/projects\", JsonOptions, ct) ?? [];"
+    },
+    {
+      "p": "And notice the desktop body is identity-agnostic in the same way the web one is. It never attaches the user's token itself; a separate piece, `AuthTokenHandler`, clips the bearer token onto every outgoing request automatically (Chapter 14 covers it). So this class, like its web twin, does its job without ever being handed \"who is asking.\""
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "HTTP is the request-and-response language browsers and apps use to talk to servers. A DTO (Data Transfer Object) is a plain data shape used to carry information across a network boundary. 'Deserialize' means turning the text a server sends back (here, JSON) into real C# objects. 'Bearer token' is a signed pass the desktop app got at login and shows on each request to prove who it is — like a wristband at an event."
+      }
+    },
+    { "h2": "Agreeing on failure, not just success" },
+    {
+      "p": "A subtle but essential detail: for the shared pages to behave the same on both hosts, the two bodies must agree not only on what a successful call returns but on how a failure surfaces. The web body throws `UnauthorizedAccessException` when an action is forbidden. The API, being a network service, can't throw an exception across the wire — it returns an HTTP 403 status. So the desktop body translates that status back into the very same exception the web body would have thrown, and a shared helper makes the translation explicit:"
+    },
+    {
+      "code": "// Translate a 403 into the same exception the web/EF path throws, so the shared razor pages\n// handle a denied action identically on both hosts.\nprivate static void ThrowIfForbidden(HttpResponseMessage resp, string message)\n{\n    if (resp.StatusCode == System.Net.HttpStatusCode.Forbidden)\n        throw new UnauthorizedAccessException(message);\n}"
+    },
+    {
+      "p": "The same care applies to edit conflicts. When two people edit the same issue at once, the web body catches the database's concurrency failure and throws `ConcurrencyConflictException`; the desktop body sees the API's HTTP 409 status and throws that identical exception. Either way, the shared page catches one exception type and shows one \"someone else changed this\" message. The pages are written once; both hosts make the world look the way those pages expect."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "This seam is the hinge the entire three-host design swings on. Because the screens depend on one interface and nothing more, the web app can be a database-backed Blazor Server app, the desktop app can be a MAUI window talking to a network API, and both can present pixel-for-pixel the same experience without a second copy of the UI. Everything in the next three chapters — the web host, the API host, the desktop app — exists to fill in, or to serve, this one interface."
+    },
+    {
+      "p": "The properties that must not erode: the interface stays free of any hint of database or network, so it can host either body; no operation gets handed the caller's identity, so the pages stay neutral and each host resolves \"who is asking\" its own way; and the two bodies stay in step not just on results but on failures, so a denied or conflicting action looks the same everywhere. Add a new screen feature and the discipline is to add one operation to this menu and give it a body in both places — never to let a page reach around the seam to a database or a URL directly."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "When you add a data operation, add it to IOpenTrackDataService and implement it in BOTH bodies — DbOpenTrackDataService (database) and HttpOpenTrackDataService (HTTP) — and make them agree on success shape AND failure behavior (a forbidden action throws UnauthorizedAccessException on both; a conflict throws ConcurrencyConflictException on both). Never let a shared page import a DbContext or a raw URL; the moment it does, the seam has leaked and the desktop app quietly breaks."
+      }
+    }
+  ]
+}

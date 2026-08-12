@@ -1,0 +1,175 @@
+{
+  "order": 19,
+  "title": "Public Intake, QR & the Guardrails",
+  "subtitle": "The one door into OpenTrack that needs no account — a public 'Report a problem' form anyone can fill in — and the layered guardrails (an off-by-default project gate, a hidden honeypot, per-IP rate limiting, and hard length caps) that keep that open door from becoming an open drain, plus the QR poster that puts the door on a wall and the email-gated status lookup that lets a submitter check just their own ticket.",
+  "in_this_chapter": [
+    "Why an issue tracker wants a front door with no lock — and the danger that creates",
+    "The single path that creates an issue without a logged-in user",
+    "The four guardrails, layered from the project setting down to the field lengths",
+    "The honeypot: a trap field only a bot will fill",
+    "Per-IP rate limiting: the 'intake' policy shared with the Git webhook",
+    "Status lookup: how a submitter reads their own ticket without reading anyone else's",
+    "The QR poster: turning a project into something you can scan off a wall"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "Everywhere else in OpenTrack, creating or reading an issue requires an account and the access rules of Chapter 8. Public intake is the deliberate exception. Its whole reason to exist is the person who is __not__ a member of your team: a customer who hit a bug, a visitor to a building who spotted a broken door, a volunteer at an event. You want them to be able to tell you, and you do not want to make them create an account first. So OpenTrack offers a public 'Report a problem' page that anyone can open and submit — no login, no password."
+    },
+    {
+      "p": "An unlocked front door is convenient and dangerous in equal measure. The moment a form can create records with no account behind it, it becomes a target for spam bots, abusive floods, and giant junk submissions. So the interesting engineering here is not the form — forms are easy — it is the __guardrails__ that let the door stay open without becoming a way to fill your database with garbage. Picture a suggestion box bolted to the wall outside a shop: anyone can drop a note in, but the slot is narrow (you can't stuff a phone book through it), there's a limit to how fast one person can post, and there's an invisible trip-wire that catches the vandals."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "Public intake is the only issue-creation path with no signed-in user; it is fenced by four layers — a per-project on/off flag that defaults to off, a hidden honeypot field that silently drops bots, a per-IP rate limiter, and hard length caps on every field — and it pairs with an email-gated status lookup so a submitter can read their own ticket and only their own."
+      }
+    },
+    { "h1": "The intake path: one door, plainly marked" },
+    { "h2": "What it does" },
+    {
+      "p": "The core logic lives in `PublicIntakeOperations`, whose summary names exactly what makes it special: it is \"the one issue-creation path that is NOT authenticated.\" A submission becomes an ordinary issue — it shows up in the normal issue list, gets worked like any other — but it is attributed to the project's owner rather than to a user account, because the real submitter has no account. Their name and email are captured on the issue so the team knows who reported it and so the submitter can later look up its status."
+    },
+    { "h2": "Why it was built this way" },
+    {
+      "p": "The design keeps the two concerns in separate layers, matching the whole codebase's habit. The domain rules that must always hold — the project must actually be accepting submissions, and every field has a maximum length — live in `PublicIntakeOperations` in Infrastructure, where they cannot be skipped no matter which host calls them. The web-only defenses that depend on the HTTP request — the honeypot field and the rate limiter — live up in the web endpoint. The class summary states this split directly: \"Length caps and the project gate live here; the web layer adds rate-limiting and a honeypot.\""
+    },
+    { "h2": "How it works" },
+    {
+      "p": "The first thing `SubmitAsync` does is check the project gate, and refuse if the project is not accepting public reports:"
+    },
+    {
+      "code": "var project = await db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectId, ct);\nif (project is null || !project.PublicIntakeEnabled)\n    return new IntakeResult(null, \"This project isn't accepting public submissions.\");"
+    },
+    {
+      "p": "`PublicIntakeEnabled` is off by default; a Manager must deliberately turn it on for a project. This is the outermost guardrail: intake does not exist for a project until someone with authority opts that project in. Then every field is trimmed and truncated to a hard cap, and the reason is spelled out in a comment aimed squarely at the anonymous nature of the endpoint:"
+    },
+    {
+      "code": "title = title?.Trim() ?? \"\";\nif (title.Length == 0) return new IntakeResult(null, \"Please describe the problem in the summary.\");\ntitle = Truncate(title, FieldLimits.IssueTitle);\n\nname = Blank(name) ? null : Truncate(name!.Trim(), FieldLimits.IntakeName);\n// Cap the free-text description — this is an UNAUTHENTICATED endpoint, so an anonymous submitter\n// could otherwise store a multi-megabyte body (bounded only by Kestrel's request limit).\ndescription = Blank(description) ? null : Truncate(description!, FieldLimits.IntakeDescription);\nemail = Blank(email) ? null : email!.Trim();\nif (email is not null && (!email.Contains('@') || email.Length > FieldLimits.IntakeEmail))\n    return new IntakeResult(null, \"Enter a valid email address, or leave it blank.\");"
+    },
+    {
+      "p": "The created issue is a normal `Issue` with sensible defaults (status New, severity Minor, priority Normal), reported by the project owner, but with the submitter's `IntakeName` and `IntakeEmail` stored on it. A history entry is written just as for any new issue. The submitter's details are also woven into the description so the team sees at a glance that this came from the public form and who sent it:"
+    },
+    {
+      "code": "var parts = new List<string> { \"*Submitted via the public \\u201cReport a problem\\u201d form.*\" };\nvar who = string.Join(\" \", new[] { name, email is null ? null : $\"<{email}>\" }.Where(s => !string.IsNullOrEmpty(s)));\nif (who.Length > 0) parts.Add($\"Reported by: {who}\");"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "Kestrel is the built-in web server that runs an ASP.NET app; it has its own outer limit on how big a request body may be. The comment above notes that without the description cap, an anonymous body would be bounded only by that server-wide limit — which could still be many megabytes. Capping each field in the domain layer means the smallest, tightest limit wins, and it applies no matter which host serves the form."
+      }
+    },
+    { "h1": "The four guardrails, layer by layer" },
+    {
+      "p": "It helps to see the defenses as concentric rings, from the broadest gate down to the narrowest field. Each ring catches a different kind of abuse, and together they let the door stay unlocked."
+    },
+    {
+      "table": {
+        "headers": ["Guardrail", "Where it lives", "What it stops"],
+        "rows": [
+          ["Project gate (PublicIntakeEnabled)", "PublicIntakeOperations (domain)", "Intake existing at all for a project nobody opted in"],
+          ["Honeypot 'website' field", "PublicIntakeWebEndpoints (web)", "Automated bots that fill every field"],
+          ["Per-IP 'intake' rate limiter", "Program.cs / RequireRateLimiting", "One client flooding the form"],
+          ["Length caps on every field", "PublicIntakeOperations (domain)", "Giant junk bodies from an anonymous poster"]
+        ]
+      }
+    },
+    { "h2": "The honeypot: a field only a robot loves" },
+    {
+      "p": "A honeypot is a form field that real people never see and never fill, but automated bots — which fill every field they find — do. The public report page renders a hidden `website` field positioned far off-screen and marked to be ignored by assistive tech:"
+    },
+    {
+      "code": "@* Honeypot: real people never see or fill this; bots do, and we silently drop those. *@\n<div style=\"position:absolute; left:-9999px; top:-9999px;\" aria-hidden=\"true\">\n    <label>Leave this field empty<input type=\"text\" name=\"website\" tabindex=\"-1\" autocomplete=\"off\" /></label>\n</div>"
+    },
+    {
+      "p": "On the server, if that field comes back with anything in it, the submission is treated as a bot and dropped — but the crucial detail is __how__ it is dropped. The endpoint pretends success, redirecting exactly as a real submission would, rather than showing an error:"
+    },
+    {
+      "code": "// Honeypot: bots fill the hidden \"website\" field. Pretend success and drop it silently.\nif (!string.IsNullOrWhiteSpace(form[\"website\"]))\n    return Results.Redirect($\"/report/{projectId}?ref=0\");"
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "Why fake success beats a visible rejection",
+        "text": "If the honeypot returned an obvious error, a bot author would notice their submissions were being blocked and adjust. By returning the same happy redirect a real user gets (with ref=0), the bot 'succeeds' into a black hole and has no signal that anything was filtered. Silence is the point — the trap works best when the vandal never learns it exists."
+      }
+    },
+    { "h2": "Rate limiting: the same throttle the Git webhook uses" },
+    {
+      "p": "Both public routes — the submit and the status lookup — are tagged with `.RequireRateLimiting(\"intake\")`. That names a policy defined once at startup in the web host. It is a fixed-window limiter partitioned by client IP address: each IP gets a fixed number of permits per time window, and requests beyond that are rejected:"
+    },
+    {
+      "code": "options.AddPolicy(\"intake\", http =>\n    System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(\n        http.Connection.RemoteIpAddress?.ToString() ?? \"unknown\",\n        _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions\n        {\n            PermitLimit = 8,\n            Window = TimeSpan.FromMinutes(5),\n            QueueLimit = 0,\n        }));"
+    },
+    {
+      "p": "Eight requests per five minutes per IP, with no queue — an over-limit request is turned away with a 429, not held. This is the same `intake` policy the inbound Git webhook of Chapter 18 attaches to. One named throttle protects every unauthenticated entry point, so there is a single place to tune the tolerance for the whole 'anyone can call this' surface of the app."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A 'fixed-window' rate limiter counts requests inside a repeating clock window — here, five minutes — and resets the count when the window rolls over. 'Partitioned by IP' means each client address gets its own independent count, so one abusive address can't use up everyone else's allowance. A 429 is the HTTP status code for 'Too Many Requests.'"
+      }
+    },
+    { "h1": "Status lookup: reading your own ticket, and only yours" },
+    { "h2": "What it does" },
+    {
+      "p": "A submitter who left an email gets a reference number back (\"your reference is #42\"). The public status page lets them come back later, enter that number plus the email they used, and see the current status of their ticket. No account, but also no browsing of anyone else's tickets."
+    },
+    { "h2": "Why it was built this way" },
+    {
+      "p": "The obvious naive version — look up an issue by its number — would let anyone read any public-intake ticket just by guessing sequential numbers. The fix is to require __both__ the reference and the exact email the ticket was submitted with, treating the email as a shared secret between the submitter and their own ticket. The lookup only ever returns issues that actually came through public intake:"
+    },
+    {
+      "code": "if (Blank(email)) return null;\nvar e = email!.Trim();\nvar issue = await db.Issues.AsNoTracking()\n    .FirstOrDefaultAsync(i => i.Id == reference && i.IntakeEmail != null && i.IntakeEmail.ToLower() == e.ToLower(), ct);\nreturn issue is null ? null : new IntakeStatus(issue.Id, issue.Title, issue.Status);"
+    },
+    {
+      "p": "The method summary states the guarantee: it \"requires the reference AND the exact email used, so one submitter can't read another's ticket, and it only ever returns public-intake issues.\" A mismatch and a not-found both come back as the same 'no matching ticket' — no hint about whether the number exists. Only a submission with a stored `IntakeEmail` can ever be found this way; a normal internal issue, which has no intake email, is invisible to this lookup entirely."
+    },
+    { "h2": "How the pages fit together" },
+    {
+      "p": "The two public pages, `PublicReport.razor` and `TicketStatus.razor`, are both marked `[AllowAnonymous]` and are plain server-rendered forms that POST to the endpoints above. They are intentionally simple HTML forms rather than interactive components, so they work with nothing but a browser — no JavaScript, no live connection required. The report page even switches to a friendly 'this project isn't accepting submissions' message when the gate is off, reading the same `PublicIntakeEnabled` flag the domain layer enforces:"
+    },
+    {
+      "code": "@if (!enabled)\n{\n    <h1 class=\"h3 mt-4\">Report a problem</h1>\n    <div class=\"alert alert-info mt-3\">This project isn't accepting public submissions right now.</div>\n}"
+    },
+    { "h1": "The QR poster: the door on a wall" },
+    { "h2": "What it does" },
+    {
+      "p": "`IntakePoster.razor` turns a project's public report page into something physical: a printable poster with a big QR code. Point a phone camera at it and the report form opens. It is meant to be printed and stuck up where problems happen — a lobby, a workshop, an event venue — so someone can report an issue on the spot without knowing any URL."
+    },
+    { "h2": "Why it was built this way, and how" },
+    {
+      "p": "Unlike the public pages, the poster page is __not__ anonymous — it is `[Authorize]`, and it further requires the Manager role, because generating and printing the intake link is a project-administration act. It builds the same public report URL a phone would visit and renders a QR code for it as inline SVG, using the approved `QRCoder` package:"
+    },
+    {
+      "code": "intakeUrl = $\"{Nav.BaseUri}report/{Id}\";\nqrSvg = BuildQrSvg(intakeUrl);\n\n// ...\n\nusing var generator = new QRCodeGenerator();\nusing var data = generator.CreateQrCode(text, QRCodeGenerator.ECCLevel.M);\nreturn new SvgQRCode(data).GetGraphic(6);"
+    },
+    {
+      "p": "The poster is print-first: a Print button calls the browser's own print dialog, print-only CSS scales the QR code up for the page, and controls tagged `no-print` disappear on paper. There is one honest bit of user-guarding, too — if public intake is currently off for the project, the poster shows a warning that the QR code won't accept reports yet and points the Manager to the setting. That closes the loop with the domain gate: printing a poster that leads to a closed door would only frustrate people, so the page says so up front."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Rendering a QR code as SVG",
+        "text": "A QR code is just a grid of black and white squares. Rendering it as inline SVG (vector shapes) rather than a bitmap image means it stays razor-sharp at any print size — a poster blown up to A3 has no fuzzy pixels — and it needs no separate image file to load. QRCoder is the small library that produces that SVG from a piece of text, here the public report URL."
+      }
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "Public intake is a study in opening a door safely. The feature everyone asks for — 'let people report problems without an account' — is trivial to build and easy to build badly. What makes OpenTrack's version sound is not the form but the discipline around it: an off-by-default gate so no project is exposed by accident, a silent honeypot so bots defeat themselves, a shared rate limiter so one client can't flood the works, and hard length caps in the domain layer so the anonymous nature of the endpoint can't be turned into a storage attack."
+    },
+    {
+      "p": "The placement of those defenses is the lesson worth keeping. The rules that must never be skipped — the gate and the length caps — live down in `PublicIntakeOperations` where every caller inherits them. The web-shaped defenses — the honeypot and the rate limiter — live in the web layer where the HTTP request actually is. And reading your own ticket back is gated by a secret you already hold (your email), not by an account you never made."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "If you ever add another way for an anonymous stranger to reach the database, copy this shape exactly: gate it behind an explicit, off-by-default opt-in; cap every field in the domain layer, not just the UI; put it behind the shared 'intake' rate limiter; and if it returns anyone's data, require a secret the requester already holds. An unauthenticated endpoint with none of these is not a feature — it is a spam funnel waiting to be found."
+      }
+    }
+  ]
+}

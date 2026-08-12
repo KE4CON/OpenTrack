@@ -1,0 +1,190 @@
+{
+  "order": 18,
+  "title": "Notifications, Webhooks & Two-Way Git",
+  "subtitle": "The three ways OpenTrack talks to the outside world when an issue changes — a private note inside the app, a message pushed out to a chat room, and a signed message pushed in from GitHub that links commits to issues and can close them — each built so a slow, dead, or hostile other end can never break the change that triggered it.",
+  "in_this_chapter": [
+    "The one job all three share: react to an issue change without ever failing the change itself",
+    "In-app notifications — and the re-check that stops a title from leaking to someone who lost access",
+    "Outgoing chat webhooks — Slack, Discord, and a plain-JSON format from one dispatcher",
+    "Why outgoing webhooks are fire-and-forget, and why the URL needs the Manager role",
+    "Inbound GitHub webhooks — proving the message is really from GitHub before reading a byte of it",
+    "The pure parser that finds '#123' and 'fixes #45' in a commit message",
+    "Linking commits to issues and auto-resolving them — safely, even on a replayed or crafted push"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "An issue tracker is not an island. When something changes on an issue — it gets assigned, resolved, commented on — people who care want to hear about it, and other systems may want to know too. And sometimes the change comes from __outside__: a developer pushes code to GitHub that fixes a bug, and it would be tedious to then walk back into OpenTrack and mark that bug resolved by hand. This chapter covers the three doors between OpenTrack and the outside world that all open when an issue changes."
+    },
+    {
+      "p": "Think of it as the tracker's mail room. One clerk drops a note in each interested person's in-tray inside the building (__in-app notifications__). A second clerk faxes an announcement to the chat rooms the project asked to be kept in the loop (__outgoing webhooks__ to Slack or Discord). And a third clerk stands at the loading dock receiving deliveries from GitHub — but only after checking the delivery's tamper-proof seal — and files each commit against the issue it mentions (__inbound Git webhooks__). Three clerks, one rule they all obey: nothing they do to the outside world may ever slow down or break the change that set them off."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "When an issue changes, OpenTrack notifies people in-app (re-checking each recipient's current access so a title can't leak), pushes a best-effort message out to the project's chat webhooks, and — for pushes coming the other way from GitHub — verifies a cryptographic signature before it trusts a single byte, then links commits to issues and can auto-resolve them; every one of these is wrapped so a failure out there never fails the work in here."
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A webhook is just a URL that one system POSTs a little message to when something happens — 'when an issue changes, phone this number.' 'Outgoing' means OpenTrack does the phoning (telling Slack); 'inbound' means OpenTrack is the one being phoned (GitHub telling it about a push). 'Best-effort' means we try, and if it fails we log it and move on rather than throwing an error up to the user. An HMAC signature is a fingerprint computed from a message plus a shared secret; only someone who knows the secret can produce the matching fingerprint, which is how the receiver knows the message is genuine."
+      }
+    },
+    { "h1": "In-app notifications: the clerk who checks access twice" },
+    { "h2": "What it does" },
+    {
+      "p": "`NotificationDispatch` is the piece that, given 'issue #812 just changed, here's a one-line summary,' writes a notification row for each person who should hear about it — the reporter, the assignee, and anyone explicitly monitoring the issue — and, if a mail server is configured, sends each of them an email too. The person who made the change is never notified of their own change."
+    },
+    { "h2": "Why it was built this way" },
+    {
+      "p": "There is a subtle trap here, and the class was designed specifically to avoid it. A notification's text includes the issue __title__. But access to an issue can change over time: an issue can be flipped to private, or someone can be removed from a private project. A person who was monitoring an issue last week might no longer be allowed to see it today. If the dispatcher blindly mailed every monitor, it would leak the title of a now-private issue to someone who has lost the right to read it. So the class re-checks each candidate's __current__ view access before adding them to the recipient list. Its own summary states the rule plainly: a monitor who has since lost access \"is dropped — the notification text contains the issue title and must never leak to someone who can no longer see it.\""
+    },
+    { "h2": "How it works" },
+    {
+      "p": "The whole operation is wrapped so it can never fail the change that triggered it. The public method is a try/catch around the real work, and a failure is logged, not thrown:"
+    },
+    {
+      "code": "public async Task NotifyIssueChangedAsync(AppDbContext db, int actorUserId, int issueId, string summary, CancellationToken ct = default)\n{\n    try\n    {\n        await DispatchAsync(db, actorUserId, issueId, summary, ct);\n    }\n    catch (Exception ex)\n    {\n        logger.LogError(ex, \"Failed to dispatch notifications for issue {IssueId}.\", issueId);\n    }\n}"
+    },
+    {
+      "p": "Inside, it gathers the candidates — the reporter, the assignee if there is one, and every user monitoring the issue — into a set, then removes the actor so no one is told about their own edit. Then comes the access re-check. For each candidate it builds the same pure `AccessContext` from Chapter 8 and asks the identical `CanViewIssue` question the rest of the app uses:"
+    },
+    {
+      "code": "var recipients = new List<(int Id, string? Email)>();\nforeach (var u in users)\n{\n    var ctx = new AccessContext(u.Id, u.Role, memberRoles.TryGetValue(u.Id, out var role) ? role : (UserRole?)null);\n    if (ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))\n        recipients.Add((u.Id, u.Email));\n}"
+    },
+    {
+      "p": "This is the anti-drift design from Chapter 8 paying off again: the notifier does not invent its own idea of who may see an issue — it calls the one authority everything else calls. Only the survivors get a notification row and, if email is configured, a message. And the email step is itself defensive: `email.IsConfigured` is checked first, and the class summary notes a mail failure \"is logged, never thrown.\""
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "The leak this design prevents",
+        "text": "It is tempting, when adding a new kind of notification, to just look up who is monitoring an issue and message them. Don't. Membership and privacy drift over time. Always route the recipient list through CanViewIssue (or the equivalent) as NotificationDispatch does, or you will eventually mail the title of a private issue to someone who was quietly removed from the project."
+      }
+    },
+    { "h1": "Outgoing webhooks: announcing to the chat rooms" },
+    { "h2": "What it does" },
+    {
+      "p": "A project can register outgoing webhooks — URLs that OpenTrack POSTs a short message to whenever one of the project's issues changes. `WebhookDispatch` is the piece that does the POSTing. It supports three shapes of message: Slack's, Discord's, and a generic JSON format for anything else (a custom script, another tracker, an automation tool)."
+    },
+    {
+      "p": "Notice how the notifier and the webhook dispatcher are wired together. `NotificationDispatch` holds an optional `WebhookDispatch` and fires the project's webhooks as part of dispatching — but it does so __regardless__ of whether anyone is subscribed in-app, because a chat room caring about a project is independent of any individual watching the issue:"
+    },
+    {
+      "code": "// Fire project webhooks regardless of who (if anyone) is subscribed in-app. Best-effort and\n// non-blocking; it only awaits a quick DB read for the active hooks.\nif (webhooks is not null)\n    await webhooks.DispatchAsync(db, issue.ProjectId, issue.Project.Name, issue.Id, issue.Title, issue.Status.ToString(), summary, ct);"
+    },
+    { "h2": "Why it was built this way" },
+    {
+      "p": "The dominant design worry with an outgoing webhook is that the other end is out of your control. A Slack endpoint could be slow, down, or hanging. If OpenTrack waited for that POST to finish before completing the user's edit, one dead webhook would freeze the whole edit for everyone. So the dispatcher is deliberately __fire-and-forget__: it does one quick database read to find the active hooks, then launches the HTTP POSTs without awaiting them. The class summary is explicit that this is so \"a slow or dead webhook can never delay or fail the edit that triggered it.\""
+    },
+    { "h2": "How it works" },
+    {
+      "p": "Each hook stores a URL and a format. The dispatcher builds the right payload shape per format with a simple switch — Slack wants `{ text: ... }`, Discord wants `{ content: ... }`, and everything else gets a structured JSON object with the event, ids, title, status, and a UTC timestamp:"
+    },
+    {
+      "code": "object payload = h.Format switch\n{\n    WebhookFormat.Slack => new { text = message },\n    WebhookFormat.Discord => new { content = message },\n    _ => new\n    {\n        @event = eventText,\n        projectId,\n        projectName,\n        issueId,\n        title = issueTitle,\n        status,\n        occurredAtUtc = DateTime.UtcNow,\n    },\n};\n_ = SendAsync(h.Url, payload); // fire-and-forget; must not delay the caller"
+    },
+    {
+      "p": "That leading `_ =` is the fire-and-forget in the flesh: the task is started and intentionally not awaited. The `SendAsync` helper wraps its own POST in try/catch and only logs failures, so a bad hook is a log line, never an exception the user sees. Each POST is also bounded by the shared `HttpClient` timeout, so even a hook that accepts the connection and then hangs forever is eventually abandoned."
+    },
+    { "h2": "Why managing a webhook needs the Manager role" },
+    {
+      "p": "Configuring the hooks — listing, adding, deleting them — lives in `WebhookOperations`, and both reading and writing them require the Manager role on the project. That is stricter than you might expect for a mere list of URLs, and there is a specific reason: a Slack or Discord webhook URL __is a secret__ — anyone holding it can post into that chat room. The class summary spells it out: \"because a webhook URL can carry a secret token (Slack/Discord URLs do), reading and managing them both require the Manager role.\" Adding a hook also validates the URL is a well-formed absolute `http`/`https` address, with a pointed comment about not aiming a webhook at an internal address you don't control (a class of attack called SSRF, server-side request forgery)."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "SSRF (server-side request forgery) is a trick where an attacker gets a server to make a request on their behalf to somewhere they couldn't reach directly — for example, an internal admin page that only the server can see. Because OpenTrack's webhooks are configured by a trusted Manager on a self-hosted box, the code treats the URL field as a trust boundary rather than a full sandbox, but it still insists on a proper public-shaped http(s) URL."
+      }
+    },
+    { "h1": "Inbound Git webhooks: deliveries from GitHub" },
+    { "h2": "What it does" },
+    {
+      "p": "This is the two-way part, and the most interesting. GitHub can be told to POST to OpenTrack every time code is pushed to a repository. OpenTrack receives that push, reads the commit messages, finds any that mention an issue (`#123`) or say they fix one (`fixes #45`), records a link between the commit and the issue, and — if the project opted in — automatically marks 'fixes' issues as Resolved. A developer fixes a bug in code and the tracker updates itself."
+    },
+    { "h2": "Why the signature check comes first" },
+    {
+      "p": "GitHub cannot log into OpenTrack — it has no account, no session, no cookie. So the receiving endpoint is __unauthenticated__ in the usual sense. That would be alarming if anyone could POST a fake 'push' claiming commits fix issues. The defense is a cryptographic signature. When you set up the webhook, you paste a shared secret into GitHub. GitHub then signs every delivery with that secret, and OpenTrack recomputes the same signature and compares. No valid signature, no trust — and the check happens before a single byte of the payload is acted on."
+    },
+    {
+      "p": "`GitSignature` does the verifying. It expects GitHub's `X-Hub-Signature-256` header — the literal text `sha256=` followed by the HMAC-SHA256 of the exact request body, keyed by the project's secret — and compares in constant time:"
+    },
+    {
+      "code": "using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));\nvar expected = Convert.ToHexStringLower(hmac.ComputeHash(body));\n\n// Constant-time compare of the two hex strings.\nvar a = Encoding.ASCII.GetBytes(expected);\nvar b = Encoding.ASCII.GetBytes(provided);\nreturn CryptographicOperations.FixedTimeEquals(a, b);"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Why the comparison is 'constant-time'",
+        "text": "A naive string comparison bails out at the first character that differs, so it returns a hair faster for a wrong guess that shares more leading characters with the real answer. An attacker measuring those tiny timing differences could, over many tries, reconstruct the secret fingerprint one character at a time. FixedTimeEquals always takes the same amount of time regardless of where the values differ, closing that side channel. It is a small habit that matters everywhere secrets are compared."
+      }
+    },
+    {
+      "p": "There is a matching subtlety on the storage side. When a Manager saves the webhook secret, the code stores it __exactly as entered__ — no trimming — with a comment explaining why: \"GitHub signs over the exact bytes you paste into its webhook Secret field, so trimming here would silently break verification for a padded secret.\" A stray trailing space in the secret must survive on both ends or the fingerprints will never match."
+    },
+    { "h2": "How the receiver behaves" },
+    {
+      "p": "The endpoint reads the raw body once (the signature must be computed over the exact bytes GitHub sent), looks up the project's Git config, and then makes a careful series of decisions. Two of them are about not leaking information: if the project has no Git integration or it is disabled, and again if the signature is invalid, it returns the __same__ `404 Not Found` — never revealing whether the project even exists or has Git enabled:"
+    },
+    {
+      "code": "var config = await db.GitIntegrations.AsNoTracking().FirstOrDefaultAsync(g => g.ProjectId == projectId, ct);\nif (config is null || !config.Enabled)\n    return Results.NotFound(); // don't reveal whether the project exists / is configured\n\nvar signature = request.Headers[\"X-Hub-Signature-256\"].ToString();\nif (!GitSignature.IsValid(config.WebhookSecret, body, signature))\n    return Results.NotFound(); // same response as unconfigured — don't reveal which projects have Git enabled"
+    },
+    {
+      "p": "Only past those gates does it inspect the event type. A GitHub 'ping' (sent when you first save the webhook) gets a friendly `pong`; anything that isn't a 'push' is politely accepted and ignored; a real push has its commits parsed out of the JSON and handed to the processing step. The whole route is also rate-limited under the shared `intake` policy — the same throttle the public ticket form uses — so even a valid-looking flood is bounded."
+    },
+    { "h2": "Finding issue references: the pure parser" },
+    {
+      "p": "The job of reading a commit message like \"fix login crash, closes #42 and touches #7\" and pulling out the issue numbers lives in `GitRefParser`, deliberately placed in `OpenTrack.Core` with no dependencies so the webhook receiver and the tests share one definition. It recognizes plain mentions (`#123`) and GitHub's closing keywords (`fix`, `fixes`, `fixed`, `close`, `closes`, `resolve`, `resolved`, and so on). If the same issue is mentioned both plainly and with a closing keyword, closing intent wins — the reference is treated as intending to resolve it:"
+    },
+    {
+      "code": "var closing = m.Groups[\"kw\"].Success;\nbyIssue[id] = byIssue.TryGetValue(id, out var existing) ? existing || closing : closing;"
+    },
+    {
+      "p": "The regular expression that finds these is carefully anchored so it won't match a `#` glued to a preceding word — `abc#12` and `v1.2#3` are not issue references, only a `#number` standing on its own. Keeping the parser pure and in Core means its tricky behavior can be unit-tested exhaustively without a database or a web server in sight."
+    },
+    { "h2": "Linking and auto-resolving — safely" },
+    {
+      "p": "`GitIntegrationOperations.ProcessPushAsync` takes the parsed commits and does the real work. It is a __trusted system action__: the signature already proved the request genuine, so there is no signed-in user, and the resulting history and notifications are attributed to the project owner and the 'system' actor id 0. But 'trusted' does not mean careless — the method guards against several ways a push could misbehave, whether by accident or by a crafted payload."
+    },
+    {
+      "p": "First, the referenced issue must belong to __this__ project; a commit can't reach across projects. Second, duplicate links are prevented even within a single push. A commit can appear twice in one payload, and blindly inserting both would violate the database's unique index and abort the entire push. So the code tracks what it has already seen in this batch as well as what is already in the database:"
+    },
+    {
+      "code": "var key = (issue.Id, c.Sha);\nvar alreadyLinked = seen.Contains(key)\n    || await db.IssueCommitLinks.AnyAsync(l => l.IssueId == issue.Id && l.Sha == c.Sha, ct);"
+    },
+    {
+      "p": "Third, and most carefully, auto-resolve is gated on the link being __newly__ created. This stops a replayed push — GitHub retrying, or someone re-sending an old delivery — from re-resolving an issue that a human has since deliberately reopened. The condition reads like a checklist of everything that must be true: a closing reference, newly linked, the project opted in, the issue not already resolved, and the workflow actually permits the move to Resolved:"
+    },
+    {
+      "code": "if (r.Closing && newlyLinked && autoResolve && (int)issue.Status < (int)IssueStatus.Resolved\n    && !resolvedIssueIds.Contains(issue.Id)\n    && await WorkflowOperations.IsAllowedAsync(db, projectId, issue.Status, IssueStatus.Resolved, ct))\n{\n    var old = issue.Status;\n    issue.Status = IssueStatus.Resolved;\n    issue.UpdatedAt = now;\n    issue.History.Add(new IssueHistory\n    {\n        UserId = project.OwnerId, FieldChanged = \"Status\",\n        OldValue = old.ToString(), NewValue = IssueStatus.Resolved.ToString(), ChangedAt = now,\n    });\n    resolvedIssueIds.Add(issue.Id);\n}"
+    },
+    {
+      "p": "Notice that even an automated resolve still respects the project's own workflow rules (Chapter 15) via `WorkflowOperations.IsAllowedAsync` — Git integration is not a back door around the state machine. When the dust settles, each auto-resolved issue is announced through the very same `NotificationDispatch` we started with, using actor id 0 so that everyone who cares — including the owner — is notified. The three clerks are connected: a delivery at the loading dock ends with a note in everyone's in-tray."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "How the two directions meet",
+        "text": "Follow one commit all the way through: GitHub POSTs a push → GitSignature proves it's genuine → GitRefParser reads 'fixes #42' → ProcessPushAsync links the commit, checks the workflow, and sets #42 to Resolved as the system actor → NotificationDispatch tells #42's watchers, re-checking each one's access → WebhookDispatch announces it to the project's Slack room. Inbound Git and outgoing chat are two ends of the same pipe."
+      }
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The unifying idea across all three subsystems is __containment of the outside world__. Every interaction with something OpenTrack does not control — a user's mail server, a project's Slack room, a push from GitHub — is treated as capable of being slow, absent, or hostile, and is wrapped so that its failure or malice stays contained. Notifications are best-effort and never throw. Webhooks are fired without waiting. Inbound Git is distrusted until a signature proves it genuine, then still guarded against replays and cross-project reach."
+    },
+    {
+      "p": "The second idea is __reuse of the one authority__. The notifier does not reimplement 'who may see this issue' — it calls `CanViewIssue`. Auto-resolve does not bypass the workflow — it calls `WorkflowOperations`. The Git parser lives in Core so tests and the receiver share one definition. Each new door to the outside world leans on the rules that already exist rather than growing a private copy — the same anti-drift discipline that runs through the whole codebase."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "When you add anything that reacts to a change or accepts a message from outside, obey both halves of this chapter. Contain the outside end: wrap it best-effort, never let it block or fail the triggering change, and bound it with a timeout or rate limit. And trust the inside authorities: re-check access before you put an issue's text in front of someone, verify a signature before you act on an inbound request, and route state changes through the workflow — never around it."
+      }
+    }
+  ]
+}

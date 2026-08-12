@@ -1,0 +1,144 @@
+{
+  "order": 6,
+  "title": "Pure Rules in Core: Why some logic lives with no database",
+  "subtitle": "A principle, not just a place: OpenTrack keeps its trickiest decisions — who may see a thing, whether an SLA has been breached, which automation rules fire, whether a custom-field value is valid — as pure functions in Core that touch no database and no network, so the same rule can be shared everywhere and proven correct by a test in milliseconds.",
+  "in_this_chapter": [
+    "What 'pure' means, and why a rule with no database is easier to trust",
+    "The principle: judgment and data-fetching are different jobs, kept apart",
+    "AccessContext as the flagship — pure permission rules (the deep dive is §8)",
+    "SlaCalculator: deadline math you can test without a clock or a server",
+    "AutomationEvaluator: 'when an issue looks like this, do that' as a pure function",
+    "The smaller pure helpers: custom-field validation, duplicate detection, Git-ref parsing",
+    "The shared shape — inputs in, answer out — and why every one of these is unit-tested"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "Some of the decisions OpenTrack makes are fiddly and consequential. Is this person allowed to see this private issue? Has this issue blown past its promised response time? When a new bug comes in, which of the project's automation rules should fire, and what should they do? Is the value someone typed into a custom \"Due date\" field actually a date? Getting any of these subtly wrong is the kind of mistake that ships a security hole or a silent miscalculation. This chapter is about a design principle OpenTrack uses to make those decisions trustworthy: it keeps the __rules themselves__ as __pure__ code in `OpenTrack.Core`, with no database and no web anywhere near them."
+    },
+    {
+      "p": "The idea is worth stating as a principle because it recurs all over the codebase. A pure rule is like a __pocket calculator__: you hand it some numbers, it hands back an answer, and it has no memory, no network cable, and no opinions about where the numbers came from. Because it does nothing but compute, you can check that a calculator is correct by punching in cases and reading off answers — no server to start, no database to seed, no login to fake. OpenTrack pushes as many of its important decisions as it can into that calculator-shaped form, and this chapter shows the pattern through its flagship example and several smaller ones."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "A 'pure function' is code that only looks at the values you pass in and only produces a returned answer — it reads no file, no database, no network, and changes nothing outside itself. Give it the same inputs and it always returns the same output. 'I/O' (input/output) means talking to the outside world — disk, database, network — and pure code deliberately does none of it. A 'unit test' is a tiny program that calls one function with known inputs and checks the answer; pure functions are the easiest possible thing to unit-test."
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "OpenTrack keeps its hardest decisions as pure, database-free functions in Core — permission checks, SLA math, automation matching, value validation — so each rule lives in exactly one place, can be reused by every part of the app without dragging a database along, and can be proven correct by fast unit tests instead of by running the whole system."
+      }
+    },
+    { "h2": "The principle: judgment is one job, fetching data is another" },
+    {
+      "p": "The heart of the idea is a separation of two jobs that are easy to tangle together. One job is __fetching__ — going to the database to find out whether a project is public, when an issue was created, what the SLA target is for High priority. The other job is __judging__ — given those facts, deciding the answer. OpenTrack insists these are different jobs done by different code. The messy fetching lives in the data layer (§7 onward). The clean judging lives in Core as pure functions that are simply __handed__ the facts as plain arguments."
+    },
+    {
+      "p": "Why go to the trouble? Three payoffs, and they compound. First, __no drift__: if the rule lives in one pure place, the web app and the desktop-serving API both call that one place, and they cannot slowly diverge into two subtly different versions of the rule (this is the whole spine of §8). Second, __testability__: a pure rule can be exercised across every case in a test that runs in milliseconds, with no server. Third, __clarity__: a function that takes plain facts and returns an answer can be read and understood on its own, without also understanding the database schema, the web framework, and the network."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Why 'facts in, answer out' is the whole trick",
+        "text": "None of these pure rules ever look anything up. AccessContext doesn't ask 'is this project public?' — it is told, as a parameter. SlaCalculator doesn't read the clock — you pass it 'now'. This is exactly what keeps them pure: the layer that owns the database does the looking-up and then hands the facts over. Judgment and data-fetching are kept apart on purpose, and that single discipline is what makes everything in this chapter testable."
+      }
+    },
+    { "h2": "The flagship: AccessContext, permission rules as pure code" },
+    {
+      "p": "The clearest and most important example of the principle is the access-control authority, `AccessContext`. It gets a full chapter of its own (§8), so here we only look at it as the model citizen of the 'pure rules in Core' idea. Its own summary comment is the mission statement for this entire chapter — the rules are kept \"deliberately pure (no EF, no HTTP)\" precisely so both front doors call the same rules and \"the whole matrix is unit-testable.\""
+    },
+    {
+      "p": "See how it takes only plain facts and returns only a yes/no — never touching a database to answer:"
+    },
+    {
+      "code": "public bool CanViewIssue(bool projectIsPublic, bool issueIsPrivate, int reporterId, int? assigneeId) =>\n    CanViewProject(projectIsPublic)\n    && (!issueIsPrivate\n        || reporterId == UserId\n        || assigneeId == UserId\n        || AtLeast(UserRole.Developer));"
+    },
+    {
+      "p": "Every input — whether the project is public, whether the issue is private, who reported it, who it is assigned to — arrives as an argument. The method does not go and find any of that; it is handed the facts and it judges. That is why a single test file can drive this rule through every combination of role and privacy with no server running, and it is why the browser and the desktop app can never disagree about who may see an issue. The permission logic is the flagship, but it is one instance of a pattern OpenTrack repeats wherever a decision is important enough to get right once. The full deep dive — effective roles, the list-filter twin, the two front doors — is §8."
+    },
+    { "h2": "SlaCalculator: deadline math without a clock or a server" },
+    {
+      "p": "The second example makes the payoff vivid. A __service-level agreement__ (SLA) is a promise about response time — \"we will resolve High-priority issues within eight hours.\" OpenTrack has to decide, for each open issue, whether it is comfortably on track, getting close to its deadline, or already breached. That decision involves time, which is normally the enemy of testable code: anything that reads the real clock behaves differently every second. `SlaCalculator` sidesteps that entirely by being pure — you pass it the current time as an argument."
+    },
+    {
+      "code": "public static SlaAssessment Evaluate(\n    IssuePriority priority, DateTime createdAtUtc, bool isOpen, DateTime nowUtc, int? targetHours)\n{\n    // No target for this priority, or the clock has stopped → nothing to track.\n    if (!isOpen || targetHours is not > 0) return SlaAssessment.NotTracked;\n\n    var dueUtc = createdAtUtc.AddHours(targetHours.Value);\n    var atRiskUtc = createdAtUtc.AddHours(targetHours.Value * SlaDefaults.AtRiskFraction);\n\n    var status = nowUtc >= dueUtc ? SlaStatus.Breached\n        : nowUtc >= atRiskUtc ? SlaStatus.AtRisk\n        : SlaStatus.OnTrack;\n    return new SlaAssessment(status, dueUtc);\n}"
+    },
+    {
+      "p": "Read it as plain arithmetic. If the issue is not open, or its priority has no target, there is nothing to track. Otherwise the deadline (`dueUtc`) is simply the creation time plus the target hours, and the \"getting close\" threshold (`atRiskUtc`) is the same but at 80% of the way there — that fraction is a named constant, `SlaDefaults.AtRiskFraction = 0.8`, so there is no mystery number floating in the math. Then the verdict is three plain comparisons: past the deadline is `Breached`, past 80% is `AtRisk`, otherwise `OnTrack`."
+    },
+    {
+      "p": "Because `nowUtc` is passed in rather than read from the system clock, a test can hand this function a creation time of noon, a target of four hours, and a \"now\" of 3pm and assert — deterministically, forever — that the answer is `AtRisk`. The rule's own comment names exactly the audiences this purity serves: it is \"Kept in Core so the background scanner, the data layer, and the tests all agree.\" The background job that scans for breaches, the code that shows an issue's SLA badge, and the test suite all call this one function, so all three can never disagree about what \"breached\" means."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "Pass in the clock, don't read it",
+        "text": "Reading the real time inside a function makes it untestable — its answer changes every second and you can't check a specific case. OpenTrack's fix is the small, powerful habit of taking 'now' (nowUtc) as a parameter. The one caller that has the real clock passes it in; everyone else, including every test, can pass whatever moment they want to examine."
+      }
+    },
+    { "h2": "AutomationEvaluator: 'when it looks like this, do that', purely" },
+    {
+      "p": "The third example handles automation. A project can define rules like \"when a new issue's text contains 'password', set its severity to Major and tag it security.\" When a fresh issue arrives, OpenTrack has to work out which rules match and what their combined effect is. That is exactly the kind of branchy logic where bugs hide — so, again, the deciding is a pure function, `AutomationEvaluator`, deliberately \"decoupled from the EF entity so the evaluator is a pure function the infrastructure and tests can both drive.\""
+    },
+    {
+      "p": "The trick is that the evaluator does not work on database rows at all. The rules and the incoming issue are re-expressed as plain, immutable __records__ — `AutomationRuleDef` for a rule's when/then shape and `AutomationInput` for the issue's as-created state — so the evaluator never sees Entity Framework. Its result is a third record, `AutomationOutcome`, describing which fields to change and which tags to add:"
+    },
+    {
+      "code": "public static AutomationOutcome Evaluate(AutomationInput input, IEnumerable<AutomationRuleDef> rules)\n{\n    IssueSeverity? severity = null;\n    IssuePriority? priority = null;\n    IssueStatus? status = null;\n    int? assignee = null;\n    var tags = new List<string>();\n    var applied = new List<string>();\n\n    foreach (var r in rules)\n    {\n        if (!Matches(input, r)) continue;\n        applied.Add(r.Name);\n\n        if (r.SetSeverity is { } s) severity = s;\n        if (r.SetPriority is { } p) priority = p;\n        if (r.SetStatus is { } st) status = st;\n        if (r.AssignToUserId is { } a) assignee = a;\n        ...\n    }\n\n    return new AutomationOutcome(severity, priority, status, assignee, tags, applied);\n}"
+    },
+    {
+      "p": "The function's comment pins down two subtle decisions that matter for predictability: every rule's conditions are \"tested against the ORIGINAL issue state (not the running result), so the outcome doesn't depend on subtle action/condition interplay,\" and \"For scalar actions the last matching rule wins; tags accumulate.\" Those are precisely the kind of ordering-and-interaction rules that are hard to reason about in your head and easy to verify with a test — you feed the evaluator a known issue and a known list of rules and assert the exact outcome. Because it is pure, the code that actually writes the changes to the database is a separate, thin layer; the tricky decision of __what__ to do is isolated and provable."
+    },
+    { "h2": "The smaller pure helpers" },
+    {
+      "p": "The principle shows up in several smaller places, and it is worth seeing that it is a habit, not a one-off. Each of these is a pure, dependency-free function that some data-layer code calls but that can be tested entirely on its own."
+    },
+    {
+      "p": "__Custom-field validation__ (`CustomFieldValidation`) decides whether the value someone typed into a project's custom field is acceptable, and what canonical form to store. It is explicitly \"Kept free of EF/HTTP so the whole matrix is unit-testable,\" and it returns a small result that is either an error message or a normalized value:"
+    },
+    {
+      "code": "case CustomFieldType.Number:\n    return decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var num)\n        ? new ValueResult(null, num.ToString(CultureInfo.InvariantCulture))\n        : new ValueResult(\"Value must be a number.\", null);\n\ncase CustomFieldType.Date:\n    return DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)\n        ? new ValueResult(null, d.ToString(\"yyyy-MM-dd\", CultureInfo.InvariantCulture))\n        : new ValueResult(\"Value must be a date (YYYY-MM-DD).\", null);"
+    },
+    {
+      "p": "This is the pure counterpart to the `CustomFieldType` menu from §5: the menu says what type a field is; this function is the rule that enforces it — a number must parse as a number, a date must parse and is stored in one canonical ISO form, an enum value must match one of the defined options. Whether the value ultimately gets saved is the data layer's job; whether it is __valid__ is decided here, where a test can check every type and every bad input without a database in sight."
+    },
+    {
+      "p": "__Duplicate detection__ (`IssueSimilarity`) is a pair of pure helpers that reduce an issue title to its \"significant words\" and score how many two titles share — enough to surface likely duplicates when someone files a new bug. It is \"Deliberately simple and dependency-free,\" and the split of labor is telling: \"The persistence layer uses SignificantWords to build the candidate query and Overlap to rank.\" The database does the fetching; these pure functions do the judging of what counts as a word and how much two titles overlap."
+    },
+    {
+      "p": "__Git-reference parsing__ (`GitRefParser`) reads a commit message and pulls out the issue numbers it mentions — plain mentions like `#123` and closing references like `fixes #123` — so a commit can automatically comment on or close an issue. It is \"Kept in Core so the webhook receiver and the tests share one definition,\" and it captures one nice subtlety in a comment: \"If the same issue is mentioned both ways, the closing intent wins.\" A gnarly bit of text parsing becomes a pure function that the incoming-webhook code and the test suite both drive from the same place."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "The tell-tale phrase",
+        "text": "Grep the Core project for the word 'pure' and you keep landing on the same sentence: kept pure / free of EF/HTTP so it is shared and unit-testable. That repeated phrase is the design principle announcing itself — every time a decision was important enough to get exactly right, its author lifted the decision out of the database code and into a pure Core function."
+      }
+    },
+    { "h2": "The shape they all share" },
+    {
+      "p": "Look across the examples and one silhouette repeats. Each pure rule takes __plain facts in__ — booleans, ids, times, small records — and returns __a plain answer out__ — a yes/no, an assessment, an outcome, a validation result. None of them opens a database, makes a web request, reads a file, or looks at the system clock. Whatever messy fetching those facts required happened in a different layer that then handed the facts over. And each one is, as a direct result, driven by a focused set of unit tests that run in the blink of an eye."
+    },
+    {
+      "p": "This is also why these rules can live in `OpenTrack.Core`, the project at the very bottom of the dependency stack that is allowed to depend on almost nothing. A rule that needed the database would have to live higher up, near the database, and could not be shared cleanly by both the web host and the API host. By keeping the rule pure, OpenTrack earns the right to put it in Core, and putting it in Core is what lets everyone share it. The purity and the placement reinforce each other."
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The lesson of this chapter is a mindset more than a mechanism: when a decision is important enough to get exactly right, separate the __judging__ from the __fetching__ and put the judging in a pure Core function. OpenTrack does this for its permission checks, its SLA deadlines, its automation matching, its value validation, its duplicate scoring, and its commit parsing — every place where a subtle mistake would be expensive. The reward each time is the same trio: one authoritative copy of the rule, reuse by every host without dragging a database along, and a fast test that proves the rule across all its cases."
+    },
+    {
+      "p": "The rules that must not erode: pure logic stays free of database and web code so it stays shareable and testable; facts are passed in as arguments rather than fetched inside (including 'now' — pass the clock, don't read it); and each important decision has exactly one pure home that every surface calls, so there is never a second, drifting copy. When you find yourself about to embed a tricky decision inside data-layer or endpoint code, that is the signal to lift it out into a pure Core function instead."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "If a new piece of logic is a decision — 'is this allowed / valid / breached / a match?' — write it as a pure function in OpenTrack.Core that takes plain facts and returns a plain answer, and back it with unit tests. Do the database fetching in the layer that owns the database, then hand the facts to the pure rule. Keep judgment and I/O apart, and the hard parts of OpenTrack stay provable."
+      }
+    }
+  ]
+}

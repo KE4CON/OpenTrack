@@ -1,0 +1,195 @@
+{
+  "order": 5,
+  "title": "The Fixed Menus: Enums & the Issue Vocabulary",
+  "subtitle": "The small set of fixed-choice menus — Status, Severity, Priority, Reproducibility, Resolution, the user-role ladder, and a few others — that give every issue a shared, unambiguous vocabulary, and why the order of the choices is quietly load-bearing.",
+  "in_this_chapter": [
+    "What an enum is, and why a fixed menu beats free-typed text",
+    "The five issue-classification menus and the human meaning of every value",
+    "Why the numbers behind the names matter — ordered ladders vs. plain lists",
+    "UserRole: the ladder that access control is built on",
+    "How the SLA clock reads the status ladder to decide 'still open'",
+    "The smaller menus: relationship types, custom-field types, checklist status, webhook format",
+    "Why leaving gaps between the numbers was a deliberate choice"
+  ],
+  "blocks": [
+    { "h1": "What This Is / What It Is For" },
+    {
+      "p": "When someone files a bug, a lot of it is free text — the title, the description, what they expected to happen. But some of it needs to be a __choice from a fixed menu__: how bad is it? what is its status? how urgent? If those were free text, one person would type \"critical,\" another \"Critical,\" another \"crit,\" another \"showstopper,\" and the software could never reliably sort, filter, or report on them. So OpenTrack pins each of those questions to a fixed list of allowed answers. In C# a fixed list of named choices is called an __enum__, and this chapter is a tour of all of them — the shared vocabulary every issue is described in."
+    },
+    {
+      "p": "Picture a restaurant with a printed menu versus one where you shout whatever you want at the kitchen. The printed menu is the enum: everyone orders from the same short list, the kitchen always understands, and the bill adds up. OpenTrack's enums are that printed menu for issues. And, as we will see, the menus are printed in a deliberate __order__ — mild choices near the top, severe ones near the bottom — because a surprising amount of the program's logic works by asking \"is this choice at least as far down the list as that one?\""
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "Jargon, in plain words",
+        "text": "An enum (short for 'enumeration') is a type whose value must be one of a fixed set of named options — like IssueStatus.New or IssueSeverity.Crash. Behind each name sits a whole number the code can compare. Because the choices are fixed at compile time, the program can never end up with a status of 'banana': the only legal values are the ones on the menu."
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The one-sentence version",
+        "text": "OpenTrack's enums are the fixed menus that give every issue an unambiguous, sortable vocabulary — and several of them (especially UserRole and IssueStatus) are ordered ladders whose numeric values are chosen so that 'higher means more' and rules can be written as simple greater-than comparisons."
+      }
+    },
+    { "h2": "Why fixed menus, and why the numbers behind them matter" },
+    {
+      "p": "Every enum value has two faces: the __name__ that humans read (`Major`, `Urgent`, `Closed`) and a __number__ underneath it that the computer stores and compares. Most programming languages will assign those numbers for you automatically — 0, 1, 2, and so on — but OpenTrack writes the numbers out by hand, on purpose. That single decision is the theme of this whole chapter, so it is worth seeing why up front."
+    },
+    {
+      "p": "There are two reasons to control the numbers. First, __stability__: the number is what actually gets written to the database. If the numbers were automatic and someone later inserted a new choice in the middle of the list, every existing issue's stored number would suddenly mean something different — a silent data-corruption bug. Pinning the numbers means the menu can grow without disturbing what is already saved. Second, and more interestingly, __ordering__: by choosing the numbers so that milder options are lower and more serious ones are higher, the menu becomes a __ladder__, and any rule about \"more serious than\" or \"at least this rank\" becomes a plain number comparison."
+    },
+    {
+      "p": "OpenTrack follows the numbering convention of MantisBT, the long-running tracker it is modeled on. That is why you will see values like 10, 20, 30 rather than 1, 2, 3 — the gaps are deliberate, and we will come back to why at the end."
+    },
+    { "h2": "IssueStatus: where an issue is in its life" },
+    {
+      "p": "The most fundamental menu is __status__ — where an issue stands in its journey from just-filed to done. It is a genuine ladder: the numbers climb as the issue moves forward through its life."
+    },
+    {
+      "code": "public enum IssueStatus\n{\n    New = 10,\n    Feedback = 20,\n    Acknowledged = 30,\n    Confirmed = 40,\n    Assigned = 50,\n    Resolved = 80,\n    Closed = 90\n}"
+    },
+    {
+      "table": {
+        "headers": ["Value", "Number", "What it means in plain words"],
+        "rows": [
+          ["New", "10", "Just filed; nobody has looked at it yet."],
+          ["Feedback", "20", "Waiting on more information from the reporter."],
+          ["Acknowledged", "30", "A maintainer has seen it and agrees it's worth tracking."],
+          ["Confirmed", "40", "Reproduced/verified — it's a real issue."],
+          ["Assigned", "50", "Someone is now responsible for working it."],
+          ["Resolved", "80", "A fix (or decision) is in; awaiting final closure."],
+          ["Closed", "90", "Done and put to bed."]
+        ]
+      }
+    },
+    {
+      "p": "The jump from `Assigned = 50` to `Resolved = 80` is not an accident, and it is the clearest example in the codebase of ordering doing real work. Everything below 80 is an issue that is still __open__ — being worked on; everything from 80 up is finished. The SLA (service-level agreement) subsystem relies on exactly that boundary. In `SlaCalculator`, the definition of \"still open\" is one line that reads the status number against the `Resolved` rung:"
+    },
+    {
+      "code": "/// <summary>True for statuses whose SLA clock is still running (below Resolved).</summary>\npublic static bool IsOpen(IssueStatus status) => (int)status < (int)IssueStatus.Resolved;"
+    },
+    {
+      "p": "Read that slowly: `(int)status` turns the menu choice into its number, and the rule says an issue's response clock is running as long as that number is __below__ `Resolved`'s 80. New, Feedback, Acknowledged, Confirmed, Assigned — all below 80, all \"open,\" all still on the clock. Resolved and Closed are at or above 80, so their clock has stopped. Because the ladder was numbered with that gap, a whole category (\"open vs. done\") is expressible as a single less-than. Change the ladder's order carelessly and this one line quietly changes meaning — which is exactly why the numbers are written down and left alone."
+    },
+    { "h2": "Severity and Priority: how bad, and how soon" },
+    {
+      "p": "Two menus that people often confuse are __severity__ and __priority__, and OpenTrack keeps them separate on purpose because they answer different questions. Severity asks \"how much damage does this do?\" Priority asks \"how soon should we deal with it?\" A cosmetic typo on the front page might be low severity but high priority; a rare crash in an unused corner might be high severity but low priority. Both are ordered ladders, mild at the top, severe at the bottom."
+    },
+    {
+      "code": "public enum IssueSeverity\n{\n    Feature = 10,\n    Trivial = 20,\n    Text = 30,\n    Tweak = 40,\n    Minor = 50,\n    Major = 60,\n    Crash = 70,\n    Block = 80\n}"
+    },
+    {
+      "p": "Read as a scale of impact: `Feature` is a request for something new (no damage at all), `Trivial` and `Text` are cosmetic or wording problems, `Tweak` is a small adjustment, `Minor` and `Major` are ordinary bugs of growing seriousness, `Crash` means the program falls over, and `Block` is the worst — something that blocks work entirely. Because it is ordered, a report or filter can say \"show me everything Major or worse\" as a simple \"number ≥ 60.\" (`Minor` is the default a new issue starts at, from the previous chapter.)"
+    },
+    {
+      "code": "public enum IssuePriority\n{\n    None = 10,\n    Low = 20,\n    Normal = 30,\n    High = 40,\n    Urgent = 50,\n    Immediate = 60\n}"
+    },
+    {
+      "p": "Priority is the urgency dial, climbing from `None` through `Low`, `Normal` (the default), `High`, `Urgent`, up to `Immediate` (\"drop everything\"). Priority is also the field the SLA system keys its targets on — a policy might give `Immediate` issues a four-hour resolution target and `Low` ones a week — so this ordered menu feeds directly into the deadline math we saw a moment ago."
+    },
+    { "h2": "Reproducibility and Resolution: can we repeat it, and how did it end" },
+    {
+      "p": "The last two issue-classification menus round out the picture. __Reproducibility__ records how reliably the problem can be made to happen again — crucial information for anyone trying to fix it:"
+    },
+    {
+      "code": "public enum IssueReproducibility\n{\n    Always = 10,\n    Sometimes = 30,\n    Random = 50,\n    HaveNotTried = 70,\n    UnableToReproduce = 90,\n    NotApplicable = 100\n}"
+    },
+    {
+      "p": "This one is ordered more by \"how much of a problem the unpredictability is\" than by pure severity: an `Always`-reproducible bug is the easiest to fix, `Sometimes` and `Random` are progressively harder, `HaveNotTried` means nobody has checked yet (the default for a new issue), `UnableToReproduce` means someone tried and could not, and `NotApplicable` covers issues where the question does not fit (a feature request, say). The exact numeric order matters less here than for status or role — this menu is mostly used for display and filtering, not comparison logic."
+    },
+    {
+      "p": "__Resolution__ records how an issue ultimately ended — the reason it was closed. It is best read as a plain list of outcomes rather than a strict ladder:"
+    },
+    {
+      "code": "public enum IssueResolution\n{\n    Open = 10,\n    Fixed = 20,\n    Reopened = 30,\n    UnableToReproduce = 40,\n    NotFixable = 50,\n    Duplicate = 60,\n    NotABug = 70,\n    Suspended = 80,\n    WontFix = 90\n}"
+    },
+    {
+      "p": "Every issue starts `Open`. From there it can end `Fixed`, be `Reopened` if the fix did not hold, or be closed for one of the \"we are not fixing this\" reasons: `UnableToReproduce`, `NotFixable`, `Duplicate` (already tracked elsewhere), `NotABug` (working as intended), `Suspended` (parked for now), or `WontFix` (a deliberate decision to leave it). Unlike status, these are categories of outcome rather than rungs you climb, so nothing in the code does math on their order — the numbers here mainly exist for stable storage and a sensible default sort."
+    },
+    { "h2": "UserRole: the ladder the whole security system stands on" },
+    {
+      "p": "One enum matters more than all the others combined, because the entire access-control system (§8) is written in its terms. `UserRole` is the ranking of how much authority an account has, and it is the purest ordered ladder in the codebase — its own comment says so: \"Access levels, ascending in privilege.\""
+    },
+    {
+      "code": "/// <summary>Access levels, ascending in privilege (Mantis-style numeric values).</summary>\npublic enum UserRole\n{\n    Viewer = 10,\n    Reporter = 25,\n    Updater = 40,\n    Developer = 55,\n    Manager = 70,\n    Administrator = 90\n}"
+    },
+    {
+      "table": {
+        "headers": ["Role", "Number", "What this person may broadly do"],
+        "rows": [
+          ["Viewer", "10", "Look at issues they're allowed to see; no changes."],
+          ["Reporter", "25", "File new issues and add notes."],
+          ["Updater", "40", "Edit existing issues' fields."],
+          ["Developer", "55", "Be assigned work; see private issues; set an issue private."],
+          ["Manager", "70", "Manage the project — categories, versions, members, settings."],
+          ["Administrator", "90", "Everything, everywhere; bypasses per-project scoping."]
+        ]
+      }
+    },
+    {
+      "p": "The whole reason these numbers ascend is so that permission questions can be asked as \"is your rank at least this high?\" You saw the payoff in §8's `AccessContext`: rules like `CanAssignIssue() => AtLeast(UserRole.Developer)` are literally a number comparison — is your role's number ≥ Developer's 55? Because the ladder climbs, \"Manager can do anything a Developer can, and more\" falls out for free, with no rule ever having to list every role explicitly. Get this ladder's order right once and every access rule in the system reads like plain English."
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "Reordering this menu is not a cosmetic change",
+        "text": "Because access control asks 'is your role's number at least X', the safety of the whole app depends on these values ascending in privilege. Swapping two roles' numbers, or slotting a new role in with a number that puts it out of privilege order, silently rewrites who can do what. A new role must be given a number that places it at the correct rung of authority — its position on the ladder IS its power."
+      }
+    },
+    { "h2": "The smaller menus" },
+    {
+      "p": "A few more enums exist to keep other parts of the system unambiguous. They are shorter, and most start their numbering at 0 (rather than 10) because they are plain lists of kinds, not privilege or severity ladders — nothing does 'greater-than' math on them, so there is no ladder to preserve."
+    },
+    {
+      "p": "`IssueRelationshipType` names the ways one issue can relate to another, and it comes with a small helper that turns the stored direction into a human label:"
+    },
+    {
+      "code": "public enum IssueRelationshipType\n{\n    RelatedTo = 0,\n    DuplicateOf = 1,\n    ParentOf = 2,\n    Blocks = 3,\n}"
+    },
+    {
+      "p": "As §4 noted, each relationship is stored once as a direction (source → target), and the mirror label is computed for the other side. That computation lives right next to the enum in a `RelationshipLabels.Describe` method: given the type and whether you are looking from the source's side, it returns \"duplicate of\" versus \"has duplicate,\" \"parent of\" versus \"child of,\" \"blocks\" versus \"blocked by\" — while `RelatedTo` reads the same from both sides because it is symmetric. Keeping the labels beside the enum means the vocabulary and its human wording never drift apart."
+    },
+    {
+      "p": "`CustomFieldType` is the menu of data types a Manager can give a custom field, and its comment states the design cleanly: \"Values are always stored as text; the type governs how a value is validated on input and how it is rendered/edited in the UI.\""
+    },
+    {
+      "code": "public enum CustomFieldType\n{\n    Text = 0,\n    Number = 1,\n    Date = 2,\n    Enum = 3,\n}"
+    },
+    {
+      "p": "So a custom field can be free text, a number, a calendar date, or a one-from-a-list choice — and which one it is decides how OpenTrack checks and displays the value (the pure rule that does that checking is in §6). `ChecklistItemStatus` is the tiny menu for a bug-hunt checklist item — `Pending`, `Pass`, `Fail`, `NotApplicable` — mirroring the pass/fail/N-A choices you work through when verifying a list. And `WebhookFormat` records how an outgoing webhook's message should be shaped for its destination:"
+    },
+    {
+      "code": "/// <summary>How a project webhook's payload is shaped for its destination.</summary>\npublic enum WebhookFormat\n{\n    Generic = 0,   // Full structured JSON\n    Slack = 1,     // a { \"text\": \"…\" } message\n    Discord = 2,   // a { \"content\": \"…\" } message\n}"
+    },
+    {
+      "p": "`Generic` sends full structured data; `Slack` and `Discord` shape the message into the exact little format each of those services expects. It is a plain list of destinations, so its numbers are just labels — the order carries no meaning, and the values simply need to stay stable so saved webhook settings keep pointing at the right format."
+    },
+    { "h2": "Why the gaps between the numbers?" },
+    {
+      "p": "You will have noticed that the ladders count 10, 20, 30 — or 10, 25, 40, 55 — never 1, 2, 3. Those gaps are a deliberate piece of forward-thinking inherited from MantisBT. Because the numbers are what the database stores, and because they are ordered, you sometimes want to insert a brand-new choice __between__ two existing ones — a new status that sits after Confirmed but before Assigned, say. If the values were 3 and 4 with no gap, there would be no whole number to give the newcomer without renumbering everything after it (and rewriting every stored issue). With Confirmed at 40 and Assigned at 50, you can drop a new rung in at 45 and it lands in exactly the right place on the ladder, no existing data disturbed."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "The gaps are room to grow",
+        "text": "Leaving space between the numbers means a future maintainer can add a new choice at the correct point in an ordered menu just by picking a number between its neighbors. The menu stays sorted, every already-saved issue keeps its meaning, and no migration is needed. It's a small habit that pays off years later."
+      }
+    },
+    { "h1": "Why It Matters / Design Takeaways" },
+    {
+      "p": "The enums look like the most trivial files in the project — a handful of names and numbers each — but they carry two heavy responsibilities. They are the __shared vocabulary__: because status, severity, priority, and role are fixed menus rather than free text, every screen, filter, report, and rule speaks the same language and can never be tripped up by a typo or a synonym. And several of them are __ordered ladders whose numeric order is logic__: the status ladder is what lets one line decide 'open vs. done,' and the role ladder is what lets the whole access system be written as 'at least this rank.'"
+    },
+    {
+      "p": "The rules that must not erode: keep the numbers explicit and stable so stored data never shifts meaning underneath you; keep the privilege and severity ladders in ascending order so the greater-than comparisons that depend on them stay correct; and keep the gaps so the menus have room to grow in place. When you add a value, you are not just adding a name — you are choosing where it sits on a ladder that other code is quietly measuring against."
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "The maintainer's rule",
+        "text": "Never renumber an existing enum value, and never reorder a ladder to make it 'read nicer' — the numbers are stored in the database and compared by the code. To add a choice, give it a new number that places it at the correct rung (use the gaps), and if it belongs to an ordered ladder (status, severity, priority, role), double-check that its number puts it in the right spot relative to its neighbors. The name is for humans; the number is the contract."
+      }
+    }
+  ]
+}
