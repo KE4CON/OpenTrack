@@ -218,7 +218,7 @@ CHAPTERS = [
                          "text": "If the **only** thing you want to change is turning on the local AI, you don't "
                                  "even need the settings file \u2014 just add `-InstallAi` on Windows (or `--install-ai` "
                                  "on a Mac) to the end of the normal command from the previous section."}},
-            {"h2": "What the script set up"},
+            {"h2": "What the script sets up"},
             {"bullets": [
                 "The **two server programs** built and running \u2014 the **web app** on port **5035** (browsers) and "
                 "the **API** on port **5003** (desktop apps).",
