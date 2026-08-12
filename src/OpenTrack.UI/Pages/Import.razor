@@ -1,0 +1,89 @@
+@page "/import"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+
+<PageTitle>Import issues</PageTitle>
+
+<h1 class="h3">Import issues</h1>
+<p class="text-muted">
+    Bring issues in from another tool. Pick the target project, choose the file type, and upload the export.
+    Issues are added to the project you choose; running the same file again <strong>skips</strong> rows
+    already imported, so it's safe to re-run. You need the <strong>Manager</strong> role on the target
+    project. (Migrating from MantisBT? Use the dedicated importer on the
+    <a href="backup">Backup &amp; export</a> page.)
+</p>
+
+@if (banner is not null)
+{
+    <div class="alert @bannerClass">@banner</div>
+}
+
+@if (projects.Count == 0)
+{
+    <div class="alert alert-warning">You don't manage any projects yet. Create one first, then import into it.</div>
+}
+else
+{
+    <form method="post" action="/import/issues" enctype="multipart/form-data" class="col-lg-7">
+        <AntiforgeryToken />
+        <div class="mb-3">
+            <label class="form-label">Target project</label>
+            <select class="form-select" name="projectId">
+                @foreach (var p in projects)
+                {
+                    <option value="@p.Id" selected="@(p.Id == Pid)">@p.Name</option>
+                }
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">File type</label>
+            <select class="form-select" name="source">
+                <option value="csv">CSV — a spreadsheet with a header row</option>
+                <option value="jira">Jira — CSV export from Jira</option>
+                <option value="github">GitHub — Issues JSON (from the GitHub API)</option>
+            </select>
+            <div class="form-text">
+                CSV/Jira: the first row must be column headers. We recognize common names
+                (Title/Summary, Description, Status, Severity, Priority, Category/Component, Labels/Tags,
+                Assignee, Reporter, Key/ID). GitHub: the JSON array returned by
+                <code>/repos/OWNER/REPO/issues?state=all</code> (pull requests are skipped).
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">File</label>
+            <input class="form-control" type="file" name="file" accept=".csv,.json,.txt,text/csv,application/json" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Import</button>
+    </form>
+}
+
+@code {
+    private IReadOnlyList<ProjectRow> projects = [];
+
+    [SupplyParameterFromQuery] public string? Imp { get; set; }
+    [SupplyParameterFromQuery] public int? Pid { get; set; }
+    [SupplyParameterFromQuery] public int? Ic { get; set; }
+    [SupplyParameterFromQuery] public int? Sk { get; set; }
+    [SupplyParameterFromQuery] public int? Tc { get; set; }
+
+    private string? banner;
+    private string bannerClass = "alert-info";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        projects = await Data.GetProjectsAsync();
+        (banner, bannerClass) = Imp switch
+        {
+            "ok" => ($"Imported {Ic ?? 0} issue(s), skipped {Sk ?? 0} already-imported, linked {Tc ?? 0} tag(s).", "alert-success"),
+            "empty" => ("Please choose a file to upload.", "alert-warning"),
+            "toobig" => ("That file is larger than the 25 MB limit.", "alert-warning"),
+            "noproject" => ("Please choose a target project.", "alert-warning"),
+            "badfile" => ("That file couldn't be read as the selected type. Double-check the format.", "alert-danger"),
+            "forbidden" => ("You need the Manager role on that project to import into it.", "alert-danger"),
+            _ => ((string?)null, "alert-info"),
+        };
+    }
+}
