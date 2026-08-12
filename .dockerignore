@@ -1,0 +1,13 @@
+# Keep the build context small and reproducible — let the image build from source, not local artifacts.
+**/bin
+**/obj
+**/.vs
+.git
+.gitignore
+*.user
+**/appsettings.Development.json
+**/*.db
+**/*.db-shm
+**/*.db-wal
+docs
+scripts
