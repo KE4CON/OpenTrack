@@ -74,6 +74,13 @@ public record TagView(int Id, string Name);
 /// <summary>A user's saved issue filter — a name plus the issue-list query string to apply.</summary>
 public record SavedFilterView(int Id, string Name, string Query);
 
+/// <summary>Per-project Git integration settings (Manager view; includes the webhook secret).</summary>
+public record GitIntegrationView(bool Enabled, string? WebhookSecret, bool AutoResolve);
+
+/// <summary>A commit that referenced an issue, for the issue's "Linked commits" list.</summary>
+public record IssueCommitView(
+    string Sha, string ShortSha, string Message, string? Author, string? Url, bool Closing, DateTime CommittedAtUtc);
+
 /// <summary>A project's SLA target for one priority: resolve within this many hours of creation.</summary>
 public record SlaTargetView(IssuePriority Priority, int TargetHours);
 

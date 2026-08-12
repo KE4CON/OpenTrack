@@ -388,6 +388,29 @@ else
         </Authorized>
     </AuthorizeView>
 
+    @if (commits.Count > 0)
+    {
+        <h2 class="h5 mt-4">Linked commits</h2>
+        <ul class="list-unstyled">
+            @foreach (var c in commits)
+            {
+                <li class="mb-1">
+                    @if (!string.IsNullOrEmpty(c.Url))
+                    {
+                        <a href="@c.Url" target="_blank" rel="noopener noreferrer"><code>@c.ShortSha</code></a>
+                    }
+                    else
+                    {
+                        <code>@c.ShortSha</code>
+                    }
+                    @if (c.Closing) { <span class="badge text-bg-success ms-1">resolved</span> }
+                    <span class="ms-1">@c.Message</span>
+                    <span class="text-muted small">— @(c.Author ?? "unknown"), @c.CommittedAtUtc.ToString("g") UTC</span>
+                </li>
+            }
+        </ul>
+    }
+
     <h2 class="h5 mt-4">Time log</h2>
     @if (timeLogs.Count == 0)
     {
@@ -661,7 +684,10 @@ else
         timeLogs = issue is null ? [] : await Data.GetTimeLogsAsync(Id);
         isMonitoring = issue is not null && await Data.IsMonitoringIssueAsync(Id);
         sla = issue is null ? null : await Data.GetIssueSlaAsync(Id);
+        commits = issue is null ? [] : await Data.GetIssueCommitsAsync(Id);
     }
+
+    private IReadOnlyList<IssueCommitView> commits = [];
 
     private SlaIssueView? sla;
 

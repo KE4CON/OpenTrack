@@ -280,6 +280,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasIndex(s => new { s.ProjectId, s.Priority }).IsUnique();
         });
 
+        // ---- GitIntegration (one row per project) ----
+        b.Entity<GitIntegration>(e =>
+        {
+            e.HasOne(g => g.Project).WithMany().HasForeignKey(g => g.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(g => g.ProjectId).IsUnique();
+            e.Property(g => g.WebhookSecret).HasMaxLength(200);
+        });
+
+        // ---- IssueCommitLink ----
+        b.Entity<IssueCommitLink>(e =>
+        {
+            e.HasOne(l => l.Issue).WithMany().HasForeignKey(l => l.IssueId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(l => new { l.IssueId, l.Sha }).IsUnique();
+            e.Property(l => l.Sha).HasMaxLength(64);
+            e.Property(l => l.Message).HasMaxLength(500);
+            e.Property(l => l.Author).HasMaxLength(200);
+            e.Property(l => l.Url).HasMaxLength(500);
+        });
+
         // ---- TimeLog ----
         b.Entity<TimeLog>(e =>
         {
@@ -348,4 +367,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
     public DbSet<AutomationRule> AutomationRules => Set<AutomationRule>();
     public DbSet<SlaPolicy> SlaPolicies => Set<SlaPolicy>();
+    public DbSet<GitIntegration> GitIntegrations => Set<GitIntegration>();
+    public DbSet<IssueCommitLink> IssueCommitLinks => Set<IssueCommitLink>();
 }

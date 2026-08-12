@@ -1,0 +1,117 @@
+@page "/projects/{Id:int}/git"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+@inject NavigationManager Nav
+
+<PageTitle>Git integration — @(projectName ?? "Project")</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Git integration@(projectName is null ? "" : $" — {projectName}")</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="projects/@Id/settings">Back to settings</a>
+</div>
+
+@if (!canManage)
+{
+    <div class="alert alert-warning">You need the Manager role on this project to configure Git integration.</div>
+}
+else
+{
+    <p class="text-muted">
+        Connect a GitHub repository so that pushing a commit whose message mentions an issue
+        (e.g. <code>fixes #123</code>) automatically links that commit to the issue — and, if you turn on
+        auto-resolve, moves the issue to <em>Resolved</em>. OpenTrack only <strong>receives</strong> from
+        GitHub; it never needs access to your repo.
+    </p>
+
+    @if (message is not null)
+    {
+        <div class="alert @(messageIsError ? "alert-danger" : "alert-success") py-2">@message</div>
+    }
+
+    <EditForm Model="model" OnValidSubmit="Save" FormName="gitConfig" class="col-lg-8">
+        <div class="form-check form-switch mb-3">
+            <InputCheckbox @bind-Value="model!.Enabled" class="form-check-input" id="gitEnabled" />
+            <label class="form-check-label" for="gitEnabled">Enable Git integration for this project</label>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Webhook secret</label>
+            <InputText @bind-Value="model.WebhookSecret" class="form-control" placeholder="a long random string" />
+            <div class="form-text">Required when enabled. Paste this same value into GitHub's webhook
+                <em>Secret</em> field — OpenTrack rejects any push whose signature doesn't match, so a strong,
+                random secret is what keeps the endpoint safe. Treat it like a password.</div>
+        </div>
+
+        <div class="form-check mb-3">
+            <InputCheckbox @bind-Value="model.AutoResolve" class="form-check-input" id="gitAutoResolve" />
+            <label class="form-check-label" for="gitAutoResolve">
+                Auto-resolve an issue when a pushed commit says <code>fixes #id</code> (or close/resolve)
+            </label>
+            <div class="form-text">Only applies to open issues, and only if your project's workflow allows a
+                move to Resolved. A plain mention (just <code>#id</code>) links the commit without resolving.</div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+    </EditForm>
+
+    <hr class="my-4" />
+    <h2 class="h5">Set up the webhook in GitHub</h2>
+    <ol class="text-muted">
+        <li>In your repo: <strong>Settings → Webhooks → Add webhook</strong>.</li>
+        <li><strong>Payload URL:</strong> <code class="user-select-all">@WebhookUrl</code></li>
+        <li><strong>Content type:</strong> <code>application/json</code></li>
+        <li><strong>Secret:</strong> the same webhook secret you set above.</li>
+        <li><strong>Events:</strong> "Just the <code>push</code> event".</li>
+        <li>Your OpenTrack server must be reachable from GitHub (a public URL or a tunnel), and — since the
+            secret protects it — ideally served over HTTPS.</li>
+    </ol>
+    <p class="text-muted small">GitHub sends a <code>ping</code> when you add the webhook; a green check there
+        means the URL and secret are correct.</p>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private string? projectName;
+    private bool canManage;
+    private string? message;
+    private bool messageIsError;
+
+    [SupplyParameterFromForm(FormName = "gitConfig")] private GitModel? model { get; set; }
+
+    private string WebhookUrl => $"{Nav.BaseUri}git/webhook/{Id}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        projectName = (await Data.GetProjectAsync(Id))?.Name;
+        canManage = (await Data.GetProjectMemberDetailsAsync(Id)).Count > 0;
+
+        if (model is null) // GET: seed from stored config (or defaults for an unconfigured project)
+        {
+            var config = canManage ? await Data.GetGitIntegrationAsync(Id) : null;
+            model = config is null
+                ? new GitModel { Enabled = false, WebhookSecret = "", AutoResolve = true }
+                : new GitModel { Enabled = config.Enabled, WebhookSecret = config.WebhookSecret ?? "", AutoResolve = config.AutoResolve };
+        }
+    }
+
+    private async Task Save()
+    {
+        message = null;
+        try
+        {
+            var error = await Data.SaveGitIntegrationAsync(Id, model!.Enabled,
+                string.IsNullOrWhiteSpace(model.WebhookSecret) ? null : model.WebhookSecret, model.AutoResolve);
+            if (error is null) { message = "Saved."; messageIsError = false; }
+            else { message = error; messageIsError = true; }
+        }
+        catch (UnauthorizedAccessException ex) { message = ex.Message; messageIsError = true; }
+    }
+
+    private sealed class GitModel
+    {
+        public bool Enabled { get; set; }
+        public string? WebhookSecret { get; set; }
+        public bool AutoResolve { get; set; } = true;
+    }
+}

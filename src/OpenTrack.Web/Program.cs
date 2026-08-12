@@ -147,5 +147,7 @@ OpenTrack.Web.Endpoints.ActivityWebEndpoints.MapActivityWebEndpoints(app);
 OpenTrack.Web.Endpoints.ChecklistWebEndpoints.MapChecklistWebEndpoints(app);
 // Public (unauthenticated, rate-limited) trouble-ticket intake endpoints.
 OpenTrack.Web.Endpoints.PublicIntakeWebEndpoints.MapPublicIntakeWebEndpoints(app);
+// Inbound Git webhook (unauthenticated but HMAC-verified, rate-limited).
+OpenTrack.Web.Endpoints.GitWebhookEndpoints.MapGitWebhookEndpoints(app);
 
 app.Run();
