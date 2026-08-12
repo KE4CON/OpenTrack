@@ -1,0 +1,121 @@
+@page "/projects/{Id:int}/sla"
+@attribute [Authorize]
+@inject IOpenTrackDataService Data
+@inject NavigationManager Nav
+
+<PageTitle>SLA targets — @(projectName ?? "Project")</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">SLA targets@(projectName is null ? "" : $" — {projectName}")</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="projects/@Id/settings">Back to settings</a>
+</div>
+
+@if (!canManage)
+{
+    <div class="alert alert-warning">You need the Manager role on this project to set SLA targets.</div>
+}
+else
+{
+    <p class="text-muted">
+        Set how long a <strong>new issue</strong> of each priority may stay open before it "breaches" its
+        service-level target. The clock starts when the issue is created and stops when it reaches
+        <em>Resolved</em>. An issue is flagged <span class="badge text-bg-warning">At&nbsp;risk</span> once
+        @( (int)(OpenTrack.Core.Sla.SlaDefaults.AtRiskFraction * 100) )% of the target has elapsed, and
+        <span class="badge text-bg-danger">Breached</span> once the target passes. Leave a target
+        <strong>blank</strong> (or 0) to not track that priority. Breaches are escalated to the assignee and
+        the project's managers automatically.
+    </p>
+
+    @if (message is not null)
+    {
+        <div class="alert @(messageIsError ? "alert-danger" : "alert-success") py-2">@message</div>
+    }
+
+    <EditForm Model="model" OnValidSubmit="Save" FormName="slaTargets" class="col-md-6">
+        <table class="table align-middle">
+            <thead><tr><th>Priority</th><th style="width:12rem">Resolve within (hours)</th></tr></thead>
+            <tbody>
+                @for (var i = 0; i < ordered.Length; i++)
+                {
+                    var idx = i;
+                    <tr>
+                        <td>@ordered[idx]</td>
+                        <td>
+                            <InputNumber @bind-Value="model.Hours[idx]" class="form-control" placeholder="(untracked)" min="0" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <button type="submit" class="btn btn-primary">Save targets</button>
+    </EditForm>
+
+    <p class="form-text mt-2">Tip: shorter targets for higher priorities — e.g. Immediate 4h, Urgent 24h,
+        High 72h. Common references: 1 day = 24h, 3 days = 72h, 1 week = 168h.</p>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private static readonly IssuePriority[] ordered =
+        Enum.GetValues<IssuePriority>().OrderByDescending(p => (int)p).ToArray();
+
+    private string? projectName;
+    private bool canManage;
+    private string? message;
+    private bool messageIsError;
+
+    [SupplyParameterFromForm(FormName = "slaTargets")] private TargetsModel? model { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        projectName = (await Data.GetProjectAsync(Id))?.Name;
+        canManage = (await Data.GetProjectMemberDetailsAsync(Id)).Count > 0;
+
+        // On a GET (form not posted), seed the inputs from the stored targets.
+        if (model is null)
+        {
+            model = new TargetsModel { Hours = new List<int?>(new int?[ordered.Length]) };
+            if (canManage)
+            {
+                var current = await Data.GetSlaPoliciesAsync(Id);
+                for (var i = 0; i < ordered.Length; i++)
+                {
+                    var match = current.FirstOrDefault(t => t.Priority == ordered[i]);
+                    model.Hours[i] = match is null ? (int?)null : match.TargetHours;
+                }
+            }
+        }
+    }
+
+    private async Task Save()
+    {
+        message = null;
+        var errors = new List<string>();
+        try
+        {
+            for (var i = 0; i < ordered.Length; i++)
+            {
+                var error = await Data.SaveSlaTargetAsync(Id, ordered[i], model!.Hours[i]);
+                if (error is not null) errors.Add($"{ordered[i]}: {error}");
+            }
+        }
+        catch (UnauthorizedAccessException ex) { message = ex.Message; messageIsError = true; return; }
+
+        messageIsError = errors.Count > 0;
+        message = errors.Count == 0 ? "SLA targets saved." : string.Join(" ", errors);
+
+        // Reseed the inputs from what was actually stored (cleared rows drop back to blank).
+        var current = await Data.GetSlaPoliciesAsync(Id);
+        for (var i = 0; i < ordered.Length; i++)
+        {
+            var match = current.FirstOrDefault(t => t.Priority == ordered[i]);
+            model!.Hours[i] = match is null ? (int?)null : match.TargetHours;
+        }
+    }
+
+    private sealed class TargetsModel
+    {
+        public List<int?> Hours { get; set; } = new();
+    }
+}

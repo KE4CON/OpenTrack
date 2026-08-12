@@ -38,6 +38,18 @@ else
         <div class="col-md-3"><strong>Priority:</strong> @issue.Priority</div>
         <div class="col-md-3"><strong>Reproducibility:</strong> @issue.Reproducibility</div>
     </div>
+
+    @if (sla is { Status: not OpenTrack.Core.Sla.SlaStatus.NotTracked })
+    {
+        <div class="mb-3">
+            <strong>SLA:</strong>
+            <span class="badge @SlaBadgeClass(sla.Status)">@SlaLabel(sla.Status)</span>
+            @if (sla.DueUtc is { } due)
+            {
+                <span class="text-muted small ms-1">due @due.ToString("g") UTC</span>
+            }
+        </div>
+    }
     <div class="row mb-3">
         <div class="col-md-3"><strong>Reporter:</strong> @issue.ReporterName</div>
         <div class="col-md-3"><strong>Assignee:</strong> @(issue.AssigneeName ?? "Unassigned")</div>
@@ -648,7 +660,26 @@ else
         similarIssues = issue is null ? [] : await Data.FindSimilarIssuesAsync(issue.ProjectId, issue.Title, excludeIssueId: issue.Id);
         timeLogs = issue is null ? [] : await Data.GetTimeLogsAsync(Id);
         isMonitoring = issue is not null && await Data.IsMonitoringIssueAsync(Id);
+        sla = issue is null ? null : await Data.GetIssueSlaAsync(Id);
     }
+
+    private SlaIssueView? sla;
+
+    private static string SlaLabel(OpenTrack.Core.Sla.SlaStatus s) => s switch
+    {
+        OpenTrack.Core.Sla.SlaStatus.OnTrack => "On track",
+        OpenTrack.Core.Sla.SlaStatus.AtRisk => "At risk",
+        OpenTrack.Core.Sla.SlaStatus.Breached => "Breached",
+        _ => "—",
+    };
+
+    private static string SlaBadgeClass(OpenTrack.Core.Sla.SlaStatus s) => s switch
+    {
+        OpenTrack.Core.Sla.SlaStatus.OnTrack => "text-bg-success",
+        OpenTrack.Core.Sla.SlaStatus.AtRisk => "text-bg-warning",
+        OpenTrack.Core.Sla.SlaStatus.Breached => "text-bg-danger",
+        _ => "text-bg-secondary",
+    };
 
     private async Task AddRelationship()
     {

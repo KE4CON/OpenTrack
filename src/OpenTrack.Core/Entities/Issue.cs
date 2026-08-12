@@ -55,6 +55,10 @@ public class Issue
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DueDate { get; set; }
 
+    /// <summary>When the SLA-breach escalation was sent for this issue, so the background scanner notifies
+    /// once rather than every tick. Null = not yet escalated.</summary>
+    public DateTime? SlaBreachNotifiedAt { get; set; }
+
     /// <summary>The MantisBT issue id this was imported from, if any. Lets a re-import of the same
     /// export skip issues already brought in, instead of duplicating them.</summary>
     public int? ImportedMantisId { get; set; }

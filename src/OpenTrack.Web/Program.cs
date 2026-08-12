@@ -73,6 +73,8 @@ builder.Services.AddScoped<OpenTrack.UI.Services.IAttachmentTransfer, OpenTrack.
 
 builder.Services.AddOpenTrackEmailAndNotifications();
 builder.Services.AddOpenTrackAi(builder.Configuration);
+// Background SLA-breach escalation (the always-on web host owns this periodic job).
+builder.Services.AddHostedService<OpenTrack.Web.Services.SlaScanner>();
 
 // Rate-limit the public trouble-ticket endpoints, per client IP, to blunt spam/abuse.
 builder.Services.AddRateLimiter(options =>

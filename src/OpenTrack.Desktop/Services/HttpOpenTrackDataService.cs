@@ -101,6 +101,28 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task<IReadOnlyList<SlaTargetView>> GetSlaPoliciesAsync(int projectId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<SlaTargetView>>($"/api/projects/{projectId}/sla-policies", JsonOptions, ct) ?? [];
+
+    public async Task<string?> SaveSlaTargetAsync(int projectId, OpenTrack.Core.Enums.IssuePriority priority, int? hours, CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/sla-policies/{priority}", new { hours }, JsonOptions, ct);
+        ThrowIfForbidden(resp, "Managing SLA targets requires the Manager role on this project.");
+        resp.EnsureSuccessStatusCode();
+        var d = await resp.Content.ReadFromJsonAsync<SaveErrorDto>(JsonOptions, ct);
+        return d?.Error;
+    }
+
+    public async Task<SlaBoardView> GetSlaBoardAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<SlaBoardView>("/api/sla-board", JsonOptions, ct) ?? new SlaBoardView([], []);
+
+    public async Task<SlaIssueView?> GetIssueSlaAsync(int issueId, CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync($"/api/issues/{issueId}/sla", ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        return await resp.Content.ReadFromJsonAsync<SlaIssueView>(JsonOptions, ct);
+    }
+
     public async Task SetPublicIntakeEnabledAsync(int projectId, bool enabled, CancellationToken ct = default)
     {
         var resp = await http.PutAsJsonAsync($"/api/projects/{projectId}/public-intake", new { enabled }, JsonOptions, ct);

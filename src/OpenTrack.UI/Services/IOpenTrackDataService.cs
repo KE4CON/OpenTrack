@@ -70,6 +70,14 @@ public interface IOpenTrackDataService
     Task<string?> SaveAutomationRuleAsync(int projectId, AutomationRuleView rule, CancellationToken ct = default);
     Task DeleteAutomationRuleAsync(int ruleId, CancellationToken ct = default);
 
+    // Per-project SLA targets (Manager only): resolve-within-hours per priority. Saving hours null/≤0
+    // clears that priority. The board lists at-risk/breached OPEN issues the caller can see; the single
+    // issue lookup drives the detail-page badge.
+    Task<IReadOnlyList<SlaTargetView>> GetSlaPoliciesAsync(int projectId, CancellationToken ct = default);
+    Task<string?> SaveSlaTargetAsync(int projectId, IssuePriority priority, int? hours, CancellationToken ct = default);
+    Task<SlaBoardView> GetSlaBoardAsync(CancellationToken ct = default);
+    Task<SlaIssueView?> GetIssueSlaAsync(int issueId, CancellationToken ct = default);
+
     // Project webhooks (Manager only — a URL can carry a secret token). Returns null/reason on add.
     Task<IReadOnlyList<WebhookView>> GetWebhooksAsync(int projectId, CancellationToken ct = default);
     Task<string?> AddWebhookAsync(int projectId, string url, WebhookFormat format, CancellationToken ct = default);
