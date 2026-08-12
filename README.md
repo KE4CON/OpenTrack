@@ -115,7 +115,7 @@ In short: you're free to use, modify, and self-host OpenTrack. If you distribute
 
 v1 is complete and security-audited. Candidate features for the next round (2FA,
 audit log, pagination, SSO, email-to-ticket, and more) are tracked in
-[docs/V2_ROADMAP.md](docs/V2_ROADMAP.md).
+[docs/planning/V2_ROADMAP.md](docs/planning/V2_ROADMAP.md).
 
 ## Acknowledgments
 

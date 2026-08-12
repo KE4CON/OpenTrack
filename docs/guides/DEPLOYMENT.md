@@ -104,4 +104,4 @@ OpenTrack__Backup__Retention=14            # keep the newest N snapshots
 
 Snapshots are named `opentrack-YYYYMMDD-HHMMSS.db`. To **restore**, stop the
 server, copy a chosen snapshot over the live `opentrack.db`, and start again. (The
-Docker Compose file enables this by default — see `docs/DOCKER.md`.)
+Docker Compose file enables this by default — see `docs/guides/DOCKER.md`.)

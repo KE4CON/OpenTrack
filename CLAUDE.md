@@ -24,7 +24,7 @@ self-hosted web app, with an optional native desktop build later.
   OpenTrack is a hosted web app and AGPL's network clause (section 13) also requires anyone
   running a **modified** version as a service to share their source. Trade-off accepted:
   some organizations ban AGPL internally.
-- **Full research report / roadmap:** `docs/OpenTrack_BugTracker_Report.pdf`
+- **Full research report / roadmap:** `docs/reference/OpenTrack_BugTracker_Report.pdf`
 
 ---
 

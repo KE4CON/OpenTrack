@@ -64,7 +64,7 @@ OpenTrack__Ai__Enabled=true
 OpenTrack__Ai__ApiKey=sk-ant-...
 ```
 
-Add these under `environment:` in `docker-compose.yml` (see `docs/AI_ASSIST.md`).
+Add these under `environment:` in `docker-compose.yml` (see `docs/guides/AI_ASSIST.md`).
 
 ## Plain Docker (no Compose)
 
