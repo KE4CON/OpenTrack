@@ -1,0 +1,206 @@
+{
+  "order": 4,
+  "title": "People & Roles",
+  "subtitle": "Add people to a project and give each exactly the access they need.",
+  "in_this_chapter": [
+    "How access works — per-project roles vs. the global Administrator",
+    "Every role, from Viewer up to Administrator, and what each can do",
+    "The Members page and what it shows",
+    "Adding a member, changing a role, and removing someone",
+    "The project owner and why they can't be removed",
+    "How privacy is enforced everywhere, not just in lists",
+    "Troubleshooting membership problems"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Open a project, select **Members**, type someone's email, pick a **role**, and select **Add**. The role decides what they can do — from **Viewer** (read only) and **Reporter** (file issues) up to **Manager** (configure the project). **Administrator** runs the whole instance and is set elsewhere."
+      }
+    },
+    {
+      "h1": "How access works"
+    },
+    {
+      "p": "OpenTrack grants access by **role**, and — except for the Administrator — roles are assigned **per project**. So the same person can be a Developer on one project, a Manager on another, and have no access at all to a third. This keeps sensitive projects genuinely private while letting you open others up widely."
+    },
+    {
+      "p": "There's one exception: the **Administrator** is a single, instance-wide (global) role, not something you hand out project by project. An Administrator can reach every project and every account, and is managed from the instance-wide **Users** screen (visible only to Administrators), not from a project's Members page."
+    },
+    {
+      "h1": "The roles, from least to most powerful"
+    },
+    {
+      "p": "Roles stack: each one can do everything the roles below it can, plus a bit more. From least to most powerful:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Role",
+          "What it adds (each includes everything above it)"
+        ],
+        "rows": [
+          [
+            "**Viewer**",
+            "Read the issues in the project — look but don't touch. No filing, no editing."
+          ],
+          [
+            "**Reporter**",
+            "Also file new issues, and comment on the issues they're allowed to see."
+          ],
+          [
+            "**Updater**",
+            "Also edit issues — change fields, add tags, tidy details."
+          ],
+          [
+            "**Developer**",
+            "Also be **assigned** issues and move them through the workflow (the person who actually does the work)."
+          ],
+          [
+            "**Manager**",
+            "Also configure the project: members, categories, versions, custom fields, automation, SLA targets, workflow, integrations, Git, and public intake."
+          ],
+          [
+            "**Administrator**",
+            "A **global** role, not per-project: runs the whole instance — every project, every user account, and the server-level settings."
+          ]
+        ],
+        "widths": [
+          1.5,
+          5.0
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "WHICH ROLES YOU CAN ASSIGN ON A PROJECT",
+        "text": "On a project's **Members** page you can assign any role from **Viewer** through **Manager**. You cannot assign **Administrator** there — that's a global role handled on the instance-wide **Users** screen by an existing Administrator. So the roles offered in the Members dropdowns are Viewer, Reporter, Updater, Developer, and Manager."
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "PICK THE LOWEST ROLE THAT FITS",
+        "text": "A good habit: give each person the least powerful role that still lets them do their job. Someone who only needs to watch is a Viewer; someone who files bugs is a Reporter; someone who fixes them is a Developer; reserve Manager for the one or two people who actually configure the project. You can always raise a role later."
+      }
+    },
+    {
+      "h1": "The Members page"
+    },
+    {
+      "p": "Open a project and select **Members**. The page is headed __Members — (project name)__, with a **Back to project** button at the top-right. If you don't have the Manager role on this project, you'll see a yellow notice reading __You need the Manager role on this project to manage its members.__ and nothing else."
+    },
+    {
+      "p": "Managers see a table of the current members with these columns:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Column",
+          "What it shows"
+        ],
+        "rows": [
+          [
+            "**Member**",
+            "The person's name (their email/username). The project's creator is marked __(owner)__."
+          ],
+          [
+            "**Role**",
+            "Their current role on this project (Viewer, Reporter, Updater, Developer, or Manager)."
+          ]
+        ],
+        "widths": [
+          1.6,
+          4.9
+        ]
+      }
+    },
+    {
+      "p": "Below the table are three small forms, side by side: **Add a member**, **Change a role**, and **Remove a member**."
+    },
+    {
+      "screenshot": "The project Members page: the members table on top, and the Add / Change role / Remove forms beneath it"
+    },
+    {
+      "h1": "Add someone to a project"
+    },
+    {
+      "p": "Use the **Add a member** form (left) to bring someone in:"
+    },
+    {
+      "steps": [
+        "In the __user's email__ box, type the email address of the person's OpenTrack account.",
+        "In the role dropdown, choose their role (Viewer, Reporter, Updater, Developer, or Manager).",
+        "Select **Add**. They appear in the members table, and a green __Saved.__ message confirms it."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "THEY NEED AN ACCOUNT FIRST",
+        "text": "The form reminds you: __The user must already have an OpenTrack account.__ You add people by the email of an existing account — you can't invite a stranger from here. If they don't have an account yet, they register first (or an Administrator creates one), and then you add them."
+      }
+    },
+    {
+      "h1": "Change someone's role"
+    },
+    {
+      "p": "Use the **Change a role** form (middle) to raise or lower access:"
+    },
+    {
+      "steps": [
+        "In the __Select member…__ dropdown, choose the person.",
+        "In the role dropdown, pick their new role.",
+        "Select **Update role**. The change takes effect immediately and the table updates."
+      ]
+    },
+    {
+      "h1": "Remove someone"
+    },
+    {
+      "p": "Use the **Remove a member** form (right) to take someone off the project entirely:"
+    },
+    {
+      "steps": [
+        "In the __Select member…__ dropdown, choose the person. (The owner isn't listed here — see below.)",
+        "Select **Remove**. They lose all access to this project right away."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "THE OWNER CAN'T BE REMOVED",
+        "text": "The person who created the project is its **owner**, marked __(owner)__ in the members table. The owner is always a member and never appears in the **Remove a member** dropdown, so a project can't be left with nobody in charge. To hand a project off, add the new person as a Manager; changing ownership itself is an Administrator-level task."
+      }
+    },
+    {
+      "h1": "Privacy is built in"
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "PRIVACY IS ENFORCED EVERYWHERE, NOT JUST IN LISTS",
+        "text": "OpenTrack never reveals an issue — or even that it exists — to anyone whose role doesn't allow it. That rule holds in the issue list, in search results, in reports, in the dashboard totals, and even if someone is handed a direct link. There's no “hidden but linkable” back door."
+      }
+    },
+    {
+      "p": "The same principle protects the Members page itself: the list of who's on a private project is only returned to that project's Managers. So membership isn't just about what people can edit — it's about what they can even see exists."
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__The Members page shows a yellow “you need the Manager role” warning.__ Only a Manager (or Administrator) on that specific project can manage its members. Ask the project's owner or a Manager to add you or bump your role.",
+        "__Adding a member fails or shows a red message.__ The most common cause is that the email doesn't match an existing OpenTrack account. Confirm the person has registered, and that you typed their exact account email.",
+        "__I can't find someone in the Remove dropdown.__ The project **owner** is deliberately excluded so a project can't be orphaned. If you're trying to remove the owner, you instead need to reassign ownership — an Administrator task.",
+        "__I want to make someone an Administrator.__ You can't do that from a project's Members page. Administrator is a global role set on the instance-wide **Users** screen by an existing Administrator.",
+        "__Change a role or Remove didn't seem to do anything.__ Make sure you actually picked a person in the __Select member…__ dropdown first; leaving it on the placeholder does nothing. Watch for the green __Saved.__ (or a red error) message after you submit.",
+        "__A member says they still can't see the project.__ Double-check they were added to the right project and with at least the **Viewer** role, and that they're signing in with the same account email you added.",
+        "__I lowered someone's role but they still have access.__ Role changes apply immediately, but the person may need to reload the page to see their newly limited (or expanded) options."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "order": 26,
+  "title": "Troubleshooting & Frequently Asked Questions",
+  "subtitle": "Common problems and their fixes, and answers to the questions people ask most — grounded in how OpenTrack really behaves.",
+  "in_this_chapter": [
+    "Two things that explain most surprises: your role and your admin's optional features",
+    "Signing-in problems",
+    "\"I can't see a project, an issue, or a button\"",
+    "Missing AI, Git, SLA, and intake features",
+    "The desktop app and connection problems",
+    "Field, printing, import/export, and notification questions"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "START HERE",
+        "text": "Almost every \"why can't I…\" in OpenTrack comes down to one of two things: **your role** (what you're allowed to do) or **which optional features your administrator turned on** (AI, Git, SLAs, public intake, chat notifications). Check those two first — they explain most surprises before you go looking for a bug."
+      }
+    },
+    {
+      "h1": "The two things that shape what you see"
+    },
+    {
+      "p": "OpenTrack shows each person a different app on purpose. Before treating something as broken, rule out the two reasons the screen legitimately differs from what a colleague — or this manual — describes:"
+    },
+    {
+      "bullets": [
+        "**Your role.** Roles run from **Viewer** (read-only) up through **Reporter**, **Updater**, **Developer**, **Manager**, and **Administrator**, and — except for Administrator — they're set __per project__. A button you don't see is usually a button your role doesn't grant. See the *People & Roles* chapter.",
+        "**Optional features.** Several parts of OpenTrack are switches an administrator or Manager can leave off: the **AI assistant**, **Git** integration, **SLA** tracking, **public intake**, and **chat notifications** (Slack/Discord webhooks). If a whole feature seems absent, it may simply be turned off for you."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "\"MISSING\" IS USUALLY \"NOT ALLOWED\" OR \"NOT ENABLED\"",
+        "text": "OpenTrack hides what you can't use rather than showing it grayed out and teasing you. So a missing link or button is far more often a role or a feature switch than a fault. When in doubt, ask a project **Manager** or an **Administrator**."
+      }
+    },
+    {
+      "h1": "Signing in"
+    },
+    {
+      "bullets": [
+        "__My password isn't accepted.__ Check for caps lock and the right username or email. If you're sure it's right and still can't get in, your account may be **deactivated** (see below) or you may need a password reset.",
+        "__I asked for a password reset but no email came.__ Unless your administrator has configured email, OpenTrack **doesn't send any** — it writes reset links to the server log instead. Ask your administrator to either turn on email or read the reset link from the log for you. See *Printing, Preferences & Administration*.",
+        "__\"Your account is deactivated\" (or sign-in is blocked).__ An administrator has deactivated the account. This blocks sign-in without deleting any of your history. Only an administrator can reactivate it, on the **Users** screen.",
+        "__I'm asked for a code after my password.__ You've turned on two-factor sign-in. Enter the code from your authenticator app, or use a recovery code if you've lost the app. Manage this under your **Account** area.",
+        "__The browser warns the connection isn't secure.__ The instance is running over plain HTTP. That's fine on a trusted local network, but if the server faces the internet, an administrator should require HTTPS and add a certificate."
+      ]
+    },
+    {
+      "h1": "\"I can't see a project or an issue\""
+    },
+    {
+      "bullets": [
+        "__A project a colleague mentions isn't in my list.__ Project access is granted **per project**. If you're not a member, you won't see it at all. Ask that project's **Manager** to add you on its **Members** screen with an appropriate role.",
+        "__I was given a direct link to an issue but got \"not found\" or \"access denied.\"__ OpenTrack never reveals an issue — or even that it exists — to someone whose role doesn't allow it. A direct link is no back door. You need to be a project member with sufficient access.",
+        "__An issue vanished from my list.__ It may have been marked **private** (hidden from lower-access viewers), moved, closed and filtered out, or you may have a filter or search still applied. Clear filters and check whether your role covers private issues.",
+        "__Dashboard totals don't match what a teammate sees.__ Those numbers only count issues __you__ can see. Two people with different project access will legitimately see different totals — that's the privacy rule working, not a miscount."
+      ]
+    },
+    {
+      "h1": "\"A button or field is missing\""
+    },
+    {
+      "bullets": [
+        "__There's no \"Submit Issue\" / I can't file a bug.__ Filing needs at least the **Reporter** role on that project. A **Viewer** can read but not create.",
+        "__I can't edit an issue's fields.__ Editing needs **Updater** or above. Reporters can comment on issues but not change their fields.",
+        "__I can't be assigned an issue or move it along the workflow.__ Being assigned and advancing status needs the **Developer** role (or above).",
+        "__I don't see project settings — Members, Categories, Versions, Custom Fields, Automation, SLA, Workflow, Integrations, Git, or Intake.__ All of those are **Manager**-level (or Administrator). If you need them, ask to be made a Manager on that project.",
+        "__There's no \"Users\" link in my sidebar.__ That screen is for global **Administrators** only.",
+        "__A field I expected on the issue form isn't there.__ Some fields (like **categories**, **versions**, and **custom fields**) exist only if a Manager has set them up for that project. An empty category dropdown just means none are defined yet.",
+        "__The \"private\" or \"sticky\" flag isn't offered when I edit.__ Setting those needs the right role. Lower-access users can see the effects but not toggle the flags."
+      ]
+    },
+    {
+      "h1": "\"The AI buttons aren't there\""
+    },
+    {
+      "bullets": [
+        "__There's no \"✨ Suggest with AI\" button on the new-issue form.__ The **AI assistant** is optional and off unless an administrator has configured an AI provider. When it's off, OpenTrack simply hides the AI buttons rather than showing broken ones. See the *AI Assistant* chapter.",
+        "__\"Suggest with AI\" says it couldn't suggest anything.__ Give it a **Title** first (it works from the title and description), and try again. If it keeps failing, the configured AI provider may be unreachable — an administrator can check the provider settings.",
+        "__AI suggested tags but they didn't get added.__ That's by design: suggested tags are shown for you to add on the issue __after__ you create it — they aren't applied automatically."
+      ]
+    },
+    {
+      "h1": "Git, SLA, intake, and chat features look absent"
+    },
+    {
+      "bullets": [
+        "__My project shows nothing about Git commits.__ **Git** integration is per-project and off until a Manager connects the project to its repository. See the *Integrations* chapter.",
+        "__There's no SLA status on my issues.__ **SLA** tracking only appears once a Manager has defined SLA targets for the project. Without a policy there's nothing to measure against, so the at-risk/breach flags won't show.",
+        "__My public QR poster / report form doesn't work.__ **Public intake** is a per-project switch. If it's off, the public form is closed. A Manager turns it on in project settings; then the QR poster opens the form. See *Public Trouble-Ticket Intake & QR Posters*.",
+        "__Slack or Discord isn't getting notified.__ Chat notifications go out through a **webhook** a Manager configures per project, shaped for Slack, Discord, or a generic JSON payload. If none is set up, nothing is sent. See *Integrations*."
+      ]
+    },
+    {
+      "h1": "The desktop app and connections"
+    },
+    {
+      "bullets": [
+        "__The desktop app can't connect / shows a connection error.__ It talks to your OpenTrack **server**, so the server has to be running and reachable from your machine, and the address in the app's settings has to be right. Confirm the server is up and that you can reach it in a normal browser first.",
+        "__The page says it lost its connection and is trying to reconnect.__ OpenTrack's live pages keep a running link to the server; a brief network hiccup shows a reconnect message and usually recovers on its own. If it doesn't, reload the page.",
+        "__The installed (PWA) app shows stale information.__ When offline it shows the last version it cached while online. Reconnect and reload for fresh data. See *Mobile, Tablets & the Field*.",
+        "__Ctrl+K (the command palette) doesn't open.__ Click once on the page so it has focus, then try again; on a Mac use **⌘K**. A few browsers grab Ctrl+K for the address bar — clicking into the page first hands the key to OpenTrack. See *Keyboard Shortcuts & Quick Navigation*."
+      ]
+    },
+    {
+      "h1": "In the field, printing, and your data"
+    },
+    {
+      "bullets": [
+        "__Offline checklist taps show \"• pending sync.\"__ That's normal offline behavior — the change is safely queued and will send itself when you're back online or when you reopen the checklist page. Don't clear the browser's data in the meantime.",
+        "__Turning a failed check into an issue did nothing offline.__ That step needs a connection. OpenTrack tells you it's waiting until you're back online; your **Fail** mark is still recorded.",
+        "__\"Attach my location\" was denied or is wrong.__ Allow location for OpenTrack in your device settings, capture it while standing at the problem (outdoors if you can), then tap the button again. See *Mobile, Tablets & the Field*.",
+        "__The print page still shows menus.__ You're on the normal issue page. Open the issue's __/print__ address, then click **Print / Save as PDF** there.",
+        "__There's no \"Save as PDF\" option when printing.__ That choice comes from your browser and operating system, not OpenTrack — look for **Save as PDF** or **Microsoft Print to PDF** in the destination list.",
+        "__My saved default sort didn't apply.__ It only applies when you open the issue list without a sort already chosen. If the list address specifies an order, that wins. Open a fresh issue list. See *Printing, Preferences & Administration*.",
+        "__An import didn't bring everything in.__ Check that the file is in a format OpenTrack imports (such as CSV or a supported tracker export) and that it's well-formed. See *Importing & Exporting Your Data*."
+      ]
+    },
+    {
+      "h1": "Frequently asked questions"
+    },
+    {
+      "bullets": [
+        "__What's the difference between severity and priority?__ **Severity** is how __bad__ the problem is; **priority** is how __soon__ you'll act on it. A rare crash can be high severity but low priority. They're set independently.",
+        "__What's the difference between status and resolution?__ **Status** is where the issue is in its life (New → … → Closed). **Resolution** is __how__ it ended (Fixed, Duplicate, Won't fix, and so on). An issue gets a resolution when it's closed out.",
+        "__Do I need an account to report a problem?__ Not if the project has **public intake** turned on — then anyone can file a report through the public form, often by scanning the project's **QR code**. Everything else in OpenTrack needs an account.",
+        "__Can I use OpenTrack on my phone?__ Yes. It's a Progressive Web App (PWA) — install it from the browser with no app store, and it works on phones and tablets, including some offline use. See *Mobile, Tablets & the Field*.",
+        "__How do I keep a copy of my data?__ Use **Backup & export** to download your data (CSV, JSON, and more). It's also how you'd move data elsewhere.",
+        "__Someone left the team — should I delete their account?__ Deactivate it instead. That blocks sign-in immediately while keeping the issues, notes, and history they contributed intact and correctly attributed. Only an administrator can do this, on the **Users** screen.",
+        "__Who can turn on features like AI or Git?__ Instance-wide things (like the AI provider or requiring HTTPS) are for an **Administrator**; per-project things (Git, SLA targets, intake, webhooks) are for a project **Manager**.",
+        "__I still can't explain what I'm seeing.__ Note the exact page, what you did, and what happened, then ask a project **Manager** or your **Administrator** — they can see your role and which features are enabled, which is usually the whole answer."
+      ]
+    }
+  ]
+}

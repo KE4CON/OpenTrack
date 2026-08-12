@@ -1,0 +1,340 @@
+{
+  "order": 3,
+  "title": "Projects & Their Settings",
+  "subtitle": "Create a project, then tune its categories, versions, and options.",
+  "in_this_chapter": [
+    "What a project is and why access is granted per project",
+    "The Projects list and what each column shows",
+    "Creating a project, field by field",
+    "Public vs. private projects",
+    "The project page and its row of action buttons",
+    "Categories and versions — what they do and how to add or remove them",
+    "Editing a project's name, description, and visibility",
+    "Where the rest of a project's settings live",
+    "Troubleshooting project creation and settings"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "A **project** holds issues. To make one: select **Projects** on the left, then **New Project**, give it a name, and select **Create Project**. Optionally add **categories** and **versions** on its **Settings** page."
+      }
+    },
+    {
+      "h1": "What a project is"
+    },
+    {
+      "p": "A **project** is a container for issues — usually one piece of software, one system, one product, or one area of responsibility. Every issue belongs to exactly one project, and access is granted **per project**: being a member of one project says nothing about the others. Most of OpenTrack's organizing power comes from this simple idea, so it's worth creating a project per real “thing” you track rather than dumping everything into one."
+    },
+    {
+      "h1": "The Projects list"
+    },
+    {
+      "p": "Select **Projects** in the left navigation. The page title reads __Projects__, and you see a table of every project you're allowed to view. Its columns are:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Column",
+          "What it shows"
+        ],
+        "rows": [
+          [
+            "**Name**",
+            "The project's name, as a link. Select it to open the project's page."
+          ],
+          [
+            "**Description**",
+            "The one-line summary, in muted gray text (blank if none was written)."
+          ],
+          [
+            "**Visibility**",
+            "A badge reading either **Public** or **Private** (explained below)."
+          ],
+          [
+            "**Open Issues**",
+            "How many issues in that project are still open."
+          ],
+          [
+            "**(action)**",
+            "An **Edit** button at the end of the row — shown only to Managers and Administrators."
+          ]
+        ],
+        "widths": [
+          1.6,
+          4.9
+        ]
+      }
+    },
+    {
+      "p": "If no projects exist yet, the page shows a short note instead of a table. Managers see __No projects yet. Create the first one to get started.__; everyone else sees __No projects yet. Check back once one has been created.__ A **New Project** button sits at the top-right of the page, but only if your role is Manager or Administrator."
+    },
+    {
+      "screenshot": "The Projects list with the Name, Description, Visibility, and Open Issues columns and the New Project button"
+    },
+    {
+      "h1": "Create a project"
+    },
+    {
+      "p": "Creating a project is a Manager-or-Administrator job. Select **New Project** on the Projects page to open the __New Project__ form. It has three fields and two buttons:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Field",
+          "What to enter",
+          "Notes"
+        ],
+        "rows": [
+          [
+            "**Name**",
+            "A short, clear name for the project.",
+            "Required. Keep it recognizable at a glance in the list."
+          ],
+          [
+            "**Description**",
+            "A sentence on what the project covers.",
+            "Optional, but a good hint for newcomers."
+          ],
+          [
+            "**Public**",
+            "A checkbox labeled __Public (visible to all users, not just members)__.",
+            "Ticked by default. Untick it to make the project private."
+          ]
+        ],
+        "widths": [
+          1.5,
+          3.0,
+          2.0
+        ]
+      }
+    },
+    {
+      "steps": [
+        "Select **Projects** in the left navigation, then **New Project**.",
+        "Type a **Name**, and optionally a **Description**.",
+        "Decide **Public** vs. private with the checkbox (it starts ticked, meaning public).",
+        "Select **Create Project**. You land on the new project's own page, ready to add issues and settings.",
+        "Changed your mind? Select **Cancel** to return to the Projects list without creating anything."
+      ]
+    },
+    {
+      "screenshot": "The New Project form with Name, Description, the Public checkbox, and the Create Project button"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "PUBLIC VS. PRIVATE",
+        "text": "A **public** project is visible to any signed-in user of your OpenTrack (good for shared, non-sensitive work). A **private** project is visible only to the people you add as members. This is separate from the *public trouble-ticket intake* feature (covered under Settings), which lets people **without any account** file a ticket."
+      }
+    },
+    {
+      "h1": "The project page"
+    },
+    {
+      "p": "Selecting a project's name opens its page, headed by the project name and description. Along the top-right is a row of buttons that lead everywhere else you can go for this project:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Button",
+          "Where it goes"
+        ],
+        "rows": [
+          [
+            "**Board**",
+            "A drag-and-drop board view of the project's issues by status."
+          ],
+          [
+            "**Roadmap**",
+            "What's planned per upcoming version."
+          ],
+          [
+            "**Bug-hunt checklist**",
+            "A structured checklist for systematically hunting bugs in this project."
+          ],
+          [
+            "**Members**",
+            "Add people and set their roles — see the *People & Roles* chapter."
+          ],
+          [
+            "**Settings**",
+            "The project's control panel (categories, versions, and more — below)."
+          ],
+          [
+            "**Edit Project**",
+            "Change the name, description, or visibility. Shown only to Managers."
+          ]
+        ],
+        "widths": [
+          1.8,
+          4.7
+        ]
+      }
+    },
+    {
+      "p": "Below those buttons is the project's **Issues** heading with a **New Issue** button, and a table of the issues in this project (number, title, status, severity, priority, assignee). If none exist yet it reads __No issues reported yet.__"
+    },
+    {
+      "h1": "Categories and versions"
+    },
+    {
+      "p": "Two optional lists make a project's issues much easier to organize and report on. Both are set up on the project's **Settings** page (select **Settings** on the project). You need the **Manager** role on the project to change them; without it the page shows a yellow notice reading __You need the Manager role on this project to change its settings.__"
+    },
+    {
+      "bullets": [
+        "**Categories** — buckets you file issues under, like “User Interface,” “Database,” “Documentation,” or “Hardware.” Categories let you filter and group; pick a handful that match how you actually think about the project.",
+        "**Versions** — the releases of your software or product. An issue can record the version it **affects** and the version it's **fixed in**. Those two facts are what power the **Roadmap** (what's coming) and the **Changelog** (what shipped), so filling them in pays off later."
+      ]
+    },
+    {
+      "h2": "Adding and removing categories"
+    },
+    {
+      "p": "The **Categories** section (top-left of the Settings page) lists the categories you already have, then gives you two small forms:"
+    },
+    {
+      "steps": [
+        "In the __New category name__ box, type a name.",
+        "Select **Add**. The new category appears in the list above, and a green __Saved.__ message confirms it.",
+        "To remove one, use the __Select category…__ dropdown to choose it, then select the red **Delete** button."
+      ]
+    },
+    {
+      "h2": "Adding and removing versions"
+    },
+    {
+      "p": "The **Versions** section (top-right) works the same way, but a version carries more detail. Its add-form has these fields:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Field",
+          "What to enter"
+        ],
+        "rows": [
+          [
+            "**Version name**",
+            "The release label, for example `1.0`. (Placeholder: __Version name (e.g. 1.0)__.) Required."
+          ],
+          [
+            "**Description**",
+            "An optional note about the release."
+          ],
+          [
+            "**Release date**",
+            "An optional date picker for when it shipped (or is due)."
+          ],
+          [
+            "**Released**",
+            "A checkbox. Tick it once the version has actually shipped; released versions show __(released)__ next to their name in the list."
+          ]
+        ],
+        "widths": [
+          1.7,
+          4.8
+        ]
+      }
+    },
+    {
+      "steps": [
+        "Fill in at least the **Version name** (for example `1.0`).",
+        "Optionally add a **Description** and a **Release date**, and tick **Released** if it has already shipped.",
+        "Select **Add version**. It appears in the list, marked __(released)__ if you ticked the box.",
+        "To remove one, pick it in the __Select version…__ dropdown and select the red **Delete**."
+      ]
+    },
+    {
+      "screenshot": "The project Settings page showing the Categories and Versions sections side by side"
+    },
+    {
+      "h1": "Editing a project"
+    },
+    {
+      "p": "To change a project's basics, select **Edit Project** on the project page (or the **Edit** button on the Projects list). The __Edit Project__ form is the same three fields as creation — **Name**, **Description**, and the **Public** checkbox — pre-filled with the current values."
+    },
+    {
+      "steps": [
+        "Change the **Name**, **Description**, or **Public** checkbox as needed.",
+        "Select **Save** to apply the changes and return to the project page, or **Cancel** to discard them."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "IF SOMEONE ELSE EDITED IT FIRST",
+        "text": "If another Manager saved a change to the same project while you had the Edit form open, saving shows a red conflict message rather than silently overwriting their work. Reopen **Edit Project** to see the current values, then make your change again on top of theirs."
+      }
+    },
+    {
+      "h1": "Where the rest of a project's settings live"
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "THE SETTINGS PAGE IS THE PROJECT'S CONTROL PANEL",
+        "text": "Beyond Categories and Versions, the Settings page is where a Manager sets up the project's deeper machinery. Across the top of the page are buttons for **Custom fields**, **Automation**, **SLA targets** (Service-Level Agreement), and **Git**. Further down the same page are **Integrations (outgoing webhooks)**, **Workflow** rules, and **Public trouble-ticket intake**. Each of those has its own chapter in this manual — the Settings page is simply where you'll find them. (Note that **Members** is reached from the project page, not the Settings page.)"
+      }
+    },
+    {
+      "p": "Here's a quick map of what each of those settings does, so you know which chapter to turn to:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Setting",
+          "In one line"
+        ],
+        "rows": [
+          [
+            "**Custom fields**",
+            "Extra fields of your own on every issue in the project."
+          ],
+          [
+            "**Automation**",
+            "Rules that act automatically when issues change."
+          ],
+          [
+            "**SLA targets**",
+            "Response and resolution deadlines the SLA board tracks against."
+          ],
+          [
+            "**Git**",
+            "Link commits and branches to issues."
+          ],
+          [
+            "**Integrations (outgoing webhooks)**",
+            "Ping Slack, Discord, or your own service when issues change."
+          ],
+          [
+            "**Workflow**",
+            "Restrict which status changes are allowed."
+          ],
+          [
+            "**Public trouble-ticket intake**",
+            "Let people without an account submit tickets."
+          ]
+        ],
+        "widths": [
+          2.3,
+          4.2
+        ]
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__There's no New Project button.__ Creating projects needs the **Manager** or **Administrator** role. If you only see a plain list, your role doesn't include it — ask an Administrator.",
+        "__The Settings page shows a yellow “you need the Manager role” warning.__ You can view the project but not configure it. Only a Manager (or Administrator) on that specific project can add categories, versions, and the rest.",
+        "__I created a category/version but it's not showing.__ Check for a red error message at the top of the Settings page. A blank name is the usual culprit — a version in particular needs at least a **Version name**.",
+        "__A project I made isn't in the Projects list.__ If you made it **private**, only its members see it — and you're added as its owner automatically, so it should appear for you. Confirm you're signed in as the same account that created it.",
+        "__My Edit didn't save — I got a conflict message.__ Another Manager changed the project at the same time. Reopen **Edit Project**, which now shows the latest values, and reapply your change.",
+        "__I want to delete a whole project.__ Project deletion isn't done from these screens. Ask your Administrator, who manages instance-wide cleanup.",
+        "__Public vs. private didn't do what I expected.__ **Public** means every signed-in user can see the project; **private** limits it to members. Neither controls the separate *public intake* page, which is for people with no account at all."
+      ]
+    }
+  ]
+}

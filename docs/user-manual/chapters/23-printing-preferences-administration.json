@@ -1,0 +1,242 @@
+{
+  "order": 23,
+  "title": "Printing, Preferences & Administration",
+  "subtitle": "Print or save an issue as a PDF, set your personal defaults, and — for administrators — manage user accounts and run the instance.",
+  "in_this_chapter": [
+    "Printing or saving an issue as a Portable Document Format (PDF) file",
+    "What lands on the printed page",
+    "Every setting on your personal Preferences screen",
+    "The administrator's Users screen: roles and account status",
+    "Server-level settings an administrator sets up once",
+    "Troubleshooting printing, preferences, and admin tasks"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "**Print / Save as PDF** an issue from its own print page. Set your personal defaults — default project and default sort — under **Preferences** in the left navigation. **Administrators** open **Users** to set each person's global role and to activate or deactivate accounts; a handful of server-level options (first admin, email, HTTPS) are set once at install time."
+      }
+    },
+    {
+      "h1": "Print or save an issue as a PDF"
+    },
+    {
+      "p": "Every issue has a clean, print-friendly version of itself — a single page with just the content and none of the menus, buttons, or navigation. From there you can send it to a printer or save it as a **PDF** (Portable Document Format — the universal \"looks the same everywhere\" document file) to keep on file or email to someone who doesn't use OpenTrack."
+    },
+    {
+      "steps": [
+        "Open the issue you want to print.",
+        "Go to its print page (the address is the issue followed by __/print__ — for example __issues/42/print__). This opens the print-friendly view.",
+        "At the top you'll see two buttons that do __not__ appear on paper: **Print / Save as PDF** and **Back to issue**.",
+        "Click **Print / Save as PDF**. Your browser's own print dialog opens.",
+        "To print, pick a printer and print as normal. To keep a file instead, choose **Save as PDF** (or **Microsoft Print to PDF**) as the destination, then **Save**.",
+        "Click **Back to issue** any time to return to the full, interactive issue."
+      ]
+    },
+    {
+      "screenshot": "The print-friendly issue page with the Print / Save as PDF and Back to issue buttons at the top"
+    },
+    {
+      "h2": "What appears on the printed page"
+    },
+    {
+      "p": "The print view is laid out for reading on paper, top to bottom. It gathers the whole record of the issue in one place:"
+    },
+    {
+      "bullets": [
+        "A heading with the issue number and title, and the project name beneath it.",
+        "A summary table of the key fields: **Status**, **Severity**, **Priority**, **Resolution**, **Reporter**, **Assignee**, **Category**, **Reproducibility**, **Created**, **Updated**, and — if one is set — the **Due** date.",
+        "The full **Description**, with its Markdown formatting rendered (bold, code, lists, and so on).",
+        "**Steps to reproduce**, if the issue has any.",
+        "All **Notes** (comments), each showing the author, the date, and — where applicable — a __(private)__ marker.",
+        "The **Time log**, if any time was recorded, listing each entry and a total at the top.",
+        "The **History** — the dated trail of who changed which field, from what old value to what new value."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "IT'S A SNAPSHOT",
+        "text": "The printed page or saved PDF captures the issue exactly as it stands the moment you print it. It doesn't update later. If the issue changes, print it again to get a fresh copy."
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "WHAT YOU CAN PRINT, YOU COULD ALREADY SEE",
+        "text": "Printing doesn't reveal anything your role can't already view. The print page respects the same access rules as the issue itself — including private notes, which appear only to people allowed to see them."
+      }
+    },
+    {
+      "h1": "Your preferences"
+    },
+    {
+      "p": "Select **Preferences** in the left navigation to open **Your preferences** — a short screen of personal defaults that make OpenTrack open the way __you__ like it. These are yours alone: changing them affects only your own view and no one else's. There are two settings, and a **Save preferences** button; when you save, a green **Saved.** confirmation appears."
+    },
+    {
+      "screenshot": "The Preferences page with the Default project and Default sort dropdowns and the Save preferences button"
+    },
+    {
+      "table": {
+        "headers": [
+          "Setting",
+          "What it does",
+          "Default"
+        ],
+        "rows": [
+          [
+            "**Default project for new issues**",
+            "Pick one of your projects, and **Quick add** pre-selects it every time so you don't choose the project on each new report. A short note under the box reminds you: when set, Quick-add pre-selects this project.",
+            "**— none —** (you choose the project each time)"
+          ],
+          [
+            "**Default sort on the issue list**",
+            "Choose the order the issue list uses when you open it without having picked a sort yourself. The choices are **Updated (newest)**, **Updated (oldest)**, **Created (newest)**, **Created (oldest)**, **Priority (high→low)**, **Severity (high→low)**, **Status**, **ID (newest)**, and **ID (oldest)**. The note under the box explains it applies only when the list address doesn't already specify a sort.",
+            "**— newest updated —**"
+          ]
+        ],
+        "widths": [
+          2.2,
+          4.2,
+          1.6
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "SET IT ONCE",
+        "text": "If you spend most of your time in a single project, set it as your **Default project** — from then on, **Quick add** already has it selected and filing a problem is one field shorter."
+      }
+    },
+    {
+      "p": "Your own account details — password, email, two-factor sign-in, passkeys, and so on — are managed separately under your name in the navigation (the **Account** area), not on this Preferences screen. Preferences is only about how the issue tracker itself behaves for you."
+    },
+    {
+      "h1": "Administration (Administrators only)"
+    },
+    {
+      "p": "The **Administrator** is a __global__ role — not a per-project one — usually held by the person who installed the server. Only an administrator sees the **Users** link in the navigation, and only an administrator can open the pages below. Most administration is occasional: set someone's role, or turn an account on or off."
+    },
+    {
+      "h2": "The Users screen"
+    },
+    {
+      "p": "Select **Users** in the navigation to open **User Administration**. The top of the page is a table listing every account, and below it are two small forms for making changes. When you make a change, a colored banner confirms it (green) or explains what went wrong (red)."
+    },
+    {
+      "screenshot": "The User Administration screen: a table of accounts above two forms — Set global role and Activate / deactivate"
+    },
+    {
+      "p": "The account table has four columns:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Column",
+          "What it shows"
+        ],
+        "rows": [
+          [
+            "**User**",
+            "The person's username."
+          ],
+          [
+            "**Email**",
+            "The email address on the account."
+          ],
+          [
+            "**Global role**",
+            "Their instance-wide role — one of **Viewer**, **Reporter**, **Updater**, **Developer**, **Manager**, or **Administrator**."
+          ],
+          [
+            "**Status**",
+            "**Active** (can sign in) or **Deactivated** (blocked from signing in, but history preserved)."
+          ]
+        ],
+        "widths": [
+          1.4,
+          4.6
+        ]
+      }
+    },
+    {
+      "p": "Beneath the table are the two controls:"
+    },
+    {
+      "bullets": [
+        "**Set global role** — pick a user, pick a role from **Viewer**, **Reporter**, **Updater**, **Developer**, **Manager**, or **Administrator**, and click **Update role**. A note reminds you that you **cannot change your own role** (a safety catch so an administrator can't accidentally lock themselves out).",
+        "**Activate / deactivate** — pick a user, choose **Active** or **Deactivated**, and click **Apply**. A **deactivated** user cannot sign in, but nothing they created is deleted — their issues, notes, and history remain. A note reminds you that you **cannot deactivate yourself**."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "GLOBAL ROLE VS. PROJECT ROLE",
+        "text": "The role you set here is the person's **global** role across the whole instance. It's separate from the **per-project** role a project **Manager** grants on a project's **Members** screen (see the *People & Roles* chapter). Most day-to-day access is handled per project; the global role is the floor the administrator sets for the whole instance."
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "DEACTIVATE, DON'T DELETE",
+        "text": "When someone leaves, **deactivate** their account rather than trying to erase it. That immediately stops them signing in while keeping the issues, comments, and history they contributed intact and correctly attributed."
+      }
+    },
+    {
+      "h2": "Server-level settings (set once at install)"
+    },
+    {
+      "p": "A few instance-wide options aren't buttons in the app — they're settings the administrator configures on the server, usually once, when standing the instance up. They're listed here so an administrator knows they exist and where to look."
+    },
+    {
+      "table": {
+        "headers": [
+          "Setting",
+          "What it's for"
+        ],
+        "rows": [
+          [
+            "**Set the first admin ahead of time**",
+            "Rather than relying on \"first person to register becomes admin,\" the server can be told an administrator email and password before its first run, via the `OpenTrack__BootstrapAdmin__…` settings. That account starts as the Administrator."
+          ],
+          [
+            "**Turn on email**",
+            "Optional. Out of the box, OpenTrack sends no email and instead writes things like password-reset links to its own log. To send real email, fill in the `OpenTrack__Email__…` settings with your outgoing mail (SMTP — Simple Mail Transfer Protocol) server details."
+          ],
+          [
+            "**Require encryption (HTTPS)**",
+            "On a trusted home network OpenTrack can run over plain HTTP. If the server is reachable from outside that network, set `OpenTrack__RequireHttps=true` and supply a certificate so traffic is encrypted (HTTPS — the secure, padlocked form of a web address)."
+          ]
+        ],
+        "widths": [
+          2.3,
+          4.4
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "ENCRYPT ANYTHING FACING THE INTERNET",
+        "text": "Plain HTTP is fine only on a network you fully trust. The moment the server can be reached from the wider internet, turn on **RequireHttps** and give it a certificate — otherwise sign-ins and issue contents travel unencrypted."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__The print page still shows menus and buttons.__ You're on the normal issue page, not the print view. Open the issue's __/print__ address (or use the print link), then click **Print / Save as PDF** there.",
+        "__There's no \"Save as PDF\" choice in the print dialog.__ That option comes from your browser and operating system, not OpenTrack. Look for **Save as PDF** or **Microsoft Print to PDF** in the printer/destination list; if it's missing, print to a real printer or install a PDF printer.",
+        "__A private note didn't appear in the printout.__ Private notes print only for people allowed to see them. If you can't see it on the issue, it won't be on the paper either — that's the access rule working as intended.",
+        "__I saved my preferences but the issue list didn't change.__ Your **Default sort** applies only when you open the list without a sort already chosen. If the list address already specifies an order (for example from a saved link), that wins. Open a fresh issue list to see your default.",
+        "__I don't see a \"Users\" link.__ Only a global **Administrator** sees it. If you need it and don't have it, ask an existing administrator to raise your global role.",
+        "__\"Update role\" or \"Apply\" won't act on my own account.__ That's deliberate. You cannot change your own role or deactivate yourself — a safety catch against locking yourself out. Have another administrator make the change if it's truly needed.",
+        "__No password-reset emails are arriving.__ Unless an administrator has configured email, OpenTrack doesn't send any — it writes reset links to its log instead. Turn on email via the `OpenTrack__Email__…` settings to send real messages.",
+        "__The browser warns the connection isn't secure.__ The instance is running over plain HTTP. That's acceptable only on a trusted local network; if the server faces the internet, an administrator should set **RequireHttps** and add a certificate."
+      ]
+    }
+  ]
+}

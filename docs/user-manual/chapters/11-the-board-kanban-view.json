@@ -1,0 +1,205 @@
+{
+  "order": 11,
+  "title": "The Board (Kanban View)",
+  "subtitle": "See a project's work as cards in columns, and move each card along as it progresses.",
+  "in_this_chapter": [
+    "What the board is and how it differs from the list",
+    "Opening the board for a project",
+    "Reading the columns and the count badges",
+    "What each card shows",
+    "Moving a card left or right to change its status",
+    "The Live auto-refresh checkbox",
+    "Who is allowed to move cards",
+    "Troubleshooting"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "The **Board** shows one project's issues as cards arranged in columns by status. Use the **◀** and **▶** arrow buttons on a card to move it one step back or forward through the workflow — that changes the issue's status. Turn on **Live** to have the board refresh itself when something changes."
+      }
+    },
+    {
+      "h1": "A visual way to see the work"
+    },
+    {
+      "p": "The **Board** (often called a __Kanban__ board — a Japanese term, roughly \"signboard,\" for a visual card wall that tracks work) shows a single project's issues as **cards arranged in columns**. Each column is one **status**, and every issue sits in the column that matches where it is in its life. In one glance you can see how much work sits at each stage and where things are piling up — something a flat list can hint at but never show as clearly."
+    },
+    {
+      "p": "The board and the ordinary issue **list** show the same issues; they are just two ways of looking at the same project. The list is better for searching, filtering, and bulk edits. The board is better for a quick read of \"where is everything right now?\" and for nudging issues forward one step at a time. You can jump between the two at any moment using the buttons in the top-right corner."
+    },
+    {
+      "h1": "Opening the board"
+    },
+    {
+      "steps": [
+        "Open the project you want to look at (from **Projects** in the left navigation, then the project's name).",
+        "Select **Board**. The board opens on its own page, titled **Board — __ProjectName__** across the top.",
+        "The columns fill in with the project's current issues, each as a card in the column that matches its status."
+      ]
+    },
+    {
+      "screenshot": "The Board view with issue cards spread across the status columns"
+    },
+    {
+      "p": "Across the top-right of the board are two buttons and one checkbox:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Control",
+          "What it does"
+        ],
+        "rows": [
+          [
+            "**Live** (checkbox)",
+            "Turns on auto-refresh. When checked, the board reloads by itself whenever something on it changes, so you don't have to refresh the page to see a card someone else just moved. Leave it unchecked to keep the view still."
+          ],
+          [
+            "**List view** (button)",
+            "Switches to the ordinary issue list for this same project — the searchable, filterable table version of the same issues."
+          ],
+          [
+            "**Back to project** (button)",
+            "Returns to the project's main page."
+          ]
+        ],
+        "widths": [
+          1.4,
+          5
+        ]
+      }
+    },
+    {
+      "h1": "The columns"
+    },
+    {
+      "p": "There is one column for every status an issue can have, laid out left to right in workflow order — from just-filed on the left to finished on the right. If a project has more columns than fit on your screen, the row of columns scrolls sideways; drag the horizontal scrollbar underneath, or swipe, to reach the ones off to the right."
+    },
+    {
+      "p": "The columns, in order, are:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Column",
+          "What it means"
+        ],
+        "rows": [
+          [
+            "**New**",
+            "Just filed. Nobody has looked at it yet."
+          ],
+          [
+            "**Feedback**",
+            "Waiting on more information from the person who reported it."
+          ],
+          [
+            "**Acknowledged**",
+            "A maintainer has seen it and agrees it is worth tracking."
+          ],
+          [
+            "**Confirmed**",
+            "Reproduced or verified — it is a real issue."
+          ],
+          [
+            "**Assigned**",
+            "Someone is now responsible for working on it."
+          ],
+          [
+            "**Resolved**",
+            "A fix or a decision is in; the issue is awaiting final closure."
+          ],
+          [
+            "**Closed**",
+            "Done and put to bed."
+          ]
+        ],
+        "widths": [
+          1.3,
+          5
+        ]
+      }
+    },
+    {
+      "p": "At the top of each column is a **header** showing the status name on the left and a small gray **count badge** on the right — the number of cards currently in that column. A quick scan of the badges tells you the shape of the project: a big pile under __New__ means a triage backlog; a big pile under __Assigned__ means a lot of work in flight. A column with no issues shows a single dash (__—__) instead of cards."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "SAME ORDER AS THE STATUS LADDER",
+        "text": "The columns are the issue **statuses** in their built-in order. Everything from **New** through **Assigned** is an issue that is still open and being worked; **Resolved** and **Closed** are the finished end of the line. Moving a card into **Resolved** or beyond is what stops an issue's service-level clock (covered in the SLA chapter)."
+      }
+    },
+    {
+      "h1": "What each card shows"
+    },
+    {
+      "p": "Within a column, cards are stacked top to bottom, with the highest-priority issues first. Each card is compact but carries the essentials:"
+    },
+    {
+      "bullets": [
+        "The issue's **number and title** on the first line — for example `#42 Login button does nothing`. This is a link; select it to open the full issue.",
+        "A smaller gray line underneath showing three facts separated by dots: the issue's **severity**, its **priority**, and its **assignee** — for example __Major · High · Priya__. If nobody is assigned, that last part reads __Unassigned__.",
+        "A pair of **◀** and **▶** arrow buttons along the bottom (shown only if you are allowed to move the issue — see below)."
+      ]
+    },
+    {
+      "screenshot": "A close-up of a single board card: number and title, the severity-priority-assignee line, and the two move arrows"
+    },
+    {
+      "h1": "Moving a card"
+    },
+    {
+      "p": "Moving a card is how you change an issue's status from the board. It does exactly the same thing as editing the status field on the issue itself — it is just faster and more visual. OpenTrack's board uses **arrow buttons**, not drag-and-drop, so it works the same whether you are on a desktop, a laptop trackpad, or a touch screen."
+    },
+    {
+      "steps": [
+        "Find the card you want to move.",
+        "Select **▶** (the right arrow) to move it one column to the right — forward one step in the workflow.",
+        "Select **◀** (the left arrow) to move it one column to the left — back one step.",
+        "The board reloads and the card reappears in its new column. A short confirmation line appears near the top, for example __Moved #42 to Confirmed.__"
+      ]
+    },
+    {
+      "p": "Each press moves the card exactly **one column**. To move an issue several stages at once, press the arrow that many times. The arrows know where the ends are: the **◀** button is grayed out (disabled) on any card in the leftmost column, and the **▶** button is grayed out on any card in the rightmost column, so you can never push a card off either end."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "WORKFLOW RULES STILL APPLY",
+        "text": "Moving a card obeys the same rules as any other status change. If your project has a workflow that restricts which statuses can follow which, or if you don't have permission to make a particular move, the board respects that — it will tell you rather than making an invalid change."
+      }
+    },
+    {
+      "h1": "Who can move cards"
+    },
+    {
+      "p": "Seeing the board is open to anyone who can see the project. **Moving** a card, though, changes an issue, so it requires the same permission as editing an issue — an updater role or higher on that project. If you have only view access, the board still shows you every card and every count, but the **◀** and **▶** arrows simply do not appear on the cards. Nothing is broken; you are looking at a read-only version of the board."
+    },
+    {
+      "p": "If your role changes, or an occasional issue is one you specifically cannot touch, an attempted move is refused cleanly. Instead of a confirmation you will see a line such as __You don't have permission to move that issue.__ and the card stays where it was."
+    },
+    {
+      "h1": "The Live checkbox in daily use"
+    },
+    {
+      "p": "The **Live** checkbox is worth turning on when you are watching a project during a busy stretch — a triage session, an incident, or an event where several people are working the same board. With **Live** on, cards other people move slide into their new columns without you touching anything, so the board on your screen stays honest. When you are done, uncheck it to freeze the view; a still board is easier to study when you are planning rather than reacting."
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__The move arrows aren't on my cards.__ Moving a card needs updater (or higher) permission on the project. If you have only view access, the arrows are hidden by design — you can read the board but not change it. Ask a project manager to raise your role if you need to move issues.",
+        "__One arrow is grayed out.__ That is expected at the ends of the workflow. A card in the leftmost column has no column to its left, so **◀** is disabled; a card in the rightmost column has nowhere further right, so **▶** is disabled.",
+        "__I pressed an arrow and got 'You don't have permission to move that issue.'__ The move was refused. Usually this means your role doesn't allow changing that particular issue's status. The card stays put; nothing was changed.",
+        "__A column is empty and just shows a dash.__ That simply means no issues currently have that status. It is normal — for example, a healthy project often has an empty __Feedback__ column.",
+        "__Someone moved a card but I still see it in the old column.__ The board you are looking at was loaded a moment ago and hasn't caught up. Turn on **Live** for automatic updates, or reload the page to pull the latest.",
+        "__The board looks cut off on the right.__ There are more columns than fit your window. Scroll the row of columns sideways using the scrollbar beneath them (or swipe) to reach __Resolved__ and __Closed__.",
+        "__I want to search or filter, but the board won't let me.__ The board is for a quick visual read, not searching. Select **List view** at the top-right to switch to the searchable, filterable table of the same issues."
+      ]
+    }
+  ]
+}

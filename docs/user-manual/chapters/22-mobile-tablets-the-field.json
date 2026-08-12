@@ -1,0 +1,166 @@
+{
+  "order": 22,
+  "title": "Mobile, Tablets & the Field",
+  "subtitle": "Use OpenTrack from a phone or tablet, install it like an app, work off-network, and stamp a problem with where it is.",
+  "in_this_chapter": [
+    "Installing OpenTrack as an app (Progressive Web App) on a tablet or phone",
+    "What works offline, and how offline check-offs sync back",
+    "Attaching your GPS location to an issue",
+    "Reporting by scanning a QR code",
+    "Troubleshooting the field features"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "OpenTrack installs on a tablet or phone like an app (no app store), keeps a bug-hunt checklist usable through brief network drops and syncs your marks when you're back online, can stamp your **GPS** location onto an issue with **📍 Attach my location**, and lets anyone open a project's report form by scanning its printed **QR code**."
+      }
+    },
+    {
+      "h1": "Install it like an app (PWA)"
+    },
+    {
+      "p": "OpenTrack is a **Progressive Web App (PWA)** — a website built well enough to install and run like a regular app, with its own icon on your home screen and a full-screen window with no browser address bar or tabs in the way. There is nothing to download from an app store, and no separate mobile app to keep updated: you install the same OpenTrack your team uses in a desktop browser, straight from its web address."
+    },
+    {
+      "p": "When installed, the app opens under the name __OpenTrack__, uses the OpenTrack icon, and launches in **standalone** display mode — meaning it looks and behaves like an app rather than a browser tab. It works in either portrait or landscape, so you can turn a tablet whichever way suits the job."
+    },
+    {
+      "steps": [
+        "Open OpenTrack in the device's web browser and sign in once, so the app has your session.",
+        "**On an iPad or iPhone (Safari):** tap the **Share** button (the square with an up-arrow), then tap **Add to Home Screen**, then **Add**.",
+        "**On Android (Chrome):** tap the **⋮** menu, then tap **Install app** (some versions say **Add to Home screen**), then confirm.",
+        "Find the new **OpenTrack** icon on your home screen and tap it. It opens full-screen, like any other app."
+      ]
+    },
+    {
+      "screenshot": "OpenTrack installed on a tablet home screen next to other app icons, with its own icon"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "SAME APP, SMALLER SCREEN",
+        "text": "The mobile experience is not a stripped-down version — it is the same OpenTrack, laid out to fit a smaller screen. Every feature described in this manual is available on a tablet or phone. Only the field-specific conveniences in this chapter (offline checklists, location capture, QR reporting) are things you are more likely to reach for away from a desk."
+      }
+    },
+    {
+      "h1": "What keeps working offline"
+    },
+    {
+      "p": "OpenTrack installs a small helper called a **service worker** — a background piece of the web app that sits between the app and the network. Its job is to remember pages you have already opened and hand them back if the network drops. Because of it, a page you loaded while you had a signal stays viewable if your connection flickers out a moment later — handy when you are standing next to the equipment with a bug-hunt checklist open on a tablet and the Wi-Fi is patchy."
+    },
+    {
+      "p": "It is important to be realistic about what \"offline\" means here, so you are never surprised:"
+    },
+    {
+      "bullets": [
+        "**Pages you have already visited while online stay readable offline.** A page you have never opened cannot be shown from thin air — you must have loaded it at least once with a connection.",
+        "**Only viewing is cached, not saving.** Reading is safe offline. Actions that change data (creating an issue, adding a note, uploading a file) still need the network at the moment you do them — with one deliberate exception below.",
+        "**Checklist check-offs are the exception** — they are queued while offline and replayed automatically when you reconnect (next section).",
+        "**Anything requiring a live server connection won't refresh offline.** Live counters, notifications, and searches against the server reflect the last time you were connected."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "BEST ON YOUR OWN DEVICE",
+        "text": "The offline cache lives on the device it was created on, which suits a personal or trusted tablet. On a shared device, signing out clears your session but does not wipe this cache, so treat installed OpenTrack the way you would treat a saved password — put it only on a device you control."
+      }
+    },
+    {
+      "h1": "Offline checklists that sync themselves"
+    },
+    {
+      "p": "The one place OpenTrack lets you keep working with no connection is the **bug-hunt checklist** (the project checklist covered in its own chapter). This is on purpose: a checklist is exactly the kind of thing you run while walking a site, and you should not lose a tap because the signal dropped between two rooms."
+    },
+    {
+      "p": "Here is how it behaves, step by step:"
+    },
+    {
+      "steps": [
+        "**Online:** tapping **Pass**, **Fail**, or **N/A** on a checklist item saves to the server immediately, exactly as it does on a desktop. Nothing special happens.",
+        "**Offline:** the same tap is caught before it can fail. OpenTrack records your choice in a small on-device queue and updates the item's badge right away so you can see it took — the item shows its new state (**Pass**, **Fail**, **N/A**, or **To do**) followed by a small amber **• pending sync** note.",
+        "**Keep working:** you can mark as many items as you like while offline. If you change your mind on an item, just tap again — the queue keeps only your latest choice for each item, so the last tap wins.",
+        "**Reconnect:** when the device comes back online — either the next time you open the checklist page, or the instant the browser notices the network is back — the queued changes are sent to the server automatically and the page refreshes to show the true, saved state. The amber **pending sync** notes disappear as each change lands."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "CREATING AN ISSUE FROM A FAILURE NEEDS A SIGNAL",
+        "text": "Marking an item **Fail** works offline, but the separate step of **turning that failure into a linked issue** needs a live connection. If you try it while offline, OpenTrack tells you plainly: the action will be waiting for you when you're back online. Your **Fail** mark is safe in the queue in the meantime."
+      }
+    },
+    {
+      "p": "You do not have to do anything to make the sync happen — no \"upload\" button, no manual refresh. If a change ever fails to send (for example the server rejects it), OpenTrack keeps it in the queue and tries again on the next reconnect rather than silently dropping it."
+    },
+    {
+      "h1": "Attach your GPS location to an issue"
+    },
+    {
+      "p": "When a problem lives somewhere physical — a piece of equipment in a shelter, a broken sign on a trail, a fault at a field site — it helps to record __where__ it is, not just __what__ it is. On the **New Issue** form, OpenTrack can stamp your current **GPS** (Global Positioning System) coordinates onto the issue with one tap, using your device's own location."
+    },
+    {
+      "steps": [
+        "Start a new issue on the device that is physically at the location.",
+        "Scroll to the **📍 Attach my location** button, just above the **Submit Issue** button.",
+        "Tap it. Your device (or browser) shows its own permission prompt asking to share your location — tap **Allow**.",
+        "While it works, the note beside the button reads __Getting your location…__. When it succeeds, the note changes to __Location attached:__ followed by your latitude and longitude, and the coordinates are stored on the issue when you submit.",
+        "Finish filling in the issue and tap **Submit Issue** as usual."
+      ]
+    },
+    {
+      "screenshot": "The New Issue form on a phone with the 📍 Attach my location button and a Location attached: 34.12345, -84.56789 confirmation"
+    },
+    {
+      "p": "A few things worth knowing about how this works:"
+    },
+    {
+      "bullets": [
+        "**It is entirely opt-in.** OpenTrack never reads your location on its own. Nothing happens until you tap the button, and even then your device asks permission before any coordinates are read.",
+        "**The button explains itself when empty.** Before you use it, the note beside it reads __Optional — useful for a problem out in the field.__ so it is clear the location is not required.",
+        "**High accuracy is requested.** OpenTrack asks the device for its most precise fix, which on a phone or tablet usually means the built-in GPS. Accuracy still depends on the device, the sky view, and being outdoors.",
+        "**If it can't get a fix,** the note tells you why in plain words — for example __Couldn't get location:__ with the reason, or __This browser can't provide a location.__ on a device with no location support. You can still submit the issue without coordinates."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "CAPTURE ON-SITE",
+        "text": "Because the button reads the device's __current__ position, attach the location while you are standing at the problem — not later back at your desk, where you would only be stamping the issue with the office coordinates."
+      }
+    },
+    {
+      "h1": "Report by scanning a QR code"
+    },
+    {
+      "p": "A project can publish a printed **QR code** (Quick Response code — the square barcode you scan with a phone camera) that opens its public report form. This is the fastest way to let someone who has never used OpenTrack file a problem: they point their phone's camera at the poster, tap the link that pops up, and land directly on the report form for that project — no account, no app, no typing a web address."
+    },
+    {
+      "steps": [
+        "Point the device's camera at the project's printed **QR code** poster.",
+        "Tap the link the camera offers.",
+        "The public report form opens straight to that project. Fill in what's wrong and submit."
+      ]
+    },
+    {
+      "p": "This is the same public intake described in full in the *Public Trouble-Ticket Intake & QR Posters* chapter — printing the poster, what the reporter sees, and how those reports arrive in your project. On a phone in the field, scanning is simply the quickest doorway to it."
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__I don't see an \"Install\" option.__ You must open OpenTrack over a secure connection and, on iPad or iPhone, use **Safari** (the Share → Add to Home Screen path is a Safari feature). On Android, use **Chrome** and look under the **⋮** menu for **Install app** or **Add to Home screen**.",
+        "__An offline page shows old information.__ That's expected — offline you're seeing the last version the device cached while online. Reconnect and reload to get fresh data.",
+        "__A page won't open at all offline.__ You can only view pages offline that you opened at least once while connected. If you never loaded that page online, there's nothing cached to show.",
+        "__My checklist taps show \"• pending sync\" and aren't saving.__ You're offline. That note means the change is safely queued — it will send itself the next time you're back online, or when you reopen the checklist page. Don't clear the browser data in the meantime.",
+        "__Turning a failed check into an issue did nothing.__ That specific step needs a connection. OpenTrack will have told you it's waiting until you're back online; your **Fail** mark is still recorded.",
+        "__\"Attach my location\" says it was denied.__ Your device or browser blocked the location permission. Allow location for OpenTrack in your device's settings, then tap the button again. Being indoors or with a poor sky view can also make a fix fail or take longer.",
+        "__The location is wrong or way off.__ Capture it while physically at the problem, outdoors if possible. A cached or coarse fix (common indoors) can be far from where you actually are.",
+        "__Scanning the QR poster doesn't open anything.__ Make sure the camera is close enough to see the whole square, that there's enough light, and that the device is online to load the form. Some older phones need a dedicated QR-scanner app rather than the plain camera."
+      ]
+    }
+  ]
+}

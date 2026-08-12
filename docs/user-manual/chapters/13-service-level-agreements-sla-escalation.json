@@ -1,0 +1,241 @@
+{
+  "order": 13,
+  "title": "Service-Level Agreements (SLA) & Escalation",
+  "subtitle": "Set resolution deadlines by priority, and catch issues before they miss them.",
+  "in_this_chapter": [
+    "What a Service-Level Agreement is, in plain terms",
+    "The three states: On track, At risk, Breached",
+    "Setting resolution targets per priority (Managers)",
+    "How the clock starts and stops",
+    "Reading the SLA badge on an issue",
+    "The cross-project SLA status board",
+    "Automatic escalation when an issue breaches",
+    "Troubleshooting"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "A **Manager** sets a resolve-by deadline (in hours) for each priority under **Settings → SLA targets**. OpenTrack then flags every open issue **On track**, **At risk**, or **Breached**, and the **SLA status** page in the left navigation lists everything that needs attention right now. Breaches notify the assignee and managers by themselves."
+      }
+    },
+    {
+      "h1": "What an SLA is"
+    },
+    {
+      "p": "A **Service-Level Agreement (SLA)** is simply a promise about how quickly issues get dealt with — for example, \"urgent problems are resolved within 24 hours.\" OpenTrack lets a Manager set a target number of **hours to resolve** for each **priority**, then quietly watches every open issue against its own clock and flags the ones drifting toward, or already past, their deadline. You don't have to remember which issue is due when; the system keeps time for you."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "THE THREE STATES",
+        "text": "**On track** — comfortably within the target, plenty of time left. **At risk** — the issue has used up **80%** of its allowed time and still isn't resolved, so it needs attention now. **Breached** — the deadline has passed and the issue is still open. Each open issue shows its state as a colored badge, and the states are the whole point of the feature: green means fine, yellow means hurry, red means missed."
+      }
+    },
+    {
+      "h1": "How the clock works"
+    },
+    {
+      "p": "Understanding the timing makes everything else clear:"
+    },
+    {
+      "bullets": [
+        "The clock **starts when the issue is created**.",
+        "The clock **stops when the issue reaches Resolved** (or Closed). Anything from New through Assigned is still \"open\" and still on the clock; Resolved and Closed have stopped it.",
+        "**At risk** kicks in once 80% of the target has elapsed. If the target is 10 hours, an issue is flagged at risk after 8 hours still open.",
+        "**Breached** kicks in the moment the full target passes with the issue still open.",
+        "A **resolved or closed** issue is no longer tracked — it reports __Not tracked__ and shows no SLA badge, because its clock has already stopped."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "ONLY OPEN ISSUES ARE ON THE CLOCK",
+        "text": "The SLA in this version tracks the resolution clock for **open** issues only. Once an issue is Resolved or Closed, it drops off the SLA radar — it can't be \"at risk\" or \"breached\" anymore because there is nothing left to wait for. Reopening an issue puts it back on the clock."
+      }
+    },
+    {
+      "h1": "Setting targets (Manager)"
+    },
+    {
+      "p": "Resolution targets are set per project, and only a **Manager** on that project can change them. If you open the targets page without the Manager role, you will see the message __You need the Manager role on this project to set SLA targets.__ and no editable fields."
+    },
+    {
+      "steps": [
+        "Open the project, go to **Settings**, and select **SLA targets** across the top. (The page is titled **SLA targets — __ProjectName__**.)",
+        "You will see a table with one row per priority. For each priority, type how many **hours** a new issue of that priority may stay open before it breaches.",
+        "Leave a priority's box **blank** (or 0) to not track that priority at all — no clock, no badge, no escalation for it.",
+        "Select **Save targets**. A confirmation reads __SLA targets saved.__"
+      ]
+    },
+    {
+      "p": "The priorities are listed most-urgent first, and the sensible pattern is shorter targets at the top:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Priority",
+          "Resolve within (hours) — example",
+          "Roughly"
+        ],
+        "rows": [
+          [
+            "**Immediate**",
+            "4",
+            "Same working day"
+          ],
+          [
+            "**Urgent**",
+            "24",
+            "1 day"
+          ],
+          [
+            "**High**",
+            "72",
+            "3 days"
+          ],
+          [
+            "**Normal**",
+            "168",
+            "1 week"
+          ],
+          [
+            "**Low**",
+            "(blank)",
+            "Not tracked"
+          ],
+          [
+            "**None**",
+            "(blank)",
+            "Not tracked"
+          ]
+        ],
+        "widths": [
+          1.4,
+          2.6,
+          2
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "HANDY HOUR CONVERSIONS",
+        "text": "Because targets are entered in hours, keep these in mind: 1 day = **24** hours, 3 days = **72** hours, 1 week = **168** hours. The values above are only a starting point — set whatever your team actually promises."
+      }
+    },
+    {
+      "screenshot": "The SLA targets page: a row per priority with an hours box, and the Save targets button"
+    },
+    {
+      "h1": "The SLA badge on an issue"
+    },
+    {
+      "p": "Open any tracked issue and, near the top under its status and priority, you will see an **SLA** line with a colored badge showing its current state, plus the exact due-by time in Coordinated Universal Time (UTC): for example __SLA: At risk · due 8/14/2026 5:00 PM UTC__. The badge colors mirror the three states — green for __On track__, yellow for __At risk__, red for __Breached__. Issues whose priority isn't tracked (or that are already resolved) show no SLA line at all."
+    },
+    {
+      "h1": "The SLA status board"
+    },
+    {
+      "p": "Select **SLA status** in the left navigation (the alarm-clock icon) to open your triage screen. This is a live, **cross-project** list of every open issue that has already breached or is at risk — pulled from all the projects you can see, most-overdue first. It is the single best place to answer \"what most needs attention right now?\""
+    },
+    {
+      "p": "The page has two sections, one above the other:"
+    },
+    {
+      "bullets": [
+        "**Breached (__N__)** — issues that have already passed their deadline, listed most-overdue first. The count __N__ is right in the heading.",
+        "**At risk (__N__)** — issues that have crossed the 80% mark but not yet the deadline."
+      ]
+    },
+    {
+      "p": "Each row in either table shows these columns:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Column",
+          "What it shows"
+        ],
+        "rows": [
+          [
+            "**#**",
+            "The issue number."
+          ],
+          [
+            "**Project**",
+            "Which project the issue belongs to (the board spans all of them)."
+          ],
+          [
+            "**Title**",
+            "The issue's title, as a link straight to the issue."
+          ],
+          [
+            "**Priority**",
+            "The issue's priority — the field the target was keyed to."
+          ],
+          [
+            "**Assignee**",
+            "Who is responsible, or __Unassigned__."
+          ],
+          [
+            "**Due (UTC)**",
+            "The exact resolve-by moment, in Coordinated Universal Time."
+          ],
+          [
+            "**Overdue by / Due in**",
+            "A badge showing time. In the Breached table it reads __Overdue by__ with a red badge (for example __2d 3h__); in the At risk table it reads __Due in__ with a yellow badge counting down."
+          ]
+        ],
+        "widths": [
+          1.2,
+          5
+        ]
+      }
+    },
+    {
+      "screenshot": "The SLA status board: a red Breached section over a yellow At risk section, most-overdue first"
+    },
+    {
+      "p": "If nothing is breaching or at risk across your projects, the page shows a cheerful green message instead of tables: __Nothing is breaching or at risk right now.__ The board only ever shows issues you already have permission to see, so it is safe to leave open on a shared screen."
+    },
+    {
+      "h1": "Automatic escalation"
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "BREACHES ESCALATE BY THEMSELVES",
+        "text": "You don't have to watch the clock — OpenTrack does. When an issue **breaches**, it automatically notifies the issue's **assignee** and the project's **managers** with a message reading __SLA breached — this issue has passed its resolution target.__ This happens on its own, in the background, shortly after the deadline passes."
+      }
+    },
+    {
+      "p": "The escalation is deliberately quiet and tidy:"
+    },
+    {
+      "bullets": [
+        "It fires **once per issue**, so nobody is spammed with repeated warnings about the same breach.",
+        "It reaches the **assignee and every project manager**, so the breach lands with the people who can actually act on it.",
+        "If a breached issue has **nobody to escalate to yet** — no assignee and no managers — OpenTrack holds off and re-checks it later, so a manager or assignee added afterward still gets told rather than missing the already-breached issue."
+      ]
+    },
+    {
+      "p": "Escalations arrive the same way as other notifications: on your **Notifications** page, and by email as well if a mail server is configured (see the Notifications chapter)."
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__I can't edit the SLA targets.__ Setting targets needs the **Manager** role on that project. If you see __You need the Manager role on this project to set SLA targets__, ask a project manager to make the change or to raise your role.",
+        "__An issue has no SLA badge.__ Either its priority has no target set (its box is blank or 0), or the issue is already Resolved/Closed and has left the clock. Both are normal.",
+        "__An issue I resolved still showed as breached earlier.__ The clock stops at Resolved. Once resolved, the issue drops off the SLA status board and reports __Not tracked__. If it looks stuck, reload the page.",
+        "__The SLA status board is empty.__ That is good news — it means nothing you can see is breaching or at risk. You will see the green __Nothing is breaching or at risk right now__ message.",
+        "__A breached issue didn't notify anyone.__ If it had no assignee and no project managers at the time, OpenTrack held the escalation and will send it once someone is in place. Assign it or add a manager and it will escalate on the next background check.",
+        "__The 'Due (UTC)' time looks off by several hours.__ It is shown in Coordinated Universal Time (UTC), not your local time, so it reads the same for everyone regardless of time zone. Convert to your local time if needed.",
+        "__I set 0 hoping for an instant deadline.__ A target of 0 (or blank) means __not tracked__, not \"due immediately.\" Enter the actual number of hours you want to allow."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,273 @@
+{
+  "order": 24,
+  "title": "Keyboard Shortcuts & Quick Navigation",
+  "subtitle": "Jump anywhere in OpenTrack without reaching for the mouse — the command palette and the left-navigation map.",
+  "in_this_chapter": [
+    "Opening the command palette with Ctrl+K (⌘K on a Mac)",
+    "Every key the palette understands",
+    "Searching, jumping to an issue by number, and running commands",
+    "A map of the left-navigation destinations",
+    "Troubleshooting the shortcuts"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Press **Ctrl+K** (**⌘K** on a Mac) anywhere in OpenTrack to open the **command palette**. Type to search, type a number like **123** to jump straight to that issue, use the **↑/↓** arrows and **Enter** to pick, and **Esc** to close. Everything in the left navigation is also one click away."
+      }
+    },
+    {
+      "h1": "The command palette"
+    },
+    {
+      "p": "OpenTrack has one keyboard shortcut worth building a habit around: the **command palette**. It's a search box that drops down over whatever you're looking at, lets you type where you want to go, and takes you there — all without touching the mouse. It works the same way in a desktop browser, on the installed app, and on the desktop version of OpenTrack, because it only ever __navigates__ (changes which page you're on); it never changes your data, so there's nothing to undo and no risk in opening it to look."
+    },
+    {
+      "h2": "Opening and closing it"
+    },
+    {
+      "steps": [
+        "Press **Ctrl+K** on Windows or Linux, or **⌘K** (Command+K) on a Mac. A search box appears near the top of the screen, dimming the page behind it.",
+        "Start typing. The list below the box updates as you type.",
+        "Press **Enter** to go to the highlighted result, or click any result.",
+        "Press **Esc**, click outside the box, or press **Ctrl+K** / **⌘K** again to close it without going anywhere."
+      ]
+    },
+    {
+      "screenshot": "The command palette open over the app: a search box reading “Type to search, #123 to jump to an issue, or a command…” with a list of destinations below it"
+    },
+    {
+      "p": "The box shows a hint of everything it can do right in its placeholder text: __Type to search, #123 to jump to an issue, or a command…__. There are three things you can type."
+    },
+    {
+      "h2": "1. Jump to a specific issue by number"
+    },
+    {
+      "p": "If you know an issue's number, type it — with or without a leading __#__. As soon as the palette sees a number (for example `123` or `#123`), it offers **Go to issue #123** at the top of the list. Press **Enter** and you're on that issue. This is the fastest way to reach an issue you already know."
+    },
+    {
+      "h2": "2. Run a command (jump to a section)"
+    },
+    {
+      "p": "Type part of a section's name and the palette lists the matching destinations. You don't need the exact word — each command also answers to a few natural aliases, so \"bugs\" finds the issue list and \"export\" finds the backup page. The built-in commands are:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Command",
+          "Goes to",
+          "Also try typing"
+        ],
+        "rows": [
+          [
+            "**Dashboard**",
+            "Your home dashboard",
+            "home, overview"
+          ],
+          [
+            "**All issues**",
+            "The full issue list",
+            "issues, list, bugs"
+          ],
+          [
+            "**Quick add a problem**",
+            "The quick-add form for a new issue",
+            "new, add, quick, report, create"
+          ],
+          [
+            "**Projects**",
+            "Your projects",
+            "projects"
+          ],
+          [
+            "**Notifications**",
+            "Your notifications",
+            "notifications, alerts"
+          ],
+          [
+            "**Backup & export**",
+            "The backup, export, and import tools",
+            "backup, export, import, csv, json, mantis"
+          ]
+        ],
+        "widths": [
+          2.0,
+          2.6,
+          2.4
+        ]
+      }
+    },
+    {
+      "h2": "3. Search all issues for text"
+    },
+    {
+      "p": "If you type words rather than a number, the palette also offers a **Search issues for \"…\"** option at the bottom of the list. Choose it and you land on the issue list already filtered to your search text — a one-step way to go from \"I remember a word in the title\" to the matching issues."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "EMPTY BOX SHOWS EVERYTHING",
+        "text": "Open the palette and type nothing, and it simply lists all the built-in commands. It's a handy reminder of where you can go — you don't have to remember the destinations, just the **Ctrl+K** to summon the list."
+      }
+    },
+    {
+      "h1": "Every key the palette understands"
+    },
+    {
+      "p": "Once the palette is open, it's driven entirely from the keyboard:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Key",
+          "What it does"
+        ],
+        "rows": [
+          [
+            "**Ctrl+K** / **⌘K**",
+            "Opens the palette from anywhere. Pressing it again while open closes it."
+          ],
+          [
+            "**Type text or a number**",
+            "Filters the list live — matching commands, a “Go to issue #…” option for a number, and a “Search issues for …” option for words."
+          ],
+          [
+            "**↓** (Down arrow)",
+            "Moves the highlight to the next result (wraps around to the top from the bottom)."
+          ],
+          [
+            "**↑** (Up arrow)",
+            "Moves the highlight to the previous result (wraps around to the bottom from the top)."
+          ],
+          [
+            "**Enter**",
+            "Goes to the highlighted result."
+          ],
+          [
+            "**Esc**",
+            "Closes the palette without going anywhere."
+          ],
+          [
+            "**Click a result**",
+            "Goes to that result (the mouse still works if you prefer it)."
+          ],
+          [
+            "**Click outside the box**",
+            "Closes the palette, same as Esc."
+          ]
+        ],
+        "widths": [
+          2.0,
+          4.6
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "WHY ONE SHORTCUT?",
+        "text": "OpenTrack deliberately keeps a single, easy-to-remember shortcut instead of a thicket of key combinations you'd have to memorize. Learn **Ctrl+K**, and the palette gets you everywhere else. The buttons and links on each page do the rest — there are no hidden per-page hotkeys to trip over."
+      }
+    },
+    {
+      "h1": "The left-navigation map"
+    },
+    {
+      "p": "Down the left side of every page is the **navigation menu** — the same set of links wherever you are. What you see depends on whether you're signed in and on your role, but the full menu for a signed-in user is below. A small reminder in the menu itself — __🔍 Ctrl+K to jump__ — points you back to the palette."
+    },
+    {
+      "table": {
+        "headers": [
+          "Menu item",
+          "Where it takes you"
+        ],
+        "rows": [
+          [
+            "**Home**",
+            "The starting page / dashboard."
+          ],
+          [
+            "**Projects**",
+            "The list of projects you can see; the doorway to any single project and its settings."
+          ],
+          [
+            "**Issues**",
+            "The full issue list, with all the filters and search."
+          ],
+          [
+            "**Quick add**",
+            "The fast form for filing a new problem in a couple of fields."
+          ],
+          [
+            "**Reports**",
+            "Charts and summaries across your issues."
+          ],
+          [
+            "**SLA status**",
+            "How issues stand against their Service Level Agreement (SLA) targets — on track, at risk, or breached."
+          ],
+          [
+            "**Notifications**",
+            "Updates about issues you're involved in or monitoring. A red badge shows the unread count."
+          ],
+          [
+            "**Backup & export**",
+            "Download a backup or export your data (CSV, JSON, and more)."
+          ],
+          [
+            "**Import**",
+            "Bring data in from a file or another tracker."
+          ],
+          [
+            "**Preferences**",
+            "Your personal defaults (default project and default sort)."
+          ],
+          [
+            "**Users**",
+            "Administrators only: manage accounts, roles, and status."
+          ],
+          [
+            "**Your name (Account)**",
+            "Your own account settings — password, email, two-factor sign-in, passkeys."
+          ],
+          [
+            "**Logout**",
+            "Signs you out."
+          ]
+        ],
+        "widths": [
+          1.8,
+          4.8
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "THE MENU FITS YOUR ROLE",
+        "text": "You'll only see links you're allowed to use. **Users** appears only for a global **Administrator**; before you sign in, the menu shows just **Home**, **Register**, and **Login**. If a link named here is missing for you, it's your role — not a fault. See the *People & Roles* chapter."
+      }
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "ON A NARROW SCREEN",
+        "text": "On a phone or a small window the navigation collapses behind a menu button (the ☰ toggle) to save room. Tap it to slide the same list out. The **Ctrl+K** palette still works everywhere, and on a tablet with a keyboard it's often quicker than opening the menu."
+      }
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__Ctrl+K does nothing.__ Make sure the OpenTrack page itself has focus — click once on an empty part of the page, then try again. A few browsers reserve Ctrl+K for their own address bar; click into the page first so OpenTrack receives the key. On a Mac, use **⌘K**, not Ctrl+K.",
+        "__The palette opened but typing a number didn't offer the issue.__ Type just the digits (for example `42` or `#42`); extra letters turn it into a text search instead. The **Go to issue #…** option appears only when the box contains a number on its own.",
+        "__“Go to issue #…” led to a “not found” or access-denied page.__ The palette will happily try any number, but you still need permission to view that issue, and it has to exist. If your role doesn't allow it, OpenTrack won't show it — see *People & Roles*.",
+        "__The arrow keys move the page instead of the list.__ Click inside the palette's search box first so it has focus, then use **↑/↓**. Clicking outside the box closes the palette.",
+        "__A menu link I read about here isn't in my sidebar.__ It's almost always your role. **Users** is administrators-only, and some links depend on being signed in. Ask an administrator if you believe you should have access.",
+        "__The sidebar is gone on my phone.__ It collapsed to fit the screen. Tap the menu toggle (☰) at the top to slide it back out, or just press **Ctrl+K** to jump without it."
+      ]
+    }
+  ]
+}

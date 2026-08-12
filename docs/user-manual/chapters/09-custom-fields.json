@@ -1,0 +1,243 @@
+{
+  "order": 9,
+  "title": "Custom Fields",
+  "subtitle": "Add your own project-specific fields to capture exactly what your team needs to track.",
+  "in_this_chapter": [
+    "What custom fields are and when they help",
+    "The four field types and what each one accepts",
+    "Defining fields on a project (Managers only)",
+    "Editing, reordering, requiring, and deleting fields",
+    "Filling fields in on an issue (everyone with edit rights)",
+    "Troubleshooting"
+  ],
+  "blocks": [
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "QUICK VERSION",
+        "text": "Need to track something the built-in fields don't cover (like a **Customer** or an **Environment**)? A project **Manager** adds the field once, under the project's **Custom fields** page, choosing a type (text, number, date, or a pick-one list). After that it appears on every issue in the project, and anyone who can edit an issue fills it in."
+      }
+    },
+    {
+      "h1": "Why custom fields exist"
+    },
+    {
+      "p": "OpenTrack's built-in fields — status, severity, priority, category, reproducibility, versions, and so on — fit most work. But almost every team has something extra it always wants recorded, something specific to what they do. **Custom fields** let a project add exactly those. A field you define shows up on every issue in that project, right alongside the built-in fields, and its values are searchable and tracked in history like everything else."
+    },
+    {
+      "p": "Some common examples:"
+    },
+    {
+      "bullets": [
+        "A **Customer** name, so support issues can be tied to the account that reported them.",
+        "An **Environment** chosen from a fixed list — __Production__, __Staging__, __Test__ — so it's clear where a bug appeared.",
+        "A **Hardware revision** or **Firmware version**, for teams tracking physical devices.",
+        "An **Estimated hours** number, or a **Target date** for when something is expected.",
+        "A **Severity tier** or any other pick-one label your team uses that the built-in severity list doesn't match."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "PER PROJECT, NOT GLOBAL",
+        "text": "Custom fields belong to the project they're defined on. A field you add to the __Website__ project does not appear on issues in the __Mobile App__ project. If two projects need the same field, define it in each — this keeps every project's issue page free of fields that don't apply to it."
+      }
+    },
+    {
+      "h1": "The four field types"
+    },
+    {
+      "p": "Every custom field has a **type** that decides what kind of value it accepts and how the input looks on the issue page. There are four:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Type",
+          "What it accepts",
+          "How it looks on the issue",
+          "Good for"
+        ],
+        "rows": [
+          [
+            "**Text**",
+            "Any free text, a single line.",
+            "A plain text box.",
+            "Names, short notes, reference codes — anything that doesn't fit the other three."
+          ],
+          [
+            "**Number**",
+            "A numeric value (checked that it reads as a number).",
+            "A number box.",
+            "Estimated hours, counts, revisions, any figure you might want to sort or compare."
+          ],
+          [
+            "**Date**",
+            "A single calendar date.",
+            "A date picker.",
+            "Target dates, dates something was observed, deadlines specific to your team."
+          ],
+          [
+            "**List (choose one)**",
+            "Exactly one value from a fixed list you define.",
+            "A drop-down of your options, plus a __— none —__ choice.",
+            "Environment, tier, region — anywhere you want consistent values rather than free typing."
+          ]
+        ],
+        "widths": [
+          1.4,
+          2.4,
+          2.2,
+          2.4
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "PICK THE TYPE CAREFULLY",
+        "text": "A field's **type cannot be changed after it's created** — changing it would invalidate values people have already saved. If you get the type wrong, you have to delete the field and add it again with the right type (which clears any values already entered). So decide __List__ vs. __Text__, or __Number__ vs. __Text__, before you save."
+      }
+    },
+    {
+      "h1": "Defining a custom field (Manager)"
+    },
+    {
+      "p": "Only a project **Manager** can add, edit, or remove a project's custom fields. If you open the Custom fields page without the Manager role, you'll see a message reading __You need the Manager role on this project to manage its custom fields__ and no editing controls. Everyone else simply fills the fields in on issues, covered later in this chapter."
+    },
+    {
+      "h2": "Opening the Custom fields page"
+    },
+    {
+      "steps": [
+        "Go to the project you want to add a field to.",
+        "Open its **Custom fields** page. (The web address is the project's page followed by `/custom-fields`; there is also a link into it from the project's own screens.)",
+        "The page splits into two columns: on the left, **Fields on this project** — a table of what already exists; on the right, **Add a field** — the form for creating a new one. If no fields exist yet, the left side reads __No custom fields yet. Add one on the right.__"
+      ]
+    },
+    {
+      "screenshot": "The Custom fields page: the Fields on this project table on the left and the Add a field form on the right"
+    },
+    {
+      "h2": "Adding a field"
+    },
+    {
+      "steps": [
+        "In the **Add a field** form, type a **Name** — this is the label operators will see on each issue (for example, `Customer`).",
+        "Choose a **Type** from the drop-down: __Text__, __Number__, __Date__, or __List (choose one)__. A helper line under the drop-down reminds you what each one means.",
+        "If — and only if — you picked **List**, fill in the **Options** box: one option per line. For example, type __High__, __Medium__, and __Low__ on three separate lines. (For the other three types this box is ignored, so you can leave it blank.)",
+        "Tick **Required** if every issue must have this field filled in. Required fields are flagged with an asterisk (`*`) on the issue page and cannot be left blank.",
+        "Click **Add field**. It appears in the table on the left and, from now on, on every issue in the project."
+      ]
+    },
+    {
+      "table": {
+        "headers": [
+          "Column in the table",
+          "What it shows"
+        ],
+        "rows": [
+          [
+            "**Name**",
+            "The field's label as operators see it."
+          ],
+          [
+            "**Type**",
+            "Text, Number, Date, or Enum (the internal name for the List type)."
+          ],
+          [
+            "**Required**",
+            "__Yes__ if the field must be filled in, __No__ if it's optional."
+          ],
+          [
+            "**Options**",
+            "For a List field, the choices you defined, separated by commas. For the other types, a dash (__—__)."
+          ]
+        ],
+        "widths": [
+          1.6,
+          4.4
+        ]
+      }
+    },
+    {
+      "h2": "Editing a field"
+    },
+    {
+      "p": "Click **Edit** on a field's row in the table. The right-hand form switches to __Edit__ mode and pre-fills with that field's current settings. From here you can change:"
+    },
+    {
+      "bullets": [
+        "The **Name** — safe to change any time; it just relabels the field.",
+        "The **Options** (List fields only) — one per line, same as when you created it.",
+        "The **Display order** — a number that decides where this field sits relative to the others on the issue page. __Lower numbers sort first; 0 puts the field at the top.__ Use this to group related fields together in a sensible reading order.",
+        "**Required** — tick or untick whether the field must be filled in."
+      ]
+    },
+    {
+      "p": "One thing you **cannot** change here is the **Type** — it's shown but greyed out, with a note explaining that changing it would invalidate values already saved. Click **Save changes** to keep your edits, or **Cancel** to back out without changing anything."
+    },
+    {
+      "screenshot": "The Edit form for a custom field, showing Name, the disabled Type, Options, Display order, and the Required checkbox"
+    },
+    {
+      "h2": "Deleting a field"
+    },
+    {
+      "steps": [
+        "Below the fields table, find the **Select a field to delete…** drop-down.",
+        "Choose the field you want to remove.",
+        "Click **Delete**."
+      ]
+    },
+    {
+      "callout": {
+        "kind": "warning",
+        "label": "DELETING REMOVES ITS VALUES TOO",
+        "text": "Deleting a field also **removes that field's value from every issue in the project**, not just the field definition. There is no undo. If you only want to stop using a field but keep its history, consider leaving it in place (and un-requiring it) rather than deleting it."
+      }
+    },
+    {
+      "h1": "Filling a field in (everyone with edit rights)"
+    },
+    {
+      "p": "Once a Manager has defined the fields, anyone with the **Updater** role (a developer-level account or higher) fills them in. On any issue in that project, the custom fields appear in their own **Custom fields** section, near the top of the page. Each field is drawn with the right kind of input for its type:"
+    },
+    {
+      "bullets": [
+        "A **Text** field shows a text box.",
+        "A **Number** field shows a number box.",
+        "A **Date** field shows a date picker.",
+        "A **List** field shows a drop-down of the defined options, with __— none —__ at the top so you can leave it unset.",
+        "A **required** field is marked with an asterisk (`*`) next to its name."
+      ]
+    },
+    {
+      "steps": [
+        "Open the issue and find the **Custom fields** section.",
+        "Set or change each value using its input.",
+        "Click **Save custom fields**. A short __Saved.__ confirmation appears. If something's wrong (for example a required field left blank, or a number that doesn't parse), an error message explains what to fix.",
+        "To clear an optional field, empty its box (or choose __— none —__ on a List field) and save. You can't clear a required field this way — it has to hold a value."
+      ]
+    },
+    {
+      "p": "Viewers who don't have edit rights still see the custom fields, but as a simple read-only list of __name: value__ — an unfilled field shows a dash (__—__). And because custom-field values are ordinary issue data, they're covered by search and they show up in the issue's **History** whenever they change, just like the built-in fields."
+    },
+    {
+      "screenshot": "The Custom fields section on an issue, with a text box, a number box, a date picker, and a list drop-down, and the Save custom fields button"
+    },
+    {
+      "h1": "Troubleshooting"
+    },
+    {
+      "bullets": [
+        "__I can't add or edit fields — I only see a warning.__ Managing custom fields requires the **Manager** role on that project. The message __You need the Manager role on this project…__ means your account isn't a Manager there. Ask an existing Manager to add the field, or to raise your role.",
+        "__My List field's drop-down is empty (only shows — none —).__ The field was created without options, or the **Options** box was left blank. Edit the field and enter the choices, one per line.",
+        "__I picked the wrong type.__ Type can't be changed after creation. Delete the field and add it again with the correct type — remembering this clears any values already entered for it.",
+        "__A field won't save — it says it's required.__ A required field can't be left blank. Enter a value, or ask a Manager to make the field optional (untick **Required** in the edit form) if it genuinely shouldn't be mandatory.",
+        "__My number won't save.__ A Number field only accepts values that read as a number. Remove any stray text, currency symbols, or letters and save again.",
+        "__The fields are in an odd order on the issue.__ A Manager can set each field's **Display order** in the edit form — lower numbers appear first, and 0 goes to the top. Adjust the numbers to group related fields together.",
+        "__A field disappeared from every issue.__ Someone likely deleted it on the Custom fields page, which also removes its values project-wide. It can be re-created, but the old values are gone."
+      ]
+    }
+  ]
+}
