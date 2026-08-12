@@ -9,6 +9,7 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
+using OpenTrack.Core.Import;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Import;
@@ -49,6 +50,42 @@ public static class ImportWebEndpoints
             }
             catch (UnauthorizedAccessException) { return Results.Redirect("/backup?imp=forbidden"); }
             catch (FormatException) { return Results.Redirect("/backup?imp=badfile"); }
+        });
+
+        // Generic issue import (CSV / Jira CSV / GitHub JSON) into a chosen existing project. The Import
+        // page posts projectId + source + file; the shared IssueImporter enforces the per-project Manager
+        // requirement and dedups on re-import.
+        group.MapPost("/issues", async (HttpContext http, AppDbContext db, CancellationToken ct) =>
+        {
+            var identity = http.User.GetAccessIdentity();
+            if (identity is null) return Results.Unauthorized();
+
+            var form = await http.Request.ReadFormAsync(ct);
+            if (!int.TryParse(form["projectId"], out var projectId) || projectId <= 0)
+                return Results.Redirect("/import?imp=noproject");
+            var source = form["source"].ToString();
+            var file = form.Files.GetFile("file");
+            if (file is null || file.Length == 0) return Results.Redirect("/import?imp=empty");
+            if (file.Length > MaxBytes) return Results.Redirect("/import?imp=toobig");
+
+            string text;
+            using (var reader = new StreamReader(file.OpenReadStream()))
+                text = await reader.ReadToEndAsync(ct);
+
+            var access = await AccessSnapshot.LoadAsync(db, identity.Value, ct);
+            try
+            {
+                var (issues, label) = source switch
+                {
+                    "github" => ((IReadOnlyList<ImportedIssue>)GitHubIssueImport.Parse(text), "GitHub"),
+                    "jira" => (CsvIssueImport.Parse(text), "Jira"),
+                    _ => (CsvIssueImport.Parse(text), "CSV"),
+                };
+                var s = await IssueImporter.ImportAsync(db, access, projectId, label, issues, ct);
+                return Results.Redirect($"/import?imp=ok&pid={projectId}&ic={s.Imported}&sk={s.Skipped}&tc={s.TagsLinked}");
+            }
+            catch (UnauthorizedAccessException) { return Results.Redirect($"/import?imp=forbidden&pid={projectId}"); }
+            catch (FormatException) { return Results.Redirect($"/import?imp=badfile&pid={projectId}"); }
         });
         // Antiforgery is enforced by UseAntiforgery(): the upload form on the Backup page includes an
         // <AntiforgeryToken />, exactly like the attachment-upload form.

@@ -63,6 +63,11 @@ public class Issue
     /// export skip issues already brought in, instead of duplicating them.</summary>
     public int? ImportedMantisId { get; set; }
 
+    /// <summary>A stable source-scoped key for issues imported from CSV/GitHub/Jira (e.g. "github:123",
+    /// "JIRA-45"), so a re-import of the same file skips rows already brought in. Null for issues not
+    /// imported this way (MantisBT uses <see cref="ImportedMantisId"/>).</summary>
+    public string? ImportedExternalKey { get; set; }
+
     /// <summary>For an issue submitted via the public trouble-ticket page: the submitter's name and
     /// email (both optional). The email also lets that person look up their ticket's status later.</summary>
     public string? IntakeName { get; set; }

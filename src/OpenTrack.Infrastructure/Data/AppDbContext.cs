@@ -126,9 +126,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 .HasForeignKey(i => i.FixVersionId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            e.Property(i => i.ImportedExternalKey).HasMaxLength(200);
             e.HasIndex(i => i.Status);
             e.HasIndex(i => i.ProjectId);
             e.HasIndex(i => new { i.ProjectId, i.ImportedMantisId }); // dedup lookup on re-import
+            e.HasIndex(i => new { i.ProjectId, i.ImportedExternalKey }); // dedup lookup for CSV/GitHub re-import
         });
 
         // ---- IssueNote ----
