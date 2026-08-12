@@ -20,6 +20,11 @@
 
     Run it again anytime to UPDATE: it pulls the latest code, rebuilds, and restarts.
 
+    Run it with NO options and it interactively asks a few plain questions (where to keep the data,
+    whether to install the local AI, whether to set the first administrator, and the ports), each with
+    a default you accept by pressing Enter. Pass any flag or -ConfigFile (or -NonInteractive) and it
+    skips the questions and runs unattended.
+
     Everything is a plain, reversible change - no registry surgery, no third-party services.
     The two programs run as scheduled tasks under the SYSTEM account so they're always on.
 
@@ -115,7 +120,8 @@ param(
     [string]$AdminPassword,
     [switch]$RequireHttps,
     [switch]$SkipPrereqs,
-    [switch]$SkipFirewall
+    [switch]$SkipFirewall,
+    [switch]$NonInteractive
 )
 
 $ErrorActionPreference = 'Stop'
@@ -131,6 +137,18 @@ function Write-Ok([string]$msg) { Write-Host "    OK  $msg" -ForegroundColor Gre
 function Write-Info([string]$msg) { Write-Host "    -   $msg" -ForegroundColor Gray }
 function Write-Warn2([string]$msg) { Write-Host "    !   $msg" -ForegroundColor Yellow }
 function Fail([string]$msg) { Write-Host ""; Write-Host "ERROR: $msg" -ForegroundColor Red; exit 1 }
+
+# Interactive prompt helpers (used only when the script is run bare, with no flags/config).
+function Ask([string]$q, [string]$def) {
+    $a = Read-Host ("{0} [{1}]" -f $q, $def)
+    if ([string]::IsNullOrWhiteSpace($a)) { return $def } else { return $a.Trim() }
+}
+function AskYesNo([string]$q, [bool]$defaultYes) {
+    $suffix = if ($defaultYes) { "[Y/n]" } else { "[y/N]" }
+    $a = Read-Host ("{0} {1}" -f $q, $suffix)
+    if ([string]::IsNullOrWhiteSpace($a)) { return $defaultYes }
+    return ($a -match '^\s*(y|yes)\s*$')
+}
 
 function Test-Admin {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -216,6 +234,54 @@ if (-not (Test-Admin)) {
     Fail "Please run this in an ELEVATED PowerShell (right-click PowerShell -> 'Run as administrator'). It needs admin rights to open the firewall and register auto-start."
 }
 
+# If run bare (no flags, no -ConfigFile), walk the user through a few plain questions.
+$explicitKeys = @('ConfigFile','RepoUrl','Branch','SourceDir','InstallDir','DataDir','BindAddress',
+                  'WebPort','ApiPort','InstallAi','AiModel','AdminEmail','AdminPassword','RequireHttps',
+                  'AutoStart','SkipPrereqs','SkipFirewall','NonInteractive')
+$anyExplicit = $false
+foreach ($k in $explicitKeys) { if ($PSBoundParameters.ContainsKey($k)) { $anyExplicit = $true; break } }
+$Interactive = (-not $NonInteractive) -and (-not $anyExplicit) -and [Environment]::UserInteractive
+
+if ($Interactive) {
+    Write-Host ""
+    Write-Host "Let's set up your OpenTrack server. I'll ask a few quick questions." -ForegroundColor White
+    Write-Host "Press Enter to accept the default shown in [brackets]." -ForegroundColor White
+    Write-Host ""
+    Write-Host "First, where should your data (the OpenTrack database) be kept?" -ForegroundColor White
+    Write-Host "  Tip: if this PC has a SECOND drive, keeping the data there means your projects and" -ForegroundColor Gray
+    Write-Host "  issues survive even if Windows is ever reinstalled on C:. One drive is fine too." -ForegroundColor Gray
+    if (AskYesNo "Does this PC have a SECOND drive (besides C:)?" $false) {
+        $dl = Ask "  Which drive letter is that second drive?" "D"
+        $dl = ($dl -replace '[^A-Za-z]', '')
+        if ([string]::IsNullOrEmpty($dl)) { $dl = "D" }
+        $dl = $dl.Substring(0, 1).ToUpper()
+        if (-not (Test-Path ("{0}:\" -f $dl))) {
+            Write-Warn2 ("Drive {0}: doesn't seem to exist yet - make sure it's connected and formatted before you continue." -f $dl)
+        }
+        $suggestedData = "{0}:\OpenTrack\Data" -f $dl
+    } else {
+        $suggestedData = "C:\OpenTrack\data"
+    }
+    $DataDir = Ask "Where should the database and data be kept?" $suggestedData
+    if (AskYesNo "Install the free local AI on this machine now? (needs about 16 GB of memory)" $false) {
+        $InstallAi = $true
+        $AiModel = Ask "  Which AI model?" $AiModel
+    }
+    if (AskYesNo "Set up the first administrator account now?" $true) {
+        $AdminEmail = Ask "  Administrator email" $AdminEmail
+        $sec = Read-Host "  Administrator password (typing is hidden)" -AsSecureString
+        if ($sec.Length -gt 0) {
+            $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
+            try { $AdminPassword = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr) }
+            finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+        }
+    }
+    if (-not (AskYesNo "Use the standard ports (browser 5035, desktop app 5003)?" $true)) {
+        $WebPort = [int](Ask "  Browser (web) port" "$WebPort")
+        $ApiPort = [int](Ask "  Desktop-app (API) port" "$ApiPort")
+    }
+}
+
 $dbPath = Join-Path $DataDir "opentrack.db"
 $connString = "Data Source=$dbPath;Cache=Shared"
 $webPublish = Join-Path $InstallDir "web"
@@ -230,6 +296,11 @@ Write-Host ("  Web (browser) : http://{0}:{1}" -f $BindAddress, $WebPort)
 Write-Host ("  API (desktop) : http://{0}:{1}" -f $BindAddress, $ApiPort)
 Write-Host ("  Local AI      : {0}" -f $(if ($InstallAi) { "yes ($AiModel via Ollama)" } else { "no" }))
 Write-Host ("  Auto-start    : {0}" -f $AutoStart)
+
+if ($Interactive -and -not (AskYesNo "`nProceed with the install above?" $true)) {
+    Write-Host "Cancelled - nothing was changed." -ForegroundColor Yellow
+    exit 0
+}
 
 # 1 --------------------------------------------------------------------------- prereqs
 Write-Step "Checking prerequisites (.NET 10 SDK and Git)"
