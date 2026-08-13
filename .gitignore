@@ -286,6 +286,10 @@ Generated_Code/
 # because we have git ;-)
 _UpgradeReport_Files/
 Backup*/
+# ...but OpenTrack has a real source namespace folder named Backup/ — keep it tracked.
+# (Re-include the directory first, then its contents; git requires that order.)
+!src/OpenTrack.Infrastructure/Backup/
+!src/OpenTrack.Infrastructure/Backup/**
 UpgradeLog*.XML
 UpgradeLog*.htm
 ServiceFabricBackup/
