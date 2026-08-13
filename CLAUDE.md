@@ -40,10 +40,10 @@ This list **supersedes the research report** where they differ.
 | ORM              | EF Core 10, code-first migrations                            |
 | Database         | **SQLite** by default  *(report/early chat mentioned SQL Server Express — not using that)*; swappable to PostgreSQL / SQL Server / MySQL via EF Core |
 | Auth             | ASP.NET Core Identity + JWT (LDAP/AD later, Phase 4)         |
-| Email            | MailKit                                                      |
-| Realtime         | SignalR (live issue updates)                                 |
-| Background jobs  | Hangfire (email queue, scheduled reports)                    |
-| Charts           | ApexCharts.Blazor or Chart.js interop                        |
+| Email            | **Framework `System.Net.Mail` SMTP** (`SmtpEmailSender`) — *MailKit was rejected: its MimeKit dependency carried an unpatched advisory* |
+| Realtime         | **Smart-poll** (`ActivityToken` — a tiny "anything changed?" token, reload only on change) — *not SignalR; keeps it cross-host with no circuit complexity* |
+| Background jobs  | **Hosted `BackgroundService`s** (`SlaScanner`, `BackupScheduler`) — *not Hangfire* |
+| Charts           | **Hand-rolled inline SVG** (`BarChart.razor`) — *no charting library* |
 | Containers       | Docker + docker-compose                                      |
 | CI/CD            | GitHub Actions                                               |
 
@@ -56,7 +56,7 @@ OpenTrack/
 ├── src/
 │   ├── OpenTrack.Core/            # Domain models, interfaces, business logic
 │   ├── OpenTrack.Infrastructure/  # EF Core, repositories, email, file storage
-│   ├── OpenTrack.API/             # ASP.NET Core REST API + SignalR
+│   ├── OpenTrack.API/             # ASP.NET Core REST API (JWT)
 │   ├── OpenTrack.UI/              # Shared Razor Class Library — ALL Blazor components live here
 │   ├── OpenTrack.Web/             # Blazor web host (references OpenTrack.UI)
 │   └── OpenTrack.Desktop/         # .NET MAUI Blazor Hybrid shell — ADDED NEXT STEP (needs `dotnet workload install maui`)
@@ -98,16 +98,47 @@ running and log-in-able before expanding.**
 - **Phase 3 — Reporting & integrations:** dashboards, roadmap/changelog, CSV/Excel export, REST API polish, Git webhooks
 - **Phase 4 — Enterprise:** LDAP/AD, configurable workflow, plugins, localization framework (English only; community translations later), Docker publish, **desktop app packaging/signing/installers** (Windows + macOS)
 
-**➡️ Current status: Phase 1 — IN PROGRESS.**
-Done so far: (a) solution skeleton (8 projects, builds clean, tests pass, web app runs);
-(b) **EF Core data layer** — all domain entities (`User`, `Project`, `ProjectMembership`,
-`Category`, `ProjectVersion`, `Issue`, `IssueNote`, `IssueHistory`, `IssueAttachment`) + the
-enums, an `AppDbContext` wired to **SQLite**, and the `InitialCreate` migration. The web app
-auto-applies migrations on startup, so `opentrack.db` is created automatically when it runs
-(verified: 9 tables created, app serves HTTP 200).
-**Next actions:** (1) ASP.NET Core Identity auth — integrate the `User` entity; (2) first
-project/issue CRUD UI in Blazor; (3) add the `OpenTrack.Desktop` MAUI shell (after
-`dotnet workload install maui`).
+**➡️ Current status: feature-complete beyond the original Phase 1–4 plan** (all four phases'
+core work landed; a few verification items and optional "leapfrog" features remain — see below).
+The Phase list above is the *original plan*, kept for history; the reality is far ahead of it.
+
+> ⚠️ **History note (why the code is so far ahead of the early git commits):** the base app was
+> first delivered via claude.ai **chat** (zip hand-offs), never build/test-verified. A later
+> Claude Code session (lost to a Windows reboot — recovered notes in
+> `docs/opentrack-recovered-history.md` / `-summary.md`) gave it a full multi-lens **security
+> audit** (`docs/internal/AUDIT_2026-08-10.md`), fixed every finding, then built the entire
+> MantisBT-parity feature set and beyond. **Do not "re-start Phase 1"** — auth, CRUD, and the
+> desktop shell are long done.
+
+**Done (verified building: 0 errors; 227 tests pass — 108 Core + 115 API + 4 Web):**
+- **Security audit closed** — the systemic root cause was `ProjectMembership`/`IsPrivate`/`IsPublic`
+  stored but **never enforced** (IDOR, private-issue exposure, near-zero real tests). Fixed with
+  **one shared authorization layer** both hosts call — `AccessContext` (Core) +
+  `AccessSnapshot` / `VisibilityQueries` (Infrastructure) — so API and web/EF paths can't drift.
+- **Auth:** ASP.NET Core Identity + JWT, **passkeys are a live feature** (`AspNetUserPasskeys` —
+  never drop that table), `IsActive` sign-in enforcement, config-driven admin bootstrap, member
+  management + web-only user/role admin.
+- **MantisBT parity + beyond:** advanced/saved/shareable filters, full-text search (incl. notes),
+  command palette (Ctrl/⌘+K), relationships, tags, notifications, bulk actions, custom fields,
+  cross-project dashboard, bug-hunt checklists, safe Markdown (hand-rolled), quick-capture,
+  backup/export (CSV/JSON), Kanban board, stale surfacing, MantisBT importer, smart duplicate
+  detection, webhooks (Slack/Discord/generic), public trouble-ticket intake, roadmap/changelog,
+  reporting/trend charts (inline SVG), time logging, per-project workflow rules, print/PDF,
+  automation rules, SLA + escalation, two-way Git integration, GPS-on-issues + QR "scan to
+  report" poster, scheduled DB backups, Docker packaging.
+- **AI-assist foundation** — opt-in, bring-your-own-key, server-side Anthropic Messages API,
+  smart triage; every output is a human-confirmed suggestion. *(Never live-verified — needs a
+  real key.)*
+- **Docs:** Installation Guide, User Manual, Programming Guide — all on the per-chapter-JSON
+  pipeline (see §10); plus guides under `docs/guides/` and outreach under `docs/outreach/`.
+
+**Open verification / next steps (from the recovered summary):**
+1. **Confirm the macOS desktop build** (Mac Catalyst head) on the Mac — only the Windows head was
+   built in-session.
+2. **Live-verify AI features** with a real Anthropic API key.
+3. Optional leapfrog items not yet built: PWA push notifications, natural-language/semantic
+   search, localization (i18n), immutable audit log, **email-to-ticket** intake.
+4. Still parked per §11: **built-in wiki** and **issue sponsorship**.
 
 ---
 
@@ -127,6 +158,14 @@ project/issue CRUD UI in Blazor; (3) add the `OpenTrack.Desktop` MAUI shell (aft
 | Localization        | English only; strings externalized so translations are possible later |
 | Source control      | Git only (no SVN / Mercurial)                      |
 | Issue sponsorship   | Deferred — not in Phases 1–3; revisit later only if wanted |
+| Authorization       | **One shared decision layer** (`AccessContext` + `AccessSnapshot`/`VisibilityQueries`) that BOTH the API and web/EF paths call — never re-implement ACL per host |
+| Email               | Framework `System.Net.Mail` SMTP — **MailKit rejected** (vulnerable MimeKit) |
+| Real-time updates   | **Smart-poll** via `ActivityToken` — **not SignalR** |
+| HTTPS               | Config switch `OpenTrack:RequireHttps` (default `false` = trusted-LAN plain HTTP; `true` = redirect + HSTS) |
+| Passkeys            | **Live feature** — `AspNetUserPasskeys` table is load-bearing; never drop it |
+| AI-assist           | Opt-in, bring-your-own-key; **API billed on a separate Anthropic Console account, NOT the Claude Max subscription** |
+| EF migrations       | Single correct `AppDbContextFactory` (applies Identity registration) — `dotnet ef` scaffolds cleanly; **do not hand-author migrations** |
+| Charts / Markdown   | Hand-rolled (inline-SVG charts, encode-first safe Markdown) — no third-party libs |
 
 ---
 
@@ -164,15 +203,16 @@ Keep these in mind — the PDF in `docs/` predates them:
 
 ## 10. Documentation & user manual
 
-A full **user manual** is a committed deliverable (its table of contents will mirror the
-feature list).
+All **three core books exist and are committed**: **Installation Guide**, **User Manual**, and
+**Programming Guide**. (The earlier plan to use **MkDocs / DocFX** was superseded.)
 
-- **Write it incrementally** — each phase adds its own manual section as features land, so
-  the manual is never stale and never a single end-of-project mountain.
-- **Format (to finalize ~Phase 3):** a Markdown-based docs site — **MkDocs Material** or
-  **DocFX** — producing a searchable HTML site *and* an exportable PDF from one source, so the
-  online and downloadable manuals stay in sync.
-- Lives in `docs/manual/` in the repo.
+- **Pipeline (locked):** navy + gold python-docx house style (`style.py`); **Markdown is the
+  living source of truth**; the styled `.docx` / PDF is generated from **per-chapter JSON**
+  (`chapters/*.json` + a `build.py`) — see the house standards at the bottom of this file.
+- **Locations:** `docs/installation-guide/`, `docs/user-manual/`, `docs/programming-guide/`
+  (each with its `chapters/` pipeline). Additional docs: `docs/guides/` (AI_ASSIST, DEPLOYMENT,
+  DOCKER, MANTISBT_IMPORT, PUBLIC_TICKETS, TABLET_AND_NETWORK_ACCESS), `docs/outreach/`
+  (OPENTRACK_VS_MANTISBT, PRODUCT_LISTING), `docs/internal/` (AUDIT_2026-08-10).
 - Also plan for lightweight **in-app help** (contextual tips) as a separate, later nicety.
 
 ---
