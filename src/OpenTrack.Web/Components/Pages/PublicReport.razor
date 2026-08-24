@@ -16,9 +16,9 @@
     {
         <div class="text-center mt-5">
             <h1 class="h3">Thank you</h1>
-            @if (Ref > 0)
+            @if (Ref != "0")
             {
-                <p class="lead">Your report was received. Your reference number is <strong>#@Ref</strong>.</p>
+                <p class="lead">Your report was received. Your reference number is <strong>@Ref</strong>.</p>
                 <p>Keep that number — you can <a href="/report/status">check its status</a> anytime.</p>
             }
             else
@@ -67,7 +67,7 @@
 
 @code {
     [Parameter] public int ProjectId { get; set; }
-    [SupplyParameterFromQuery] public int? Ref { get; set; }
+    [SupplyParameterFromQuery] public string? Ref { get; set; }
     [SupplyParameterFromQuery] public string? Err { get; set; }
 
     private string? projectName;

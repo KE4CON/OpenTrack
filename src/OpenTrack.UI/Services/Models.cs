@@ -21,11 +21,11 @@ namespace OpenTrack.UI.Services;
 
 public record ProjectRow(int Id, string Name, string? Description, bool IsPublic, int OwnerId, int OpenIssueCount);
 
-public record ProjectDetail(int Id, string Name, string? Description, bool IsPublic, int OwnerId, DateTime CreatedAt, Guid RowVersion, bool PublicIntakeEnabled = false);
+public record ProjectDetail(int Id, string Name, string? Description, bool IsPublic, int OwnerId, DateTime CreatedAt, Guid RowVersion, bool PublicIntakeEnabled = false, string? Key = null);
 
-public record CreateProjectInput(string Name, string? Description, bool IsPublic);
+public record CreateProjectInput(string Name, string? Description, bool IsPublic, string? Key = null);
 
-public record UpdateProjectInput(string Name, string? Description, bool IsPublic, Guid RowVersion);
+public record UpdateProjectInput(string Name, string? Description, bool IsPublic, Guid RowVersion, string? Key = null);
 
 public record IssueRow(
     int Id, int ProjectId, string ProjectName, string Title,
@@ -165,7 +165,7 @@ public record IssueDetail(
     int? FixVersionId, string? FixVersionName,
     Guid RowVersion,
     IReadOnlyList<IssueNoteView> Notes,
-    double? Latitude = null, double? Longitude = null);
+    double? Latitude = null, double? Longitude = null, string? ProjectKey = null);
 
 public record CreateIssueInput(
     string Title, string Description, string? StepsToReproduce,

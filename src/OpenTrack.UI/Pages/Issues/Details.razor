@@ -1,4 +1,5 @@
 @page "/issues/{Id:int}"
+@using OpenTrack.Core.Text
 @attribute [Authorize]
 @inject IOpenTrackDataService Data
 @inject IAttachmentTransfer Transfer
@@ -13,7 +14,7 @@ else
 {
     <div class="d-flex justify-content-between align-items-start mb-2">
         <div>
-            <p class="text-muted mb-0">@issue.ProjectName / Issue #@issue.Id</p>
+            <p class="text-muted mb-0">@issue.ProjectName / Issue @TicketNumber.Format(issue.ProjectKey, issue.Id)</p>
             <h1>@issue.Title</h1>
         </div>
         <div class="d-flex gap-2">

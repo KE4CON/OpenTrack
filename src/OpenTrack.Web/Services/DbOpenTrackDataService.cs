@@ -19,6 +19,7 @@ using OpenTrack.Core.Enums;
 using OpenTrack.Infrastructure.Bulk;
 using OpenTrack.Core.Querying;
 using OpenTrack.Core.Sla;
+using OpenTrack.Core.Text;
 using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Automation;
@@ -101,7 +102,7 @@ public class DbOpenTrackDataService(
         var p = await db.Projects.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (p is null || !access.For(p.Id).CanViewProject(p.IsPublic))
             return null;
-        return new ProjectDetail(p.Id, p.Name, p.Description, p.IsPublic, p.OwnerId, p.CreatedAt, p.RowVersion, p.PublicIntakeEnabled);
+        return new ProjectDetail(p.Id, p.Name, p.Description, p.IsPublic, p.OwnerId, p.CreatedAt, p.RowVersion, p.PublicIntakeEnabled, p.Key);
     }
 
     public async Task SetPublicIntakeEnabledAsync(int projectId, bool enabled, CancellationToken ct = default)
@@ -126,7 +127,8 @@ public class DbOpenTrackDataService(
 
         var project = new Project
         {
-            Name = input.Name, Description = input.Description, IsPublic = input.IsPublic, OwnerId = access.UserId
+            Name = input.Name, Description = input.Description, IsPublic = input.IsPublic, OwnerId = access.UserId,
+            Key = TicketNumber.NormalizeKey(input.Key)
         };
         project.Members.Add(new ProjectMembership { UserId = access.UserId, Role = UserRole.Manager });
         db.Projects.Add(project);
@@ -148,6 +150,7 @@ public class DbOpenTrackDataService(
         project.Name = input.Name;
         project.Description = input.Description;
         project.IsPublic = input.IsPublic;
+        project.Key = TicketNumber.NormalizeKey(input.Key);
         project.RowVersion = Guid.NewGuid();
         await SaveDetectingConflictAsync(db, ct);
     }
@@ -493,7 +496,7 @@ public class DbOpenTrackDataService(
                 .OrderBy(n => n.CreatedAt)
                 .Select(n => new IssueNoteView(n.Id, n.Author.UserName ?? "unknown", n.Text, n.IsPrivate, n.CreatedAt))
                 .ToList(),
-            i.Latitude, i.Longitude);
+            i.Latitude, i.Longitude, i.Project.Key);
     }
 
     public async Task<int> CreateIssueAsync(int projectId, CreateIssueInput input, CancellationToken ct = default)
