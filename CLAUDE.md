@@ -110,7 +110,7 @@ The Phase list above is the *original plan*, kept for history; the reality is fa
 > MantisBT-parity feature set and beyond. **Do not "re-start Phase 1"** — auth, CRUD, and the
 > desktop shell are long done.
 
-**Done (verified building: 0 errors; 263 tests pass — 130 Core + 129 API + 4 Web):**
+**Done (verified building: 0 errors; 270 tests pass — 134 Core + 132 API + 4 Web):**
 - **Security audit closed** — the systemic root cause was `ProjectMembership`/`IsPrivate`/`IsPublic`
   stored but **never enforced** (IDOR, private-issue exposure, near-zero real tests). Fixed with
   **one shared authorization layer** both hosts call — `AccessContext` (Core) +

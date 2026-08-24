@@ -38,4 +38,23 @@ public class EmailRoutingTests
     {
         Assert.Null(EmailRouting.ProjectKeyFromRecipient(recipient));
     }
+
+    [Fact]
+    public void SplitFromAddress_UnwrapsNameAndAddress()
+    {
+        Assert.Equal(("Alice Smith", "alice@example.com"), EmailRouting.SplitFromAddress("Alice Smith <alice@example.com>"));
+        Assert.Equal(("Alice", "alice@example.com"), EmailRouting.SplitFromAddress("\"Alice\" <alice@example.com>"));
+        Assert.Equal((null, "bob@example.com"), EmailRouting.SplitFromAddress("bob@example.com"));   // bare address
+        Assert.Equal((null, "bob@example.com"), EmailRouting.SplitFromAddress("  bob@example.com "));  // trimmed
+        Assert.Equal(("No Addr", (string?)null), EmailRouting.SplitFromAddress("No Addr <>")); // empty angle brackets
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void SplitFromAddress_NullPairWhenBlank(string? from)
+    {
+        Assert.Equal(((string?)null, (string?)null), EmailRouting.SplitFromAddress(from));
+    }
 }

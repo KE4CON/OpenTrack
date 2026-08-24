@@ -42,6 +42,26 @@ public static class EmailRouting
         return TicketNumber.NormalizeKey(token);
     }
 
+    /// <summary>
+    /// Splits a From/Sender header into a display name and bare address: <c>"Alice &lt;a@x&gt;"</c> →
+    /// ("Alice", "a@x"); a bare <c>"a@x"</c> → (null, "a@x"); blank → (null, null). Used to capture the
+    /// submitter of an email-to-ticket. Either part is null when absent.
+    /// </summary>
+    public static (string? Name, string? Email) SplitFromAddress(string? from)
+    {
+        if (string.IsNullOrWhiteSpace(from)) return (null, null);
+        var s = from.Trim();
+        var open = s.LastIndexOf('<');
+        var close = s.LastIndexOf('>');
+        if (open >= 0 && close > open)
+        {
+            var name = s[..open].Trim().Trim('"').Trim();
+            var addr = s[(open + 1)..close].Trim();
+            return (name.Length == 0 ? null : name, addr.Length == 0 ? null : addr);
+        }
+        return (null, s);
+    }
+
     /// <summary>Pulls the bare address out of a header value, unwrapping a "Name &lt;addr&gt;" form.</summary>
     private static string ExtractAddress(string value)
     {
