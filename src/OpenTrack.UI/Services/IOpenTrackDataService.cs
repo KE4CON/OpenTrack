@@ -48,6 +48,10 @@ public interface IOpenTrackDataService
     Task<AiSearchView?> InterpretIssueSearchAsync(string query, CancellationToken ct = default);
     // Plain-language summary of an issue thread (only notes the caller may see). Null if AI is off/unavailable.
     Task<string?> SummarizeIssueAsync(int issueId, CancellationToken ct = default);
+    // "Suggest a fix" (Levels 1 & 2): likely causes + concrete steps for an issue, grounded in its notes,
+    // text/log attachments, and similar RESOLVED issues. A draft suggestion only. Null if AI is off, the
+    // caller can't see the issue, or the call fails. Routed to the "smart" AI tier (e.g. cloud Claude).
+    Task<AiResolutionView?> SuggestResolutionAsync(int issueId, CancellationToken ct = default);
 
     // Saved filters (the signed-in user's own). Saving with an existing name overwrites its query.
     Task<IReadOnlyList<SavedFilterView>> GetSavedFiltersAsync(CancellationToken ct = default);

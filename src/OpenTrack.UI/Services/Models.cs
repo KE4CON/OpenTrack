@@ -106,6 +106,13 @@ public record AutomationRuleView(
 /// <summary>An AI-suggested triage for a proposed issue (each field a suggestion to accept or edit).</summary>
 public record AiTriageView(IssueSeverity? Severity, IssuePriority? Priority, string? Category, IReadOnlyList<string> Tags);
 
+/// <summary>An AI-suggested resolution for an issue — a DRAFT for a human to accept or discard. Grounded in
+/// the issue text, its notes, any text/log attachments, and similar past resolved issues. <c>Sources</c> are
+/// the items the model said it relied on (shown so a human can judge). Never applied automatically.</summary>
+public record AiResolutionView(
+    string Summary, IReadOnlyList<string> Causes, IReadOnlyList<string> Steps,
+    string Confidence, IReadOnlyList<string> Sources);
+
 /// <summary>A plain-English search the AI turned into issue-list filter fields. The UI maps these onto the
 /// existing issue-list query string (project matched by name against the user's visible projects) — so it
 /// can only ever produce a filter the user could have built by hand.</summary>

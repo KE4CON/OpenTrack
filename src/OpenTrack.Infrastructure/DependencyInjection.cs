@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using OpenTrack.Core.Entities;
 using OpenTrack.Infrastructure.Data;
 
@@ -33,24 +34,38 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Registers the optional AI assistant. Reads "OpenTrack:Ai" from configuration; if disabled
-    /// or unconfigured the assistant simply reports IsEnabled=false. The provider is selected by
+    /// <summary>Registers the optional, tiered AI assistant. Reads "OpenTrack:Ai" from configuration; if
+    /// disabled or unconfigured the assistant simply reports IsEnabled=false. The base provider (selected by
     /// OpenTrack:Ai:Provider — "anthropic" (Claude, default) or "openai" (any OpenAI-compatible Chat
-    /// Completions endpoint, including local Ollama/LM Studio). The API key is only ever read server-side.
-    /// Used by both hosts.</summary>
+    /// Completions endpoint, including local Ollama/LM Studio)) handles the menial tasks. An OPTIONAL second
+    /// provider under "OpenTrack:Ai:Smart" handles the reasoning-heavy "Suggest a fix"; when absent the base
+    /// provider handles everything. The classic tiering is a local model (base) + cloud Claude (Smart). API
+    /// keys are only ever read server-side. Used by both hosts.</summary>
     public static IServiceCollection AddOpenTrackAi(this IServiceCollection services, IConfiguration config)
     {
         var options = new Ai.AiOptions();
         config.GetSection(Ai.AiOptions.Section).Bind(options);
         services.AddSingleton(options);
 
-        // Register both typed clients; resolve IAiAssistant based on the configured provider. A local
-        // OpenAI-compatible engine can be slow to first-token, so give that provider a longer timeout.
-        services.AddHttpClient<Ai.AnthropicAiAssistant>(c => c.Timeout = TimeSpan.FromSeconds(30));
-        services.AddHttpClient<Ai.OpenAiAssistant>(c => c.Timeout = TimeSpan.FromSeconds(60));
-        services.AddScoped<Ai.IAiAssistant>(sp => options.IsOpenAi
-            ? sp.GetRequiredService<Ai.OpenAiAssistant>()
-            : sp.GetRequiredService<Ai.AnthropicAiAssistant>());
+        // Named HttpClients per provider kind. A local OpenAI-compatible engine can be slow to first-token,
+        // so that client gets a longer timeout than the cloud Anthropic client.
+        services.AddHttpClient("ai-anthropic", c => c.Timeout = TimeSpan.FromSeconds(30));
+        services.AddHttpClient("ai-openai", c => c.Timeout = TimeSpan.FromSeconds(60));
+
+        services.AddScoped<Ai.IAiAssistant>(sp =>
+        {
+            var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+
+            // Build a concrete provider for one AiOptions (cloud Anthropic or OpenAI-compatible/local).
+            Ai.IAiAssistant Build(Ai.AiOptions o) => o.IsOpenAi
+                ? new Ai.OpenAiAssistant(httpFactory.CreateClient("ai-openai"), o, loggerFactory.CreateLogger<Ai.OpenAiAssistant>())
+                : new Ai.AnthropicAiAssistant(httpFactory.CreateClient("ai-anthropic"), o, loggerFactory.CreateLogger<Ai.AnthropicAiAssistant>());
+
+            var menial = Build(options);                            // base "OpenTrack:Ai" provider
+            var smart = options.Smart is { } s ? Build(s) : null;   // optional "OpenTrack:Ai:Smart" provider
+            return new Ai.AiAssistantRouter(menial, smart);
+        });
         return services;
     }
 

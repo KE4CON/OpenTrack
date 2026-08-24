@@ -35,6 +35,7 @@ using OpenTrack.Infrastructure.TimeLogs;
 using OpenTrack.Infrastructure.Webhooks;
 using OpenTrack.Infrastructure.Workflow;
 using OpenTrack.Infrastructure.Data;
+using OpenTrack.Infrastructure.Ai;
 using OpenTrack.Infrastructure.Notifications;
 using OpenTrack.Infrastructure.Queries;
 using OpenTrack.Infrastructure.Relationships;
@@ -392,6 +393,19 @@ public class DbOpenTrackDataService(
         if (d is null) return null;
         var notes = d.Notes.Select(n => $"{n.AuthorName}: {n.Text}").ToList();
         return await ai.SummarizeIssueAsync(d.Title, d.Description, notes, ct);
+    }
+
+    public async Task<AiResolutionView?> SuggestResolutionAsync(int issueId, CancellationToken ct = default)
+    {
+        if (!ai.IsEnabled) return null;
+        var (db, access) = await OpenAsync(ct);
+        await using var _ = db;
+        // The shared builder does the ACL check + grounding assembly (notes, log attachments, similar
+        // resolved issues) so the API and web hosts feed the AI identical, correctly-filtered context.
+        var context = await ResolutionContextBuilder.BuildAsync(db, access, attachmentStorage, issueId, ct);
+        if (context is null) return null;
+        var s = await ai.SuggestResolutionAsync(context, ct);
+        return s is { } sg ? new AiResolutionView(sg.Summary, sg.Causes, sg.Steps, sg.Confidence, sg.Sources) : null;
     }
 
     public async Task<ReportView> GetReportAsync(int? projectId, CancellationToken ct = default)
