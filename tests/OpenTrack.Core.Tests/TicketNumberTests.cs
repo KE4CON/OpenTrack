@@ -13,15 +13,15 @@ using OpenTrack.Core.Text;
 
 namespace OpenTrack.Core.Tests;
 
-/// <summary>Human-friendly ticket numbers: "APRS-42" when a project has a key, "#42" otherwise; and a
-/// lenient reference parser that accepts the raw number, the "#42" form, and the "APRS-42" form.</summary>
+/// <summary>Human-friendly ticket numbers: "WEB-42" when a project has a key, "#42" otherwise; and a
+/// lenient reference parser that accepts the raw number, the "#42" form, and the "WEB-42" form.</summary>
 public class TicketNumberTests
 {
     [Fact]
     public void Format_UsesKeyWhenPresent_ElseHash()
     {
-        Assert.Equal("APRS-42", TicketNumber.Format("APRS", 42));
-        Assert.Equal("APRS-42", TicketNumber.Format("aprs", 42));   // normalized to upper
+        Assert.Equal("WEB-42", TicketNumber.Format("WEB", 42));
+        Assert.Equal("WEB-42", TicketNumber.Format("web", 42));   // normalized to upper
         Assert.Equal("#42", TicketNumber.Format(null, 42));
         Assert.Equal("#42", TicketNumber.Format("   ", 42));
         Assert.Equal("#42", TicketNumber.Format("!!", 42));         // no letters/digits → no key
@@ -30,8 +30,8 @@ public class TicketNumberTests
     [Theory]
     [InlineData("42", 42)]
     [InlineData("#42", 42)]
-    [InlineData("APRS-42", 42)]
-    [InlineData("aprs-42", 42)]
+    [InlineData("WEB-42", 42)]
+    [InlineData("web-42", 42)]
     [InlineData("  WEB-7 ", 7)]
     public void TryParseId_AcceptsAllReferenceForms(string input, int expected)
     {
@@ -42,7 +42,7 @@ public class TicketNumberTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData("APRS-")]
+    [InlineData("WEB-")]
     [InlineData("no number here")]
     [InlineData(null)]
     public void TryParseId_FailsWithoutTrailingNumber(string? input)
@@ -54,7 +54,7 @@ public class TicketNumberTests
     [Fact]
     public void NormalizeKey_UppercasesStripsAndCaps()
     {
-        Assert.Equal("APRS", TicketNumber.NormalizeKey("aprs"));
+        Assert.Equal("WEB", TicketNumber.NormalizeKey("web"));
         Assert.Equal("WEBAPP", TicketNumber.NormalizeKey("web-app"));      // punctuation stripped
         Assert.Null(TicketNumber.NormalizeKey("  "));
         Assert.Null(TicketNumber.NormalizeKey("---"));

@@ -1,6 +1,8 @@
 # OpenTrack AI-Assist Plan — Tiered Local + Cloud, with Fix Suggestions
 
-> **Status:** Design / plan of record. Created 2026-08-24.
+> **Status:** ✅ **Implemented** (was: Design / plan of record). Created 2026-08-24. The tiered
+> routing and the "Suggest a fix" feature (Levels 1 & 2) described here are now shipped in code;
+> this doc is kept as the design record.
 > **One-line version:** Run a small **local** model (Ollama on the LAN) for the *menial* AI work and
 > keep **cloud Claude** for the *thinking* work — including a new **"Suggest a fix"** feature — with
 > every AI output remaining a human-confirmed suggestion.

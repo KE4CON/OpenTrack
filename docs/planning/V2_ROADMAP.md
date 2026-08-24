@@ -1,9 +1,10 @@
 # OpenTrack v2 roadmap
 
-This is the backlog for the **next** major round of work. Everything here is
-**not yet built** — v1 (see the README and `docs/`) is complete and audited. These
-are candidate features, roughly prioritized, with a short note on *why* each one
-matters. Nothing here is committed to a date; it's a menu to pull from.
+This is the backlog for the **next** major round of work — v1 (see the README and
+`docs/`) is complete and audited. Most items here are candidate features not yet
+built, roughly prioritized, with a short note on *why* each one matters; a few have
+since shipped and are struck through and marked **✅ DONE**. Nothing here is
+committed to a date; it's a menu to pull from.
 
 Each item, when built, should follow the same rhythm as v1: its own tested,
 mergeable branch; ACL applied to every new query; a regression test per feature;
@@ -46,13 +47,14 @@ These harden OpenTrack for real teams and let it scale past a hobby instance.
 
 ## Tier 4 — reach & intake
 
-- **Email-to-ticket.** Create issues by emailing an address — closes the intake
-  loop alongside the v1 public web form and QR poster.
-- **Friendly per-project ticket / tracking numbers.** The public trouble-ticket
-  intake already assigns a tracking number, but it is the raw issue ID (e.g. "#42").
-  Add an optional per-project human-friendly format (e.g. `PROJ-42` from a project
-  key) shown to submitters and on the status-lookup page — nicer to quote over the
-  phone and clearer across multiple projects. The raw ID stays the internal key.
+- ~~**Email-to-ticket.**~~ ✅ **DONE.** Inbound email becomes a public ticket via
+  `POST /intake/email` (opt-in `OpenTrack:EmailIntake:Secret`), routed to a project by
+  the recipient key (`tickets+WEB@…` → the WEB project). Closes the intake loop
+  alongside the v1 public web form and QR poster.
+- ~~**Friendly per-project ticket / tracking numbers.**~~ ✅ **DONE** (shipped). Optional
+  per-project `Key` (e.g. `WEB`) shows tickets as `WEB-42` on the issue page and across the
+  public intake flow (email, confirmation, status lookup, which accepts `42`/`#42`/`WEB-42`).
+  The raw issue id stays the internal key.
 - **Web push notifications.** Real phone/desktop push on the installed PWA (needs
   VAPID keys + a subscription store + a sender). Deferred from v1 field/mobile.
 - **Internationalization (i18n).** Localization groundwork plus a first

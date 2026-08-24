@@ -14,8 +14,8 @@ using System.Text.RegularExpressions;
 namespace OpenTrack.Core.Text;
 
 /// <summary>
-/// Human-friendly ticket numbers. When a project has a <c>Key</c> (e.g. "APRS"), an issue is shown as
-/// "APRS-42"; without a key it falls back to "#42". The numeric issue id is always the real internal
+/// Human-friendly ticket numbers. When a project has a <c>Key</c> (e.g. "WEB"), an issue is shown as
+/// "WEB-42"; without a key it falls back to "#42". The numeric issue id is always the real internal
 /// key — the friendly number is a display/label wrapper — so one instance tracking several apps (each a
 /// project with its own key) can tell tickets apart at a glance and quote them over the phone.
 /// </summary>
@@ -24,7 +24,7 @@ public static partial class TicketNumber
     /// <summary>Maximum stored key length. Short enough to stay readable in "KEY-42".</summary>
     public const int MaxKeyLength = 10;
 
-    /// <summary>Formats the friendly ticket number: "APRS-42" when the project has a key, else "#42".</summary>
+    /// <summary>Formats the friendly ticket number: "WEB-42" when the project has a key, else "#42".</summary>
     public static string Format(string? projectKey, int issueId)
     {
         var key = NormalizeKey(projectKey);
@@ -33,7 +33,7 @@ public static partial class TicketNumber
 
     /// <summary>
     /// Parses a user-entered reference into the numeric issue id. Accepts the raw number ("42"), the
-    /// "#42" form, and the friendly "APRS-42" form (any case) — anything ending in digits. Returns false
+    /// "#42" form, and the friendly "WEB-42" form (any case) — anything ending in digits. Returns false
     /// when there is no trailing number.
     /// </summary>
     public static bool TryParseId(string? input, out int id)

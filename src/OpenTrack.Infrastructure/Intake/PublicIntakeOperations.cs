@@ -12,6 +12,7 @@
 using Microsoft.EntityFrameworkCore;
 using OpenTrack.Core.Entities;
 using OpenTrack.Core.Enums;
+using OpenTrack.Core.Text;
 using OpenTrack.Core.Validation;
 using OpenTrack.Infrastructure.Data;
 
@@ -75,6 +76,30 @@ public static class PublicIntakeOperations
         db.Issues.Add(issue);
         await db.SaveChangesAsync(ct);
         return new IntakeResult(issue.Id, null);
+    }
+
+    /// <summary>
+    /// Create a ticket from an inbound email, routed to a project by its <c>Key</c> (derived from the
+    /// recipient address, e.g. <c>tickets+WEB@…</c> → the "WEB" project). Only projects that have public
+    /// intake enabled are eligible, so email intake can never reach a project that isn't already accepting
+    /// public tickets. Reuses <see cref="SubmitAsync"/> so the same caps and description formatting apply.
+    /// </summary>
+    public static async Task<IntakeResult> SubmitByProjectKeyAsync(
+        AppDbContext db, string? projectKey, string? name, string? email, string? title, string? description,
+        CancellationToken ct = default)
+    {
+        var key = TicketNumber.NormalizeKey(projectKey);
+        if (key is null)
+            return new IntakeResult(null, "Could not tell which project this email is for (no project key in the address).");
+
+        var projectId = await db.Projects.AsNoTracking()
+            .Where(p => p.Key != null && p.Key.ToUpper() == key && p.PublicIntakeEnabled)
+            .Select(p => (int?)p.Id)
+            .FirstOrDefaultAsync(ct);
+        if (projectId is null)
+            return new IntakeResult(null, "No project is accepting email tickets for that address.");
+
+        return await SubmitAsync(db, projectId.Value, name, email, title, description, ct);
     }
 
     /// <summary>Look up a submitted ticket's status. Requires the reference AND the exact email used, so

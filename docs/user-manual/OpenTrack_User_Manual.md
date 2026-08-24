@@ -282,12 +282,12 @@ Creating a project is a Manager-or-Administrator job. Select **New Project** on 
 | --- | --- | --- |
 | **Name** | A short, clear name for the project. | Required. Keep it recognizable at a glance in the list. |
 | **Description** | A sentence on what the project covers. | Optional, but a good hint for newcomers. |
-| **Ticket key** | A short code, like `APRS`, for friendly ticket numbers such as *APRS-42*. | Optional. Leave blank to use plain numbers (#42). Explained in full just below. |
+| **Ticket key** | A short code, like `WEB`, for friendly ticket numbers such as *WEB-42*. | Optional. Leave blank to use plain numbers (#42). Explained in full just below. |
 | **Public** | A checkbox labeled *Public (visible to all users, not just members)*. | Ticked by default. Untick it to make the project private. |
 
 1. Select **Projects** in the left navigation, then **New Project**.
 2. Type a **Name**, and optionally a **Description**.
-3. Optionally type a **Ticket key** (for example `APRS`) to get friendly ticket numbers like *APRS-42*; leave it blank for plain numbers.
+3. Optionally type a **Ticket key** (for example `WEB`) to get friendly ticket numbers like *WEB-42*; leave it blank for plain numbers.
 4. Decide **Public** vs. private with the checkbox (it starts ticked, meaning public).
 5. Select **Create Project**. You land on the new project's own page, ready to add issues and settings.
 6. Changed your mind? Select **Cancel** to return to the Projects list without creating anything.
@@ -297,13 +297,13 @@ Creating a project is a Manager-or-Administrator job. Select **New Project** on 
 
 ## The Ticket key (friendly ticket numbers)
 
-Every issue always has a plain number behind it, like **42** — that's its permanent internal identity and it never changes. The **Ticket key** is an optional short label you can put in front of that number so tickets read more naturally. Give a project the key `APRS`, and its issues show up as **APRS-42** instead of **#42** — on the issue page, in search results, and anywhere else a ticket is named. Leave the key blank and everything just shows the plain **#42** form. This is purely about **display**: the key never changes the underlying number, and turning a key on or off (or changing it) only changes how existing numbers are shown, never the issues themselves.
+Every issue always has a plain number behind it, like **42** — that's its permanent internal identity and it never changes. The **Ticket key** is an optional short label you can put in front of that number so tickets read more naturally. Give a project the key `WEB`, and its issues show up as **WEB-42** instead of **#42** — on the issue page, in search results, and anywhere else a ticket is named. Leave the key blank and everything just shows the plain **#42** form. This is purely about **display**: the key never changes the underlying number, and turning a key on or off (or changing it) only changes how existing numbers are shown, never the issues themselves.
 
-> **BEST WHEN ONE OPENTRACK TRACKS SEVERAL APPS** — Ticket keys shine when a single OpenTrack tracks more than one product. Give each project its own key — `APRS`, `WEB`, `RADIO` — and a number like **APRS-42** instantly tells everyone which product it belongs to, with no chance of confusing it with **WEB-42**. It's also much easier to quote over the phone or in an email than a bare number.
+> **BEST WHEN ONE OPENTRACK TRACKS SEVERAL APPS** — Ticket keys shine when a single OpenTrack tracks more than one product. Give each project its own key — `WEB`, `SHOP`, `RADIO` — and a number like **WEB-42** instantly tells everyone which product it belongs to, with no chance of confusing it with **SHOP-42**. It's also much easier to quote over the phone or in an email than a bare number.
 
 A few simple rules govern what a key can be. Type it however you like; OpenTrack tidies it up for you:
 
-- It's made **uppercase** automatically — type `aprs` and it's stored as `APRS`.
+- It's made **uppercase** automatically — type `web` and it's stored as `WEB`.
 - Only **letters and numbers** are kept; spaces, dashes, and punctuation are dropped.
 - It's capped at **10 characters** — anything longer is trimmed to the first 10.
 - It's completely **optional**. Blank means plain `#42`-style numbers, which is a perfectly good choice.
@@ -365,7 +365,7 @@ The **Versions** section (top-right) works the same way, but a version carries m
 
 ## Editing a project
 
-To change a project's basics, select **Edit Project** on the project page (or the **Edit** button on the Projects list). The *Edit Project* form is the same four fields as creation — **Name**, **Description**, the **Ticket key**, and the **Public** checkbox — pre-filled with the current values. You can add, change, or clear the Ticket key here at any time; because the key only affects display, changing it is safe and instantly re-labels existing tickets (an issue that read *#42* starts reading *APRS-42*, and vice versa).
+To change a project's basics, select **Edit Project** on the project page (or the **Edit** button on the Projects list). The *Edit Project* form is the same four fields as creation — **Name**, **Description**, the **Ticket key**, and the **Public** checkbox — pre-filled with the current values. You can add, change, or clear the Ticket key here at any time; because the key only affects display, changing it is safe and instantly re-labels existing tickets (an issue that read *#42* starts reading *WEB-42*, and vice versa).
 
 1. Change the **Name**, **Description**, **Ticket key**, or **Public** checkbox as needed.
 2. Select **Save** to apply the changes and return to the project page, or **Cancel** to discard them.
@@ -2175,9 +2175,9 @@ When they select **Submit report**, the submission lands in your project as a ne
 
 After a successful submission the reporter sees a **Thank you** page: *Your report was received. Your reference number is* followed by the ticket's number. It tells them to keep that number and offers a link to *check its status* anytime, plus a **Submit another** button to file a second report. That **reference number** is the reporter's key to looking the ticket up later (together with the email they used).
 
-> **THE REFERENCE NUMBER USES THE PROJECT'S TICKET KEY** — If the project has a **Ticket key** (see the *Projects & Their Settings* chapter), the reference number the reporter sees is the friendly form — for example **APRS-42** — on the thank-you page, in the acknowledgement email, and on the status page. If the project has no key, it's the plain number, like **42**. Either way it's the same ticket; the key just makes it clearer and easier to quote, which is handy when one OpenTrack handles reports for several products.
+> **THE REFERENCE NUMBER USES THE PROJECT'S TICKET KEY** — If the project has a **Ticket key** (see the *Projects & Their Settings* chapter), the reference number the reporter sees is the friendly form — for example **WEB-42** — on the thank-you page, in the acknowledgement email, and on the status page. If the project has no key, it's the plain number, like **42**. Either way it's the same ticket; the key just makes it clearer and easier to quote, which is handy when one OpenTrack handles reports for several products.
 
-If the reporter left an **email**, OpenTrack also sends a short acknowledgement to that address — *We received your report (ref APRS-42)* — with the same reference number and a reminder that they can check status any time. (This only happens when your server has email set up.)
+If the reporter left an **email**, OpenTrack also sends a short acknowledgement to that address — *We received your report (ref WEB-42)* — with the same reference number and a reminder that they can check status any time. (This only happens when your server has email set up.)
 
 
 ## How a reporter checks status later
@@ -2185,12 +2185,12 @@ If the reporter left an **email**, OpenTrack also sends a short acknowledgement 
 The status-lookup page (the */report/status* link) lets a reporter check on a ticket without an account and without seeing anyone else's tickets. It's titled *Check your ticket* with the note *Enter the reference number you were given and the email you used.*
 
 1. The reporter opens the status link.
-2. They enter the **Reference number** they were given. The box accepts it in any form — the friendly *APRS-42*, the plain *42*, or even *#42* — so they can just type whatever they were sent (the on-screen hint reads *e.g. APRS-42 or 42*).
+2. They enter the **Reference number** they were given. The box accepts it in any form — the friendly *WEB-42*, the plain *42*, or even *#42* — so they can just type whatever they were sent (the on-screen hint reads *e.g. WEB-42 or 42*).
 3. They enter the **Email you used** — it must match the email on the original report.
 4. They select **Check status**.
-5. If both match, a green box shows *Ticket APRS-42* (or the plain number if the project has no key), its title, and its current **Status**. If they don't match, a yellow note reads *No matching ticket found. Double-check the reference number and the email address you submitted with.*
+5. If both match, a green box shows *Ticket WEB-42* (or the plain number if the project has no key), its title, and its current **Status**. If they don't match, a yellow note reads *No matching ticket found. Double-check the reference number and the email address you submitted with.*
 
-> **THE KEY PREFIX IS OPTIONAL WHEN LOOKING UP** — Because the number behind a ticket never changes, the status page finds the ticket whether or not the reporter includes the key. **APRS-42**, **42**, and **#42** all look up the same ticket. So a reporter who half-remembers their reference — or who only wrote down the digits — can still check status.
+> **THE KEY PREFIX IS OPTIONAL WHEN LOOKING UP** — Because the number behind a ticket never changes, the status page finds the ticket whether or not the reporter includes the key. **WEB-42**, **42**, and **#42** all look up the same ticket. So a reporter who half-remembers their reference — or who only wrote down the digits — can still check status.
 
 > **EMAIL IS THE KEY** — A reporter can only look a ticket up if they gave an **email** when they filed it, and they must enter that same email plus the reference number to see it. Reference-number-only lookups don't work — this is what keeps one person from browsing another's tickets. If a reporter left the email blank, they won't be able to check status afterward.
 
@@ -2209,6 +2209,15 @@ For a physical place — a workshop, a trailhead, an event booth, a piece of equ
 > **TURN INTAKE ON BEFORE YOU PRINT** — If public intake is **off** for the project, the poster page shows a warning — *Public intake is currently off for this project, so this QR code won't accept reports yet* — and the code will lead to a page that declines submissions. Turn intake on under **Settings → Public trouble-ticket intake** first, then print. The Print button and warning don't appear on the printed copy, only on screen.
 
 
+## Tickets can also arrive by email
+
+Besides the link and the QR poster, a project can also collect tickets straight from **email**. When this is set up, someone reports a problem through the contact form on your own website, that form sends an email to a special "tickets" address, and OpenTrack turns that email into a normal ticket in your project — the sender's name and email become the ticket's contact details, the email's subject becomes the ticket's title, and the message becomes the description. The person never has to visit OpenTrack at all; they just use the website form they already trust.
+
+Which project an email lands in is decided by the project's **Ticket key** (the short code like *WEB* described in the *Projects & Their Settings* chapter). An address such as *tickets+WEB@yourdomain.com* files the email under the project whose key is *WEB*, so one OpenTrack can quietly sort email reports for several different products.
+
+> **AN ADMINISTRATOR SETS THIS UP ON THE SERVER** — Email-to-ticket isn't a button inside OpenTrack — it's switched on **on the server** by whoever runs it, and it needs a mail service to forward received email to OpenTrack. It's **off until they turn it on**, and it only works for a project that already has **public intake on** and a **Ticket key** set. If you'd like reports to arrive by email, ask your administrator to follow the *Public trouble tickets* guide (the "Email-to-ticket" section).
+
+
 ## Turning it off
 
 To stop accepting public reports, return to **Settings → Public trouble-ticket intake** and select **Turn off public intake**. The status flips back to **Off**, the links and poster button disappear, and the public report form starts telling visitors *This project isn't accepting public submissions right now.* Issues already submitted stay in your project — turning intake off only stops new ones.
@@ -2223,6 +2232,7 @@ To stop accepting public reports, return to **Settings → Public trouble-ticket
 - *A reporter lost their reference number.* Without it (plus the email), they can't self-check status. They can submit a fresh report, or a team member can find the original issue inside the project and update them directly.
 - *Public submissions aren't arriving.* Confirm intake shows **On** in Settings, and that reporters are using the current public link for the right project. Submissions land as new issues at status *New* — check your project's New issues.
 - *I'm worried about spam.* The form's hidden honeypot field silently drops obvious bot submissions, so most junk never becomes an issue. Genuine-looking spam that slips through is triaged and closed like any other issue.
+- *Email reports aren't turning into tickets.* Email-to-ticket is a server setting, not a project button. Confirm with your administrator that it's switched on, that this project has **public intake on** and a **Ticket key** set, and that the email is being sent to the matching address (for example *tickets+WEB@yourdomain.com* for a project whose key is *WEB*). The *Public trouble tickets* guide has the full checklist.
 
 
 # 19. Importing & Exporting Your Data
