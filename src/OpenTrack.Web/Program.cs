@@ -79,6 +79,11 @@ builder.Services.AddHostedService<OpenTrack.Web.Services.SlaScanner>();
 var backupOptions = new OpenTrack.Infrastructure.Backup.BackupOptions();
 builder.Configuration.GetSection(OpenTrack.Infrastructure.Backup.BackupOptions.Section).Bind(backupOptions);
 builder.Services.AddSingleton(backupOptions);
+
+// Email-to-ticket intake (opt-in via OpenTrack:EmailIntake:Secret).
+var emailIntakeOptions = new OpenTrack.Infrastructure.Intake.EmailIntakeOptions();
+builder.Configuration.GetSection(OpenTrack.Infrastructure.Intake.EmailIntakeOptions.Section).Bind(emailIntakeOptions);
+builder.Services.AddSingleton(emailIntakeOptions);
 builder.Services.AddHostedService<OpenTrack.Web.Services.BackupScheduler>();
 
 // Rate-limit the public trouble-ticket endpoints, per client IP, to blunt spam/abuse.
@@ -152,6 +157,7 @@ OpenTrack.Web.Endpoints.ActivityWebEndpoints.MapActivityWebEndpoints(app);
 OpenTrack.Web.Endpoints.ChecklistWebEndpoints.MapChecklistWebEndpoints(app);
 // Public (unauthenticated, rate-limited) trouble-ticket intake endpoints.
 OpenTrack.Web.Endpoints.PublicIntakeWebEndpoints.MapPublicIntakeWebEndpoints(app);
+OpenTrack.Web.Endpoints.EmailIntakeWebEndpoints.MapEmailIntakeWebEndpoints(app);
 // Inbound Git webhook (unauthenticated but HMAC-verified, rate-limited).
 OpenTrack.Web.Endpoints.GitWebhookEndpoints.MapGitWebhookEndpoints(app);
 

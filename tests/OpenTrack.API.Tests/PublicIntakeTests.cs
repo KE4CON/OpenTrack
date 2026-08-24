@@ -93,5 +93,51 @@ public sealed class PublicIntakeTests : IDisposable
         Assert.Null(await PublicIntakeOperations.LookupAsync(check, 500, "owner"));              // non-intake issue not lookup-able
     }
 
+    [Fact]
+    public async Task SubmitByProjectKey_RoutesToTheKeyedProject()
+    {
+        await using (var setup = new AppDbContext(_options))
+        {
+            (await setup.Projects.FirstAsync(x => x.Id == On)).Key = "APRS";
+            await setup.SaveChangesAsync();
+        }
+        int id;
+        await using (var db = new AppDbContext(_options))
+        {
+            // From a recipient like "tickets+aprs@…" the endpoint derives key "APRS" → the On project.
+            var r = await PublicIntakeOperations.SubmitByProjectKeyAsync(db, "aprs", "Al", "al@example.com", "Radio down", "no RF");
+            Assert.Null(r.Error);
+            id = r.IssueId!.Value;
+        }
+        await using var check = new AppDbContext(_options);
+        var issue = await check.Issues.FirstAsync(i => i.Id == id);
+        Assert.Equal(On, issue.ProjectId);
+        Assert.Equal("Radio down", issue.Title);
+        Assert.Equal("al@example.com", issue.IntakeEmail);
+    }
+
+    [Fact]
+    public async Task SubmitByProjectKey_RejectsUnknownKey()
+    {
+        await using var db = new AppDbContext(_options);
+        var r = await PublicIntakeOperations.SubmitByProjectKeyAsync(db, "NOPE", null, null, "x", null);
+        Assert.Null(r.IssueId);
+        Assert.NotNull(r.Error);
+    }
+
+    [Fact]
+    public async Task SubmitByProjectKey_RejectsWhenIntakeDisabled()
+    {
+        await using (var setup = new AppDbContext(_options))
+        {
+            (await setup.Projects.FirstAsync(x => x.Id == Off)).Key = "SHUT";
+            await setup.SaveChangesAsync();
+        }
+        await using var db = new AppDbContext(_options);
+        var r = await PublicIntakeOperations.SubmitByProjectKeyAsync(db, "SHUT", null, null, "x", null);
+        Assert.Null(r.IssueId); // the project exists but its public intake is off → not eligible
+        Assert.NotNull(r.Error);
+    }
+
     public void Dispose() => _connection.Dispose();
 }
