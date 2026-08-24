@@ -136,9 +136,15 @@ The Phase list above is the *original plan*, kept for history; the reality is fa
 1. **Confirm the macOS desktop build** (Mac Catalyst head) on the Mac — only the Windows head was
    built in-session.
 2. **Live-verify AI features** with a real Anthropic API key.
-3. Optional leapfrog items not yet built: PWA push notifications, natural-language/semantic
+3. **Tiered AI-assist + "Suggest a fix" (planned)** — run a small **local** model (Ollama on the
+   LAN) for menial tasks (triage/tags/dedup/summaries) and **cloud Claude** for the smart work,
+   including a new **fix-suggestion** feature (Levels 1 & 2). The AI layer is already
+   provider-pluggable (`IAiAssistant` + `AnthropicAiAssistant`/`OpenAiAssistant`; Ollama works today
+   via `Provider="openai"` + `BaseUrl`); the real new work is dual-provider task routing + the
+   fix-suggestion capability. Full design: `docs/planning/OpenTrack_AI_Assist_Plan.md`.
+4. Optional leapfrog items not yet built: PWA push notifications, natural-language/semantic
    search, localization (i18n), immutable audit log, **email-to-ticket** intake.
-4. Still parked per §11: **built-in wiki** and **issue sponsorship**.
+5. Still parked per §11: **built-in wiki** and **issue sponsorship**.
 
 ---
 
