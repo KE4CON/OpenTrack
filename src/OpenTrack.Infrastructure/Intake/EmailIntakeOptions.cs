@@ -27,4 +27,13 @@ public sealed class EmailIntakeOptions
     public string? Secret { get; set; }
 
     public bool Enabled => !string.IsNullOrWhiteSpace(Secret);
+
+    /// <summary>Constant-time check that a presented secret matches the configured one. Always false when
+    /// the feature is disabled or the presented value is empty — so a blank secret can never authorize.</summary>
+    public bool Matches(string? presented)
+    {
+        if (!Enabled || string.IsNullOrEmpty(presented)) return false;
+        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+            System.Text.Encoding.UTF8.GetBytes(Secret!), System.Text.Encoding.UTF8.GetBytes(presented));
+    }
 }

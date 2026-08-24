@@ -9,8 +9,6 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
-using System.Security.Cryptography;
-using System.Text;
 using OpenTrack.Core.Text;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Intake;
@@ -41,7 +39,7 @@ public static class EmailIntakeWebEndpoints
             // Shared-secret check: header first, then a form field. Constant-time compare.
             var presented = http.Request.Headers["X-OpenTrack-Secret"].ToString();
             if (string.IsNullOrEmpty(presented)) presented = form["secret"].ToString();
-            if (!SecretMatches(options.Secret!, presented)) return Results.Unauthorized();
+            if (!options.Matches(presented)) return Results.Unauthorized();
 
             // Tolerate the common field names used by inbound-parse providers.
             var recipient = First(form, "recipient", "to", "To");
@@ -49,7 +47,7 @@ public static class EmailIntakeWebEndpoints
             var subject = First(form, "subject", "Subject");
             var body = First(form, "body-plain", "stripped-text", "text", "body", "message");
 
-            var (name, email) = SplitFrom(from);
+            var (name, email) = EmailRouting.SplitFromAddress(from);
             var projectKey = EmailRouting.ProjectKeyFromRecipient(recipient);
 
             var result = await PublicIntakeOperations.SubmitByProjectKeyAsync(db, projectKey, name, email, subject, body, ct);
@@ -68,29 +66,5 @@ public static class EmailIntakeWebEndpoints
             if (form.TryGetValue(k, out var v) && !string.IsNullOrWhiteSpace(v))
                 return v.ToString();
         return null;
-    }
-
-    /// <summary>Split a From header into a display name and bare address ("Alice &lt;a@x&gt;" → ("Alice","a@x")).</summary>
-    private static (string? Name, string? Email) SplitFrom(string? from)
-    {
-        if (string.IsNullOrWhiteSpace(from)) return (null, null);
-        var s = from.Trim();
-        var open = s.LastIndexOf('<');
-        var close = s.LastIndexOf('>');
-        if (open >= 0 && close > open)
-        {
-            var name = s[..open].Trim().Trim('"');
-            var addr = s[(open + 1)..close].Trim();
-            return (name.Length == 0 ? null : name, addr.Length == 0 ? null : addr);
-        }
-        return (null, s);
-    }
-
-    private static bool SecretMatches(string expected, string? presented)
-    {
-        if (string.IsNullOrEmpty(presented)) return false;
-        // FixedTimeEquals returns false for different-length inputs without throwing.
-        return CryptographicOperations.FixedTimeEquals(
-            Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(presented));
     }
 }
