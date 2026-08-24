@@ -23,7 +23,7 @@ namespace OpenTrack.Web.Endpoints;
 /// small forwarder that reads a mailbox POSTs a received email here, and it becomes a public trouble
 /// ticket. OFF unless <c>OpenTrack:EmailIntake:Secret</c> is set; the poster must present that shared
 /// secret (header <c>X-OpenTrack-Secret</c> or a <c>secret</c> form field). The target project comes from
-/// the recipient address key (<c>tickets+APRS@…</c> → the "APRS" project), and that project must already
+/// the recipient address key (<c>tickets+WEB@…</c> → the "WEB" project), and that project must already
 /// have public intake enabled. Abuse is bounded by the same "intake" rate-limiter as the web form.
 /// </summary>
 public static class EmailIntakeWebEndpoints

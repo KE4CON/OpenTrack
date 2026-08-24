@@ -573,6 +573,19 @@ None of these are required, but they're what make OpenTrack shine. Turn on the o
 > **DON'T WORRY ABOUT THESE YET** — You do **not** need any of these to start using OpenTrack — skip them for now and come back if you ever want them. The **User Manual** explains each one, step by step, when you're ready.
 
 
+## Optional: accept tickets by email
+
+If you'd like problem reports to arrive by **email** — so a contact form on your own website turns into a ticket automatically — OpenTrack can do that too. It's **off until you switch it on**, and switching it on is a single server setting: an environment variable holding a shared password (a *secret*) that your mail service must present. Set it, restart OpenTrack, and the email door opens; leave it unset and the feature stays completely off.
+
+```
+# Turn on email-to-ticket by setting a long, random secret (treat it like a password).
+# Note the DOUBLE underscores in the name.
+OpenTrack__EmailIntake__Secret=9f3c1a7b5e2d4680bb11
+```
+
+> **THERE'S A LITTLE MORE TO IT** — Email-to-ticket also needs the target project to have a **Ticket key** and **public intake** turned on, plus a mail service that forwards received email to OpenTrack's `/intake/email` address. The full, step-by-step setup — including a ready-to-copy website form and how to point Mailgun, SendGrid, or ImprovMX at OpenTrack — lives in the **Public trouble tickets** guide (the "Email-to-ticket" section). Come back to it whenever you want it; it isn't needed to start.
+
+
 # 8. Backups & Keeping It Running
 
 *Turn on automatic backups, know how to restore, and keep OpenTrack updated.*

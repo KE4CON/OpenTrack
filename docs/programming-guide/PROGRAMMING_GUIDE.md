@@ -3536,7 +3536,7 @@ The two public pages, `PublicReport.razor` and `TicketStatus.razor`, are both ma
 
 ### What it does
 
-A public submitter needs something to quote back — a reference. The raw issue id (42) works but is easy to confuse across projects, so OpenTrack can dress it up as a per-project *ticket number* like `APRS-42`. This is a display convenience layered on top of the real id: the number 42 is still the permanent internal key; `APRS-42` is just a friendlier label for it. It shows up on the thank-you page, in the acknowledgement email, and on the status page — and the status lookup accepts it back in any form.
+A public submitter needs something to quote back — a reference. The raw issue id (42) works but is easy to confuse across projects, so OpenTrack can dress it up as a per-project *ticket number* like `WEB-42`. This is a display convenience layered on top of the real id: the number 42 is still the permanent internal key; `WEB-42` is just a friendlier label for it. It shows up on the thank-you page, in the acknowledgement email, and on the status page — and the status lookup accepts it back in any form.
 
 
 ### Why it was built this way
@@ -3544,8 +3544,8 @@ A public submitter needs something to quote back — a reference. The raw issue 
 The rule is that the *id never moves* — only its presentation changes. A project carries an optional short key, and the whole feature is one small helper class, `TicketNumber`, so formatting and parsing live in exactly one place rather than being re-derived at each of the several edges that show or read a reference. `Project.Key` is the stored half:
 
 ```csharp
-/// <summary>Optional short uppercase key (e.g. "APRS", "WEB") used to form human-friendly ticket
-/// numbers like "APRS-42" ... Null/blank falls back to "#42". The numeric issue id is always the
+/// <summary>Optional short uppercase key (e.g. "WEB", "SHOP") used to form human-friendly ticket
+/// numbers like "WEB-42" ... Null/blank falls back to "#42". The numeric issue id is always the
 /// real internal key.</summary>
 public string? Key { get; set; }
 ```
@@ -3553,7 +3553,7 @@ public string? Key { get; set; }
 
 ### How it works
 
-`TicketNumber` has three static methods that together cover every use. `Format` composes the display string — `APRS-42` when the project has a key, `#42` when it doesn't. `NormalizeKey` is the input-cleaner used when a Manager sets a key on the project form: uppercase, letters and digits only, capped at ten characters, and an empty result collapses to a clean null (so 'no key' has one canonical representation). `TryParseId` is the tolerant reader that pulls the numeric id back out of anything a person might type:
+`TicketNumber` has three static methods that together cover every use. `Format` composes the display string — `WEB-42` when the project has a key, `#42` when it doesn't. `NormalizeKey` is the input-cleaner used when a Manager sets a key on the project form: uppercase, letters and digits only, capped at ten characters, and an empty result collapses to a clean null (so 'no key' has one canonical representation). `TryParseId` is the tolerant reader that pulls the numeric id back out of anything a person might type:
 
 ```csharp
 public static string Format(string? projectKey, int issueId)
@@ -3562,7 +3562,7 @@ public static string Format(string? projectKey, int issueId)
     return key is null ? $"#{issueId}" : $"{key}-{issueId}";
 }
 
-// Accepts "42", "#42", and "APRS-42" (any case) — anything ending in digits.
+// Accepts "42", "#42", and "WEB-42" (any case) — anything ending in digits.
 public static bool TryParseId(string? input, out int id)
 {
     id = 0;
@@ -3572,14 +3572,14 @@ public static bool TryParseId(string? input, out int id)
 }
 ```
 
-The asymmetry is deliberate and is what makes the feature painless: *formatting is specific* (it needs the key to build `APRS-42`), but *parsing is forgiving* (it ignores any prefix and reads the trailing number). So the intake endpoint formats the reference with the project's key when it acknowledges a submission, but the status lookup doesn't care whether the visitor types `APRS-42`, `#42`, or bare `42` — all three yield id 42. Both sides of the public flow route through the one helper:
+The asymmetry is deliberate and is what makes the feature painless: *formatting is specific* (it needs the key to build `WEB-42`), but *parsing is forgiving* (it ignores any prefix and reads the trailing number). So the intake endpoint formats the reference with the project's key when it acknowledges a submission, but the status lookup doesn't care whether the visitor types `WEB-42`, `#42`, or bare `42` — all three yield id 42. Both sides of the public flow route through the one helper:
 
 ```csharp
 // On submit — show the friendly, per-project reference:
 var projectKey = await db.Projects.AsNoTracking().Where(p => p.Id == projectId).Select(p => p.Key).FirstOrDefaultAsync(ct);
 var ticket = TicketNumber.Format(projectKey, issueId);
 
-// On status lookup — accept the raw number, "#42", or "APRS-42":
+// On status lookup — accept the raw number, "#42", or "WEB-42":
 if (!TicketNumber.TryParseId(form["reference"], out var reference))
     return Results.Redirect("/report/status?nf=1");
 ```
@@ -3613,6 +3613,103 @@ return new SvgQRCode(data).GetGraphic(6);
 The poster is print-first: a Print button calls the browser's own print dialog, print-only CSS scales the QR code up for the page, and controls tagged `no-print` disappear on paper. There is one honest bit of user-guarding, too — if public intake is currently off for the project, the poster shows a warning that the QR code won't accept reports yet and points the Manager to the setting. That closes the loop with the domain gate: printing a poster that leads to a closed door would only frustrate people, so the page says so up front.
 
 > **Rendering a QR code as SVG** — A QR code is just a grid of black and white squares. Rendering it as inline SVG (vector shapes) rather than a bitmap image means it stays razor-sharp at any print size — a poster blown up to A3 has no fuzzy pixels — and it needs no separate image file to load. QRCoder is the small library that produces that SVG from a piece of text, here the public report URL.
+
+
+## Email-to-ticket: the same door, reached by mail
+
+
+### What it does
+
+The public form is one way in; email is a second. Someone reports a problem through a contact form on your own website, that form emails a "tickets" address, a mail inbound-parse service (Mailgun, SendGrid Inbound Parse, ImprovMX plus a webhook) receives the email and POSTs its parsed fields to OpenTrack, and OpenTrack files a ticket. Crucially it is not a parallel intake path with its own rules — it funnels into the exact same `PublicIntakeOperations` code the web form uses, so every guardrail from the previous sections still applies. The sender becomes the ticket's name/email, the subject becomes the title, and the body becomes the description.
+
+> **Jargon, in plain words** — An 'inbound-parse' mail service is one that receives email on your behalf and, instead of putting it in a mailbox for a human, turns each message into a web request (a POST) to a URL you choose — handing over the sender, subject, and body as ordinary form fields. That is what lets an email become an HTTP call OpenTrack can act on, without OpenTrack ever speaking the mail protocols itself.
+
+
+### Why it was built this way
+
+Two decisions shape this feature. First, OpenTrack deliberately does *not* parse raw email — the project rejects MailKit/MimeKit (its MimeKit dependency carried an unpatched advisory), so there is no MIME parser in the codebase. Instead it leans on the inbound-parse service, which has already split the message into plain fields; OpenTrack only needs the resulting strings. That keeps the whole feature dependency-free and small. Second, because this opens yet another unauthenticated entry, it is off unless an operator sets a shared secret, and it can only reach projects that already accept public tickets — it cannot widen the attack surface on its own.
+
+
+### How it works
+
+Configuration is one option class bound from `OpenTrack:EmailIntake`. The feature's on/off state is simply whether a secret is present — there is no separate `Enabled` toggle to forget to set:
+
+```csharp
+public const string Section = "OpenTrack:EmailIntake";
+
+/// <summary>Shared secret the poster must present (header X-OpenTrack-Secret or a secret
+/// form field). Email intake is disabled while this is blank.</summary>
+public string? Secret { get; set; }
+
+public bool Enabled => !string.IsNullOrWhiteSpace(Secret);
+```
+
+Routing to the right project is a pure string function with no database access, `EmailRouting.ProjectKeyFromRecipient`. It reads the recipient address and pulls out a project key: the sub-address token after a `+` (`tickets+WEB@…` → `WEB`), or, failing that, the whole local part (`web@…` → `WEB`). It even unwraps a `"Name" <addr>` display form, and normalizes the result the same way stored project keys are normalized:
+
+```csharp
+var addr = ExtractAddress(recipient);
+var at = addr.IndexOf('@');
+var local = at >= 0 ? addr[..at] : addr;
+if (local.Length == 0) return null;
+
+// Sub-addressing: take the token after the first '+'.
+var plus = local.IndexOf('+');
+var token = plus >= 0 ? local[(plus + 1)..] : local;
+
+return TicketNumber.NormalizeKey(token);
+```
+
+Reusing `TicketNumber.NormalizeKey` here is the same single-source-of-truth discipline from the friendly-numbers section: the key derived from an address is cleaned by exactly the same rule that cleaned the key when a Manager set it on the project, so the two are guaranteed to match. Once a key is in hand, `PublicIntakeOperations.SubmitByProjectKeyAsync` looks up the eligible project and hands off to the very same `SubmitAsync` the web form calls:
+
+```csharp
+var key = TicketNumber.NormalizeKey(projectKey);
+if (key is null)
+    return new IntakeResult(null, "Could not tell which project this email is for (no project key in the address).");
+
+var projectId = await db.Projects.AsNoTracking()
+    .Where(p => p.Key != null && p.Key.ToUpper() == key && p.PublicIntakeEnabled)
+    .Select(p => (int?)p.Id)
+    .FirstOrDefaultAsync(ct);
+if (projectId is null)
+    return new IntakeResult(null, "No project is accepting email tickets for that address.");
+
+return await SubmitAsync(db, projectId.Value, name, email, title, description, ct);
+```
+
+Note the query filters on `p.PublicIntakeEnabled` right in the lookup: a project without public intake on is simply not found, so email can never reach it. And because the method ends by calling `SubmitAsync`, the length caps, the empty-title check, and the description formatting are all inherited — there is no second copy of those rules to drift out of sync.
+
+The web endpoint, `POST /intake/email` in `EmailIntakeWebEndpoints`, is the thin HTTP shell around all of this. It refuses to exist when the feature is off, checks the shared secret in constant time, tolerates the field names the common inbound-parse services use, then reuses the same notification-and-webhook fan-out as the web form:
+
+```csharp
+if (!options.Enabled) return Results.NotFound(); // feature off — don't advertise it
+
+// Shared-secret check: header first, then a form field. Constant-time compare.
+var presented = http.Request.Headers["X-OpenTrack-Secret"].ToString();
+if (string.IsNullOrEmpty(presented)) presented = form["secret"].ToString();
+if (!SecretMatches(options.Secret!, presented)) return Results.Unauthorized();
+
+// Tolerate the common field names used by inbound-parse providers.
+var recipient = First(form, "recipient", "to", "To");
+var from = First(form, "from", "sender", "From");
+var subject = First(form, "subject", "Subject");
+var body = First(form, "body-plain", "stripped-text", "text", "body", "message");
+```
+
+Three details are worth calling out. Returning `NotFound` rather than an error when the feature is off means a disabled endpoint gives nothing away — it looks exactly like a route that was never mapped. The secret comparison uses `CryptographicOperations.FixedTimeEquals`, which takes the same time whether the mismatch is in the first byte or the last (and safely returns false for different-length inputs), so an attacker can't time their way to the secret. And the field-name tolerance — `recipient`/`to`, `from`/`sender`, `subject`, and a whole list of body aliases — means the same endpoint works across providers without per-provider adapters:
+
+```csharp
+private static bool SecretMatches(string expected, string? presented)
+{
+    if (string.IsNullOrEmpty(presented)) return false;
+    // FixedTimeEquals returns false for different-length inputs without throwing.
+    return CryptographicOperations.FixedTimeEquals(
+        Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(presented));
+}
+```
+
+The endpoint carries `.RequireRateLimiting("intake")` — the very same policy the web form and the Git webhook use — so email intake shares the one throttle that fences every anonymous surface. On success it returns the new issue id as `{ reference = issueId }` and fires `NotifyIssueChangedAsync` so the team is alerted and webhooks fire, identical to a web-form report.
+
+> **The maintainer's rule** — Email-to-ticket is a shell, not a second intake. It parses no email itself (no MailKit/MimeKit — that dependency was rejected), routes purely by the recipient's project key through the shared TicketNumber.NormalizeKey, and funnels into SubmitByProjectKeyAsync → SubmitAsync so every gate and cap is inherited. If you add another provider or field name, extend the tolerant First(...) lookup — never fork a second submission path with its own rules.
 
 
 ## Why It Matters / Design Takeaways

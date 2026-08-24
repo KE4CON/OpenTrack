@@ -80,7 +80,7 @@ public static class PublicIntakeOperations
 
     /// <summary>
     /// Create a ticket from an inbound email, routed to a project by its <c>Key</c> (derived from the
-    /// recipient address, e.g. <c>tickets+APRS@…</c> → the "APRS" project). Only projects that have public
+    /// recipient address, e.g. <c>tickets+WEB@…</c> → the "WEB" project). Only projects that have public
     /// intake enabled are eligible, so email intake can never reach a project that isn't already accepting
     /// public tickets. Reuses <see cref="SubmitAsync"/> so the same caps and description formatting apply.
     /// </summary>

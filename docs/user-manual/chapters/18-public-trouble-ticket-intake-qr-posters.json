@@ -139,11 +139,11 @@
       "callout": {
         "kind": "note",
         "label": "THE REFERENCE NUMBER USES THE PROJECT'S TICKET KEY",
-        "text": "If the project has a **Ticket key** (see the *Projects & Their Settings* chapter), the reference number the reporter sees is the friendly form — for example **APRS-42** — on the thank-you page, in the acknowledgement email, and on the status page. If the project has no key, it's the plain number, like **42**. Either way it's the same ticket; the key just makes it clearer and easier to quote, which is handy when one OpenTrack handles reports for several products."
+        "text": "If the project has a **Ticket key** (see the *Projects & Their Settings* chapter), the reference number the reporter sees is the friendly form — for example **WEB-42** — on the thank-you page, in the acknowledgement email, and on the status page. If the project has no key, it's the plain number, like **42**. Either way it's the same ticket; the key just makes it clearer and easier to quote, which is handy when one OpenTrack handles reports for several products."
       }
     },
     {
-      "p": "If the reporter left an **email**, OpenTrack also sends a short acknowledgement to that address — __We received your report (ref APRS-42)__ — with the same reference number and a reminder that they can check status any time. (This only happens when your server has email set up.)"
+      "p": "If the reporter left an **email**, OpenTrack also sends a short acknowledgement to that address — __We received your report (ref WEB-42)__ — with the same reference number and a reminder that they can check status any time. (This only happens when your server has email set up.)"
     },
     {
       "h1": "How a reporter checks status later"
@@ -154,17 +154,17 @@
     {
       "steps": [
         "The reporter opens the status link.",
-        "They enter the **Reference number** they were given. The box accepts it in any form — the friendly __APRS-42__, the plain __42__, or even __#42__ — so they can just type whatever they were sent (the on-screen hint reads __e.g. APRS-42 or 42__).",
+        "They enter the **Reference number** they were given. The box accepts it in any form — the friendly __WEB-42__, the plain __42__, or even __#42__ — so they can just type whatever they were sent (the on-screen hint reads __e.g. WEB-42 or 42__).",
         "They enter the **Email you used** — it must match the email on the original report.",
         "They select **Check status**.",
-        "If both match, a green box shows __Ticket APRS-42__ (or the plain number if the project has no key), its title, and its current **Status**. If they don't match, a yellow note reads __No matching ticket found. Double-check the reference number and the email address you submitted with.__"
+        "If both match, a green box shows __Ticket WEB-42__ (or the plain number if the project has no key), its title, and its current **Status**. If they don't match, a yellow note reads __No matching ticket found. Double-check the reference number and the email address you submitted with.__"
       ]
     },
     {
       "callout": {
         "kind": "tip",
         "label": "THE KEY PREFIX IS OPTIONAL WHEN LOOKING UP",
-        "text": "Because the number behind a ticket never changes, the status page finds the ticket whether or not the reporter includes the key. **APRS-42**, **42**, and **#42** all look up the same ticket. So a reporter who half-remembers their reference — or who only wrote down the digits — can still check status."
+        "text": "Because the number behind a ticket never changes, the status page finds the ticket whether or not the reporter includes the key. **WEB-42**, **42**, and **#42** all look up the same ticket. So a reporter who half-remembers their reference — or who only wrote down the digits — can still check status."
       }
     },
     {
@@ -199,6 +199,22 @@
       }
     },
     {
+      "h1": "Tickets can also arrive by email"
+    },
+    {
+      "p": "Besides the link and the QR poster, a project can also collect tickets straight from **email**. When this is set up, someone reports a problem through the contact form on your own website, that form sends an email to a special \"tickets\" address, and OpenTrack turns that email into a normal ticket in your project — the sender's name and email become the ticket's contact details, the email's subject becomes the ticket's title, and the message becomes the description. The person never has to visit OpenTrack at all; they just use the website form they already trust."
+    },
+    {
+      "p": "Which project an email lands in is decided by the project's **Ticket key** (the short code like __WEB__ described in the *Projects & Their Settings* chapter). An address such as __tickets+WEB@yourdomain.com__ files the email under the project whose key is __WEB__, so one OpenTrack can quietly sort email reports for several different products."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "AN ADMINISTRATOR SETS THIS UP ON THE SERVER",
+        "text": "Email-to-ticket isn't a button inside OpenTrack — it's switched on **on the server** by whoever runs it, and it needs a mail service to forward received email to OpenTrack. It's **off until they turn it on**, and it only works for a project that already has **public intake on** and a **Ticket key** set. If you'd like reports to arrive by email, ask your administrator to follow the *Public trouble tickets* guide (the \"Email-to-ticket\" section)."
+      }
+    },
+    {
       "h1": "Turning it off"
     },
     {
@@ -215,7 +231,8 @@
         "__A reporter can't check their ticket's status.__ Status lookup needs **both** the reference number and the **same email** used on the report. If they left email blank when filing, there's no way to look it up. If they're sure of both, confirm they're using the exact email address they typed originally.",
         "__A reporter lost their reference number.__ Without it (plus the email), they can't self-check status. They can submit a fresh report, or a team member can find the original issue inside the project and update them directly.",
         "__Public submissions aren't arriving.__ Confirm intake shows **On** in Settings, and that reporters are using the current public link for the right project. Submissions land as new issues at status __New__ — check your project's New issues.",
-        "__I'm worried about spam.__ The form's hidden honeypot field silently drops obvious bot submissions, so most junk never becomes an issue. Genuine-looking spam that slips through is triaged and closed like any other issue."
+        "__I'm worried about spam.__ The form's hidden honeypot field silently drops obvious bot submissions, so most junk never becomes an issue. Genuine-looking spam that slips through is triaged and closed like any other issue.",
+        "__Email reports aren't turning into tickets.__ Email-to-ticket is a server setting, not a project button. Confirm with your administrator that it's switched on, that this project has **public intake on** and a **Ticket key** set, and that the email is being sent to the matching address (for example __tickets+WEB@yourdomain.com__ for a project whose key is __WEB__). The *Public trouble tickets* guide has the full checklist."
       ]
     }
   ]

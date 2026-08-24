@@ -98,14 +98,14 @@ public sealed class PublicIntakeTests : IDisposable
     {
         await using (var setup = new AppDbContext(_options))
         {
-            (await setup.Projects.FirstAsync(x => x.Id == On)).Key = "APRS";
+            (await setup.Projects.FirstAsync(x => x.Id == On)).Key = "WEB";
             await setup.SaveChangesAsync();
         }
         int id;
         await using (var db = new AppDbContext(_options))
         {
-            // From a recipient like "tickets+aprs@…" the endpoint derives key "APRS" → the On project.
-            var r = await PublicIntakeOperations.SubmitByProjectKeyAsync(db, "aprs", "Al", "al@example.com", "Radio down", "no RF");
+            // From a recipient like "tickets+web@…" the endpoint derives key "WEB" → the On project.
+            var r = await PublicIntakeOperations.SubmitByProjectKeyAsync(db, "web", "Al", "al@example.com", "Radio down", "no RF");
             Assert.Null(r.Error);
             id = r.IssueId!.Value;
         }

@@ -18,8 +18,8 @@ public class Project
     public string? Description { get; set; }
     public bool IsPublic { get; set; } = true;
 
-    /// <summary>Optional short uppercase key (e.g. "APRS", "WEB") used to form human-friendly ticket
-    /// numbers like "APRS-42" — nicer to quote over the phone and clearer across projects than a raw id.
+    /// <summary>Optional short uppercase key (e.g. "WEB", "SHOP") used to form human-friendly ticket
+    /// numbers like "WEB-42" — nicer to quote over the phone and clearer across projects than a raw id.
     /// Null/blank falls back to "#42". The numeric issue id is always the real internal key.</summary>
     public string? Key { get; set; }
 

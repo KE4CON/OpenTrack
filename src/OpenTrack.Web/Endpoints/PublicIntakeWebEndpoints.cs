@@ -48,7 +48,7 @@ public static class PublicIntakeWebEndpoints
             // Notify the team + fire webhooks (actor 0 => the owner/reporter isn't filtered out).
             await notifications.NotifyIssueChangedAsync(db, 0, issueId, "a new ticket was submitted via the public form", ct);
 
-            // Friendly, per-project ticket number (e.g. "APRS-42") for anything the submitter sees.
+            // Friendly, per-project ticket number (e.g. "WEB-42") for anything the submitter sees.
             var projectKey = await db.Projects.AsNoTracking().Where(p => p.Id == projectId).Select(p => p.Key).FirstOrDefaultAsync(ct);
             var ticket = TicketNumber.Format(projectKey, issueId);
 
@@ -70,7 +70,7 @@ public static class PublicIntakeWebEndpoints
             async (HttpContext http, AppDbContext db, CancellationToken ct) =>
         {
             var form = await http.Request.ReadFormAsync(ct);
-            // Accept the raw number, "#42", or the friendly "APRS-42" form.
+            // Accept the raw number, "#42", or the friendly "WEB-42" form.
             if (!TicketNumber.TryParseId(form["reference"], out var reference))
                 return Results.Redirect("/report/status?nf=1");
             var status = await PublicIntakeOperations.LookupAsync(db, reference, form["email"], ct);

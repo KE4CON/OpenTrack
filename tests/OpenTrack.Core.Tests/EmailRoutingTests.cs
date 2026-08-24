@@ -14,13 +14,13 @@ using OpenTrack.Core.Text;
 namespace OpenTrack.Core.Tests;
 
 /// <summary>Email-to-ticket routing: derive the project key from the recipient address, via
-/// sub-addressing ("tickets+APRS@…") or the whole local part ("aprs@…").</summary>
+/// sub-addressing ("tickets+WEB@…") or the whole local part ("web@…").</summary>
 public class EmailRoutingTests
 {
     [Theory]
-    [InlineData("tickets+APRS@example.com", "APRS")]
-    [InlineData("tickets+aprs@example.com", "APRS")]          // normalized to upper
-    [InlineData("aprs@example.com", "APRS")]                  // whole local part
+    [InlineData("tickets+WEB@example.com", "WEB")]
+    [InlineData("tickets+web@example.com", "WEB")]          // normalized to upper
+    [InlineData("web@example.com", "WEB")]                  // whole local part
     [InlineData("\"Support\" <tickets+WEB@example.com>", "WEB")] // display-name form
     [InlineData("TICKETS+web-app@example.com", "WEBAPP")]     // punctuation stripped by NormalizeKey
     public void ProjectKeyFromRecipient_DerivesKey(string recipient, string expected)

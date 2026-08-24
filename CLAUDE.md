@@ -110,7 +110,7 @@ The Phase list above is the *original plan*, kept for history; the reality is fa
 > MantisBT-parity feature set and beyond. **Do not "re-start Phase 1"** — auth, CRUD, and the
 > desktop shell are long done.
 
-**Done (verified building: 0 errors; 227 tests pass — 108 Core + 115 API + 4 Web):**
+**Done (verified building: 0 errors; 263 tests pass — 130 Core + 129 API + 4 Web):**
 - **Security audit closed** — the systemic root cause was `ProjectMembership`/`IsPrivate`/`IsPublic`
   stored but **never enforced** (IDOR, private-issue exposure, near-zero real tests). Fixed with
   **one shared authorization layer** both hosts call — `AccessContext` (Core) +
@@ -126,25 +126,28 @@ The Phase list above is the *original plan*, kept for history; the reality is fa
   reporting/trend charts (inline SVG), time logging, per-project workflow rules, print/PDF,
   automation rules, SLA + escalation, two-way Git integration, GPS-on-issues + QR "scan to
   report" poster, scheduled DB backups, Docker packaging.
-- **AI-assist foundation** — opt-in, bring-your-own-key, server-side Anthropic Messages API,
-  smart triage; every output is a human-confirmed suggestion. *(Never live-verified — needs a
-  real key.)*
+- **AI-assist (tiered, opt-in):** provider-pluggable (`IAiAssistant` + `AnthropicAiAssistant` /
+  `OpenAiAssistant`) with **two-tier routing** (`AiAssistantRouter`) — base provider (`OpenTrack:Ai`)
+  for menial tasks (triage, plain-English search, summaries) and an optional `OpenTrack:Ai:Smart`
+  provider for the **🛠️ "Suggest a fix"** feature (`SuggestResolutionAsync` / `AiResolution` / the
+  shared `ResolutionContextBuilder` / `POST /api/ai/resolution` / a Details-page button). Off by
+  default; every output is a human-confirmed suggestion. Level 3 (code patches) is intentionally
+  external (done in Claude Code). *(Cloud path never live-verified — needs a real key.)*
+- **Friendly ticket numbers & email-to-ticket:** optional per-project `Key` → `WEB-42`
+  (`TicketNumber`), shown on the issue page + public-intake flow; inbound email → ticket via
+  `POST /intake/email` (opt-in `OpenTrack:EmailIntake:Secret`, routed by the recipient key,
+  `EmailRouting`), reusing the public-intake path.
 - **Docs:** Installation Guide, User Manual, Programming Guide — all on the per-chapter-JSON
   pipeline (see §10); plus guides under `docs/guides/` and outreach under `docs/outreach/`.
 
 **Open verification / next steps (from the recovered summary):**
 1. **Confirm the macOS desktop build** (Mac Catalyst head) on the Mac — only the Windows head was
    built in-session.
-2. **Live-verify AI features** with a real Anthropic API key.
-3. **Tiered AI-assist + "Suggest a fix" (planned)** — run a small **local** model (Ollama on the
-   LAN) for menial tasks (triage/tags/dedup/summaries) and **cloud Claude** for the smart work,
-   including a new **fix-suggestion** feature (Levels 1 & 2). The AI layer is already
-   provider-pluggable (`IAiAssistant` + `AnthropicAiAssistant`/`OpenAiAssistant`; Ollama works today
-   via `Provider="openai"` + `BaseUrl`); the real new work is dual-provider task routing + the
-   fix-suggestion capability. Full design: `docs/planning/OpenTrack_AI_Assist_Plan.md`.
-4. Optional leapfrog items not yet built: PWA push notifications, natural-language/semantic
-   search, localization (i18n), immutable audit log, **email-to-ticket** intake.
-5. Still parked per §11: **built-in wiki** and **issue sponsorship**.
+2. **Live-verify AI features** with a real Anthropic API key (both the local base tier and the
+   cloud Smart tier). *(Design: `docs/planning/OpenTrack_AI_Assist_Plan.md` — now implemented.)*
+3. Optional leapfrog items not yet built: PWA push notifications, natural-language/semantic
+   search, localization (i18n), immutable audit log.
+4. Still parked per §11: **built-in wiki** and **issue sponsorship**.
 
 ---
 
@@ -204,6 +207,16 @@ Keep these in mind — the PDF in `docs/` predates them:
 - Deliver **complete, drop-in files**, scaffolded straight into the structure above.
 - Move one phase at a time; prove it runs before adding the next layer.
 - Update the **Decisions log** and **Current status** whenever either changes.
+- **Keep the tracking files fresh in the SAME change.** Whenever a feature is added, changed, or
+  removed, update the docs and status files it touches *as part of that work* — never defer to "a
+  docs pass later" (that's how README/status drift). Specifically:
+  - **`README.md`** — features list, tech-stack table, and status.
+  - **This file** — §5 Current status and §6 Decisions log (and any affected section).
+  - **`docs/`** — the relevant `docs/guides/*.md`, the per-chapter-JSON books
+    (`docs/*/chapters/*.json`, then rebuild the `.docx`/`.md` via each book's `build.py` /
+    `guide_build.py`), and **`docs/planning/V2_ROADMAP.md`** (strike/mark shipped items ✅ DONE).
+  - Keep the **test count** in §5 accurate when tests are added.
+  This is a convention (followed, not auto-enforced); a CI check/hook could enforce it later.
 
 ---
 

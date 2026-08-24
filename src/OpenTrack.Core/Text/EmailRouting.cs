@@ -13,8 +13,8 @@ namespace OpenTrack.Core.Text;
 
 /// <summary>
 /// Routing helpers for the email-to-ticket intake. An inbound email is filed under the project whose
-/// <c>Key</c> matches the recipient address: either sub-addressing (<c>tickets+APRS@domain</c> → APRS)
-/// or the whole local part (<c>aprs@domain</c> → APRS). Hand-rolled and dependency-free (the project
+/// <c>Key</c> matches the recipient address: either sub-addressing (<c>tickets+WEB@domain</c> → WEB)
+/// or the whole local part (<c>web@domain</c> → WEB). Hand-rolled and dependency-free (the project
 /// rejects MailKit/MimeKit); this only needs the address string, which inbound-parse services already
 /// hand over as plain fields.
 /// </summary>
@@ -22,8 +22,8 @@ public static class EmailRouting
 {
     /// <summary>
     /// Extracts the project key from a recipient address. Prefers the sub-address token after a '+'
-    /// (<c>tickets+APRS@…</c> → "APRS"); otherwise uses the whole local part (<c>aprs@…</c> → "APRS").
-    /// Tolerates a display-name form (<c>"Support" &lt;tickets+APRS@…&gt;</c>). Returns null when no key
+    /// (<c>tickets+WEB@…</c> → "WEB"); otherwise uses the whole local part (<c>web@…</c> → "WEB").
+    /// Tolerates a display-name form (<c>"Support" &lt;tickets+WEB@…&gt;</c>). Returns null when no key
     /// can be derived. The result is normalized the same way project keys are stored.
     /// </summary>
     public static string? ProjectKeyFromRecipient(string? recipient)

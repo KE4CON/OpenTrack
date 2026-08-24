@@ -8,10 +8,12 @@ OpenTrack has an optional helper powered by Artificial Intelligence (AI) — com
 
 ## What the AI can do
 
-There are two helpers, and both only ever suggest things — a person always makes the final call.
+There are four helpers, and each only ever suggests things — a person always makes the final call.
 
 - **Smart triage** — When you are filling out the **New issue** page, there is a button labeled **✨ Suggest with AI**. Click it, and the AI reads the summary and details you typed, then fills in a severity, a priority, a category, and some suggested tags for you. You can accept those, or change any of them, before you save.
 - **Plain-English search** — On the **Issues** list page, there is a box labeled **✨ Ask in plain English**. You can type an everyday request like *"high-priority crashes nobody has touched in a month"*, and the AI turns it into the normal search filters (status, severity, priority, keywords, stale, project). It only ever builds a filter you could have set by hand yourself, and it can only look at projects you are already allowed to see — so it never gives you access to anything new.
+- **Summarize thread** — On a busy issue's page, the **✨ AI summary** card has a **Summarize thread** button that gives a short, plain-language recap of the problem, what's already been tried, and what happens next.
+- **🛠️ Suggest a fix** — On an issue's page, the **Suggest a fix** button proposes the likely cause(s) and concrete steps to try, with a confidence level (low/medium/high) and the sources it used — the issue's notes, any text/log attachments, and *similar issues you've already resolved*. It's a starting point you read and act on yourself; it never changes the issue. (Writing the actual code fix is a developer task — do that in a coding tool like Claude Code — OpenTrack only *suggests*.)
 
 You are **not** locked into one AI company. OpenTrack can talk to two kinds of provider, so you can pick whatever fits your budget and your privacy needs.
 
@@ -27,6 +29,21 @@ A "provider" is just the service that runs the AI. Here are your choices. The **
 | **Groq / OpenRouter / other hosted** | `openai` + `BaseUrl` | Cloud. Any OpenAI-compatible endpoint. |
 | **Ollama** (free, runs on your own PC) | `openai` + `BaseUrl` | **Local — no key, no data leaves your machine.** |
 | **LM Studio** (free, runs on your own PC) | `openai` + `BaseUrl` | **Local — same privacy benefit.** |
+
+## Two tiers (optional): local for the quick stuff, cloud for "Suggest a fix"
+
+You can run **two** providers at once. The **base** provider (the `OpenTrack:Ai` settings above) handles the menial helpers — triage, plain-English search, and thread summaries — while an **optional** second provider under **`OpenTrack:Ai:Smart`** handles the reasoning-heavy **Suggest a fix**. The classic pairing is a **free local model** (Ollama) as the base and **cloud Claude** as the Smart tier, so the quick chores stay local and free while the harder fix suggestions use the stronger cloud model.
+
+To add the Smart tier, set these alongside your base settings (environment-variable form shown; each `:` becomes `__`):
+
+```
+OpenTrack__Ai__Smart__Enabled=true
+OpenTrack__Ai__Smart__Provider=anthropic
+OpenTrack__Ai__Smart__ApiKey=sk-ant-...             # your Anthropic Console (API) key
+OpenTrack__Ai__Smart__Model=claude-haiku-4-5-20251001
+```
+
+Leave the Smart tier out and the base provider handles **everything** (including Suggest a fix), so a single local model works fine on its own. Smart-tier cloud calls bill your **Anthropic Console (API) account** — never a Claude Pro/Max subscription.
 
 A few of the terms above, in plain words:
 

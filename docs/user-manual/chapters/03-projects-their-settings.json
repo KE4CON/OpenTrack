@@ -6,7 +6,7 @@
     "What a project is and why access is granted per project",
     "The Projects list and what each column shows",
     "Creating a project, field by field",
-    "The optional Ticket key and friendly ticket numbers like APRS-42",
+    "The optional Ticket key and friendly ticket numbers like WEB-42",
     "Public vs. private projects",
     "The project page and its row of action buttons",
     "Categories and versions — what they do and how to add or remove them",
@@ -100,7 +100,7 @@
           ],
           [
             "**Ticket key**",
-            "A short code, like `APRS`, for friendly ticket numbers such as __APRS-42__.",
+            "A short code, like `WEB`, for friendly ticket numbers such as __WEB-42__.",
             "Optional. Leave blank to use plain numbers (#42). Explained in full just below."
           ],
           [
@@ -120,7 +120,7 @@
       "steps": [
         "Select **Projects** in the left navigation, then **New Project**.",
         "Type a **Name**, and optionally a **Description**.",
-        "Optionally type a **Ticket key** (for example `APRS`) to get friendly ticket numbers like __APRS-42__; leave it blank for plain numbers.",
+        "Optionally type a **Ticket key** (for example `WEB`) to get friendly ticket numbers like __WEB-42__; leave it blank for plain numbers.",
         "Decide **Public** vs. private with the checkbox (it starts ticked, meaning public).",
         "Select **Create Project**. You land on the new project's own page, ready to add issues and settings.",
         "Changed your mind? Select **Cancel** to return to the Projects list without creating anything."
@@ -133,13 +133,13 @@
       "h1": "The Ticket key (friendly ticket numbers)"
     },
     {
-      "p": "Every issue always has a plain number behind it, like **42** — that's its permanent internal identity and it never changes. The **Ticket key** is an optional short label you can put in front of that number so tickets read more naturally. Give a project the key `APRS`, and its issues show up as **APRS-42** instead of **#42** — on the issue page, in search results, and anywhere else a ticket is named. Leave the key blank and everything just shows the plain **#42** form. This is purely about **display**: the key never changes the underlying number, and turning a key on or off (or changing it) only changes how existing numbers are shown, never the issues themselves."
+      "p": "Every issue always has a plain number behind it, like **42** — that's its permanent internal identity and it never changes. The **Ticket key** is an optional short label you can put in front of that number so tickets read more naturally. Give a project the key `WEB`, and its issues show up as **WEB-42** instead of **#42** — on the issue page, in search results, and anywhere else a ticket is named. Leave the key blank and everything just shows the plain **#42** form. This is purely about **display**: the key never changes the underlying number, and turning a key on or off (or changing it) only changes how existing numbers are shown, never the issues themselves."
     },
     {
       "callout": {
         "kind": "tip",
         "label": "BEST WHEN ONE OPENTRACK TRACKS SEVERAL APPS",
-        "text": "Ticket keys shine when a single OpenTrack tracks more than one product. Give each project its own key — `APRS`, `WEB`, `RADIO` — and a number like **APRS-42** instantly tells everyone which product it belongs to, with no chance of confusing it with **WEB-42**. It's also much easier to quote over the phone or in an email than a bare number."
+        "text": "Ticket keys shine when a single OpenTrack tracks more than one product. Give each project its own key — `WEB`, `SHOP`, `RADIO` — and a number like **WEB-42** instantly tells everyone which product it belongs to, with no chance of confusing it with **SHOP-42**. It's also much easier to quote over the phone or in an email than a bare number."
       }
     },
     {
@@ -147,7 +147,7 @@
     },
     {
       "bullets": [
-        "It's made **uppercase** automatically — type `aprs` and it's stored as `APRS`.",
+        "It's made **uppercase** automatically — type `web` and it's stored as `WEB`.",
         "Only **letters and numbers** are kept; spaces, dashes, and punctuation are dropped.",
         "It's capped at **10 characters** — anything longer is trimmed to the first 10.",
         "It's completely **optional**. Blank means plain `#42`-style numbers, which is a perfectly good choice."
@@ -283,7 +283,7 @@
       "h1": "Editing a project"
     },
     {
-      "p": "To change a project's basics, select **Edit Project** on the project page (or the **Edit** button on the Projects list). The __Edit Project__ form is the same four fields as creation — **Name**, **Description**, the **Ticket key**, and the **Public** checkbox — pre-filled with the current values. You can add, change, or clear the Ticket key here at any time; because the key only affects display, changing it is safe and instantly re-labels existing tickets (an issue that read __#42__ starts reading __APRS-42__, and vice versa)."
+      "p": "To change a project's basics, select **Edit Project** on the project page (or the **Edit** button on the Projects list). The __Edit Project__ form is the same four fields as creation — **Name**, **Description**, the **Ticket key**, and the **Public** checkbox — pre-filled with the current values. You can add, change, or clear the Ticket key here at any time; because the key only affects display, changing it is safe and instantly re-labels existing tickets (an issue that read __#42__ starts reading __WEB-42__, and vice versa)."
     },
     {
       "steps": [
