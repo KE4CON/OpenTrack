@@ -133,7 +133,17 @@
       "h1": "The thank-you page and reference number"
     },
     {
-      "p": "After a successful submission the reporter sees a **Thank you** page: __Your report was received. Your reference number is #number.__ It tells them to keep that number and offers a link to __check its status__ anytime, plus a **Submit another** button to file a second report. That **reference number** is the ticket's issue number — the reporter's key to looking it up later (together with the email they used)."
+      "p": "After a successful submission the reporter sees a **Thank you** page: __Your report was received. Your reference number is__ followed by the ticket's number. It tells them to keep that number and offers a link to __check its status__ anytime, plus a **Submit another** button to file a second report. That **reference number** is the reporter's key to looking the ticket up later (together with the email they used)."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "THE REFERENCE NUMBER USES THE PROJECT'S TICKET KEY",
+        "text": "If the project has a **Ticket key** (see the *Projects & Their Settings* chapter), the reference number the reporter sees is the friendly form — for example **APRS-42** — on the thank-you page, in the acknowledgement email, and on the status page. If the project has no key, it's the plain number, like **42**. Either way it's the same ticket; the key just makes it clearer and easier to quote, which is handy when one OpenTrack handles reports for several products."
+      }
+    },
+    {
+      "p": "If the reporter left an **email**, OpenTrack also sends a short acknowledgement to that address — __We received your report (ref APRS-42)__ — with the same reference number and a reminder that they can check status any time. (This only happens when your server has email set up.)"
     },
     {
       "h1": "How a reporter checks status later"
@@ -144,11 +154,18 @@
     {
       "steps": [
         "The reporter opens the status link.",
-        "They enter the **Reference number** they were given (for example, __42__).",
+        "They enter the **Reference number** they were given. The box accepts it in any form — the friendly __APRS-42__, the plain __42__, or even __#42__ — so they can just type whatever they were sent (the on-screen hint reads __e.g. APRS-42 or 42__).",
         "They enter the **Email you used** — it must match the email on the original report.",
         "They select **Check status**.",
-        "If both match, a green box shows __Ticket #number__, its title, and its current **Status**. If they don't match, a yellow note reads __No matching ticket found. Double-check the reference number and the email address you submitted with.__"
+        "If both match, a green box shows __Ticket APRS-42__ (or the plain number if the project has no key), its title, and its current **Status**. If they don't match, a yellow note reads __No matching ticket found. Double-check the reference number and the email address you submitted with.__"
       ]
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "THE KEY PREFIX IS OPTIONAL WHEN LOOKING UP",
+        "text": "Because the number behind a ticket never changes, the status page finds the ticket whether or not the reporter includes the key. **APRS-42**, **42**, and **#42** all look up the same ticket. So a reporter who half-remembers their reference — or who only wrote down the digits — can still check status."
+      }
     },
     {
       "callout": {

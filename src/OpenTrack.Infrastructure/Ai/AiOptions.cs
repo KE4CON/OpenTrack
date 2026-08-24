@@ -44,6 +44,16 @@ public sealed class AiOptions
     /// "http://localhost:11434/v1" (Ollama) or "http://localhost:1234/v1" (LM Studio).</summary>
     public string? BaseUrl { get; set; }
 
+    /// <summary>
+    /// Optional second provider for the <b>"smart" tier</b>. When set, this provider handles the tasks
+    /// that need stronger reasoning — currently the "Suggest a fix" feature — while the base provider
+    /// (above) handles the menial tasks (triage, search, summaries). The classic use is a small
+    /// <em>local</em> model (Ollama on the LAN) for the base provider and <em>cloud Claude</em> here.
+    /// <para>Bound from the nested <c>OpenTrack:Ai:Smart</c> section. When absent (null) the base provider
+    /// handles everything, so existing single-provider setups keep working unchanged.</para>
+    /// </summary>
+    public AiOptions? Smart { get; set; }
+
     /// <summary>True when this provider has what it needs to make a call. Cloud providers need a key; a
     /// local OpenAI-compatible engine (identified by a custom <see cref="BaseUrl"/>) does not.</summary>
     public bool HasCredentials =>

@@ -1,4 +1,5 @@
 @page "/issues/{Id:int}"
+@using OpenTrack.Core.Text
 @attribute [Authorize]
 @inject IOpenTrackDataService Data
 @inject IAttachmentTransfer Transfer
@@ -13,7 +14,7 @@ else
 {
     <div class="d-flex justify-content-between align-items-start mb-2">
         <div>
-            <p class="text-muted mb-0">@issue.ProjectName / Issue #@issue.Id</p>
+            <p class="text-muted mb-0">@issue.ProjectName / Issue @TicketNumber.Format(issue.ProjectKey, issue.Id)</p>
             <h1>@issue.Title</h1>
         </div>
         <div class="d-flex gap-2">
@@ -225,6 +226,61 @@ else
                 else
                 {
                     <div class="text-muted small mt-1">Get a plain-language recap of the problem, what's been tried, and what's next.</div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (aiEnabled)
+    {
+        <div class="card mb-3 border-primary-subtle">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">🛠️ Suggest a fix</span>
+                    <EditForm Model="aiFixModel" OnValidSubmit="SuggestFix" FormName="aiFix">
+                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Uses your configured AI provider">
+                            @(aiFix is null ? "Suggest a fix" : "Try again")
+                        </button>
+                    </EditForm>
+                </div>
+                @if (aiFixMessage is not null)
+                {
+                    <div class="text-muted small mt-1">@aiFixMessage</div>
+                }
+                else if (aiFix is not null)
+                {
+                    <div class="mt-2">
+                        @if (!string.IsNullOrWhiteSpace(aiFix.Summary))
+                        {
+                            <p class="mb-2">@aiFix.Summary</p>
+                        }
+                        @if (aiFix.Causes.Count > 0)
+                        {
+                            <div class="fw-semibold small">Likely causes</div>
+                            <ul class="mb-2">
+                                @foreach (var c in aiFix.Causes) { <li>@c</li> }
+                            </ul>
+                        }
+                        @if (aiFix.Steps.Count > 0)
+                        {
+                            <div class="fw-semibold small">Steps to try</div>
+                            <ol class="mb-2">
+                                @foreach (var st in aiFix.Steps) { <li>@st</li> }
+                            </ol>
+                        }
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <span class="badge @ConfidenceClass(aiFix.Confidence)">confidence: @aiFix.Confidence</span>
+                            @if (aiFix.Sources.Count > 0)
+                            {
+                                <span class="text-muted small">Based on: @string.Join(", ", aiFix.Sources)</span>
+                            }
+                        </div>
+                        <div class="form-text">An AI suggestion — a starting point, not a guarantee. Verify before acting; nothing on this issue was changed.</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-muted small mt-1">Get likely causes and concrete steps to try — grounded in this issue's notes, any text/log attachments, and similar resolved issues.</div>
                 }
             </div>
         </div>
@@ -550,6 +606,9 @@ else
     [SupplyParameterFromForm(FormName = "aiSummarize")] private AiSummarizeModel aiSummarizeModel { get; set; } = default!;
     private string? aiSummary;
     private string? aiSummaryMessage;
+    [SupplyParameterFromForm(FormName = "aiFix")] private AiFixModel aiFixModel { get; set; } = default!;
+    private AiResolutionView? aiFix;
+    private string? aiFixMessage;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -563,6 +622,7 @@ else
         addTime ??= new();
         delTime ??= new();
         aiSummarizeModel ??= new();
+        aiFixModel ??= new();
         aiEnabled = await Data.IsAiEnabledAsync();
         await LoadIssue();
         // On first render (GET) cf.Entries is empty → seed it from the stored values so the inputs have
@@ -584,6 +644,26 @@ else
     }
 
     private sealed class AiSummarizeModel { }
+
+    private async Task SuggestFix()
+    {
+        aiFix = null;
+        aiFixMessage = null;
+        var s = await Data.SuggestResolutionAsync(Id);
+        if (s is null || (string.IsNullOrWhiteSpace(s.Summary) && s.Steps.Count == 0))
+            aiFixMessage = "AI couldn't suggest a fix right now.";
+        else
+            aiFix = s;
+    }
+
+    private sealed class AiFixModel { }
+
+    private static string ConfidenceClass(string confidence) => confidence switch
+    {
+        "high" => "text-bg-success",
+        "medium" => "text-bg-warning",
+        _ => "text-bg-secondary",
+    };
 
     private void SeedCustomFieldEntries() =>
         cf.Entries = customFields.Select(f => new CustomFieldEntry { DefinitionId = f.DefinitionId, Value = f.Value }).ToList();

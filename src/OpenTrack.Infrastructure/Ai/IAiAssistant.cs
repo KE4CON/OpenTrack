@@ -18,6 +18,28 @@ namespace OpenTrack.Infrastructure.Ai;
 public readonly record struct TriageSuggestion(
     IssueSeverity? Severity, IssuePriority? Priority, string? Category, IReadOnlyList<string> Tags);
 
+/// <summary>A past, already-resolved issue similar to the one we're suggesting a fix for. This is the
+/// strongest grounding signal — "you solved something like this before, and here's how."</summary>
+public readonly record struct ResolvedReference(int Number, string Title, string? Resolution);
+
+/// <summary>Everything assembled to ground a fix suggestion for one issue. All text must already be
+/// ACL-filtered by the caller (the AI only ever sees what the requesting user is allowed to see).</summary>
+public sealed record ResolutionContext(
+    string Title,
+    string? Description,
+    IReadOnlyList<string> Notes,
+    IReadOnlyList<string> LogExcerpts,
+    IReadOnlyList<ResolvedReference> SimilarResolved);
+
+/// <summary>An AI-suggested resolution for an issue. Always a draft for a human to accept or discard —
+/// never applied automatically, and never edits the issue of record on its own.</summary>
+public readonly record struct ResolutionSuggestion(
+    string Summary,
+    IReadOnlyList<string> Causes,
+    IReadOnlyList<string> Steps,
+    string Confidence,
+    IReadOnlyList<string> Sources);
+
 /// <summary>
 /// Optional, opt-in AI assistance backed by a configurable provider — Anthropic Claude, or any
 /// OpenAI-compatible endpoint (including local Ollama / LM Studio). When disabled (the default) or
@@ -44,4 +66,11 @@ public interface IAiAssistant
     /// plain-language sentences. Returns null if AI is off or the call fails.</summary>
     Task<string?> SummarizeIssueAsync(
         string title, string? description, IReadOnlyList<string> notes, CancellationToken ct = default);
+
+    /// <summary>Suggest how to resolve an issue: likely cause(s) and concrete steps to try, grounded in the
+    /// given <see cref="ResolutionContext"/> (the issue text, its notes, log excerpts, and similar past
+    /// <em>resolved</em> issues). The result is always a draft suggestion for a human to accept or discard.
+    /// Returns null if AI is off or the call fails. In a tiered setup this is the "smart" task and is routed
+    /// to the smart provider (e.g. cloud Claude).</summary>
+    Task<ResolutionSuggestion?> SuggestResolutionAsync(ResolutionContext context, CancellationToken ct = default);
 }

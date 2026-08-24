@@ -18,6 +18,11 @@ public class Project
     public string? Description { get; set; }
     public bool IsPublic { get; set; } = true;
 
+    /// <summary>Optional short uppercase key (e.g. "APRS", "WEB") used to form human-friendly ticket
+    /// numbers like "APRS-42" — nicer to quote over the phone and clearer across projects than a raw id.
+    /// Null/blank falls back to "#42". The numeric issue id is always the real internal key.</summary>
+    public string? Key { get; set; }
+
     /// <summary>When true, anyone (no account) can submit a trouble ticket for this project via the
     /// public "Report a problem" page. Off by default — a Manager turns it on in project settings.</summary>
     public bool PublicIntakeEnabled { get; set; }

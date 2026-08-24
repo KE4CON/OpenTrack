@@ -21,11 +21,11 @@ namespace OpenTrack.UI.Services;
 
 public record ProjectRow(int Id, string Name, string? Description, bool IsPublic, int OwnerId, int OpenIssueCount);
 
-public record ProjectDetail(int Id, string Name, string? Description, bool IsPublic, int OwnerId, DateTime CreatedAt, Guid RowVersion, bool PublicIntakeEnabled = false);
+public record ProjectDetail(int Id, string Name, string? Description, bool IsPublic, int OwnerId, DateTime CreatedAt, Guid RowVersion, bool PublicIntakeEnabled = false, string? Key = null);
 
-public record CreateProjectInput(string Name, string? Description, bool IsPublic);
+public record CreateProjectInput(string Name, string? Description, bool IsPublic, string? Key = null);
 
-public record UpdateProjectInput(string Name, string? Description, bool IsPublic, Guid RowVersion);
+public record UpdateProjectInput(string Name, string? Description, bool IsPublic, Guid RowVersion, string? Key = null);
 
 public record IssueRow(
     int Id, int ProjectId, string ProjectName, string Title,
@@ -106,6 +106,13 @@ public record AutomationRuleView(
 /// <summary>An AI-suggested triage for a proposed issue (each field a suggestion to accept or edit).</summary>
 public record AiTriageView(IssueSeverity? Severity, IssuePriority? Priority, string? Category, IReadOnlyList<string> Tags);
 
+/// <summary>An AI-suggested resolution for an issue — a DRAFT for a human to accept or discard. Grounded in
+/// the issue text, its notes, any text/log attachments, and similar past resolved issues. <c>Sources</c> are
+/// the items the model said it relied on (shown so a human can judge). Never applied automatically.</summary>
+public record AiResolutionView(
+    string Summary, IReadOnlyList<string> Causes, IReadOnlyList<string> Steps,
+    string Confidence, IReadOnlyList<string> Sources);
+
 /// <summary>A plain-English search the AI turned into issue-list filter fields. The UI maps these onto the
 /// existing issue-list query string (project matched by name against the user's visible projects) — so it
 /// can only ever produce a filter the user could have built by hand.</summary>
@@ -158,7 +165,7 @@ public record IssueDetail(
     int? FixVersionId, string? FixVersionName,
     Guid RowVersion,
     IReadOnlyList<IssueNoteView> Notes,
-    double? Latitude = null, double? Longitude = null);
+    double? Latitude = null, double? Longitude = null, string? ProjectKey = null);
 
 public record CreateIssueInput(
     string Title, string Description, string? StepsToReproduce,

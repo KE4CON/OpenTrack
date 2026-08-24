@@ -9,6 +9,8 @@
 // See the GNU Affero General Public License <https://www.gnu.org/licenses/> for
 // more details.
 
+using Microsoft.EntityFrameworkCore;
+using OpenTrack.Core.Text;
 using OpenTrack.Infrastructure.Data;
 using OpenTrack.Infrastructure.Email;
 using OpenTrack.Infrastructure.Intake;
@@ -46,29 +48,34 @@ public static class PublicIntakeWebEndpoints
             // Notify the team + fire webhooks (actor 0 => the owner/reporter isn't filtered out).
             await notifications.NotifyIssueChangedAsync(db, 0, issueId, "a new ticket was submitted via the public form", ct);
 
+            // Friendly, per-project ticket number (e.g. "APRS-42") for anything the submitter sees.
+            var projectKey = await db.Projects.AsNoTracking().Where(p => p.Id == projectId).Select(p => p.Key).FirstOrDefaultAsync(ct);
+            var ticket = TicketNumber.Format(projectKey, issueId);
+
             var submitter = form["email"].ToString();
             if (email.IsConfigured && !string.IsNullOrWhiteSpace(submitter))
             {
                 try
                 {
                     await email.SendAsync(submitter,
-                        $"[OpenTrack] We received your report (ref #{issueId})",
-                        $"Thanks for your report. Your reference is #{issueId}. You can check its status any time on the ticket-status page.", ct);
+                        $"[OpenTrack] We received your report (ref {ticket})",
+                        $"Thanks for your report. Your reference is {ticket}. You can check its status any time on the ticket-status page.", ct);
                 }
                 catch { /* best-effort acknowledgement */ }
             }
-            return Results.Redirect($"/report/{projectId}?ref={issueId}");
+            return Results.Redirect($"/report/{projectId}?ref={Uri.EscapeDataString(ticket)}");
         }).RequireRateLimiting("intake");
 
         app.MapPost("/report-status/lookup",
             async (HttpContext http, AppDbContext db, CancellationToken ct) =>
         {
             var form = await http.Request.ReadFormAsync(ct);
-            if (!int.TryParse(form["reference"], out var reference))
+            // Accept the raw number, "#42", or the friendly "APRS-42" form.
+            if (!TicketNumber.TryParseId(form["reference"], out var reference))
                 return Results.Redirect("/report/status?nf=1");
             var status = await PublicIntakeOperations.LookupAsync(db, reference, form["email"], ct);
             return status is { } s
-                ? Results.Redirect($"/report/status?ref={s.IssueId}&st={Uri.EscapeDataString(s.Status.ToString())}&ti={Uri.EscapeDataString(s.Title)}")
+                ? Results.Redirect($"/report/status?ref={Uri.EscapeDataString(TicketNumber.Format(s.Key, s.IssueId))}&st={Uri.EscapeDataString(s.Status.ToString())}&ti={Uri.EscapeDataString(s.Title)}")
                 : Results.Redirect("/report/status?nf=1");
         }).RequireRateLimiting("intake");
     }

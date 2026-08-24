@@ -22,6 +22,12 @@
         <InputTextArea @bind-Value="model.Description" class="form-control" rows="3" />
     </div>
 
+    <div class="mb-3">
+        <label class="form-label">Ticket key <span class="text-muted">(optional)</span></label>
+        <InputText @bind-Value="model.Key" class="form-control" maxlength="10" placeholder="e.g. APRS" style="max-width: 12rem;" />
+        <div class="form-text">A short code for friendly ticket numbers like <strong>APRS-42</strong>. Leave blank to use plain numbers (#42). Handy when one OpenTrack tracks several apps.</div>
+    </div>
+
     <div class="form-check mb-3">
         <InputCheckbox @bind-Value="model.IsPublic" class="form-check-input" id="isPublic" />
         <label class="form-check-label" for="isPublic">Public (visible to all users, not just members)</label>
@@ -49,7 +55,7 @@
     {
         try
         {
-            var id = await Data.CreateProjectAsync(new CreateProjectInput(model.Name, model.Description, model.IsPublic));
+            var id = await Data.CreateProjectAsync(new CreateProjectInput(model.Name, model.Description, model.IsPublic, model.Key));
             Nav.NavigateTo($"projects/{id}");
         }
         catch (InvalidOperationException ex)
@@ -65,6 +71,9 @@
 
         [System.ComponentModel.DataAnnotations.StringLength(2000)]
         public string? Description { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(OpenTrack.Core.Text.TicketNumber.MaxKeyLength)]
+        public string? Key { get; set; }
 
         public bool IsPublic { get; set; } = true;
     }

@@ -215,6 +215,16 @@ public class HttpOpenTrackDataService(HttpClient http) : IOpenTrackDataService
         return d?.Summary;
     }
 
+    private sealed record AiResolutionDto(string? Summary, List<string>? Causes, List<string>? Steps, string? Confidence, List<string>? Sources);
+    public async Task<AiResolutionView?> SuggestResolutionAsync(int issueId, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/ai/resolution", new { issueId }, JsonOptions, ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        var d = await resp.Content.ReadFromJsonAsync<AiResolutionDto>(JsonOptions, ct);
+        return d?.Summary is null ? null
+            : new AiResolutionView(d.Summary, d.Causes ?? [], d.Steps ?? [], d.Confidence ?? "low", d.Sources ?? []);
+    }
+
     public async Task<DashboardView> GetDashboardAsync(CancellationToken ct = default) =>
         await http.GetFromJsonAsync<DashboardView>("/api/dashboard", JsonOptions, ct)
             ?? new DashboardView(0, 0, 0, [], [], []);

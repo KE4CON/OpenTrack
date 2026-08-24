@@ -6,6 +6,7 @@
     "What the AI does and why local is the private choice",
     "Install Ollama on the server and pull a model",
     "Turn on OpenTrack's AI and point it at the local model",
+    "Optionally add a smart cloud tier for the 🛠️ Suggest a fix feature",
     "The cloud option (Claude / OpenAI) if you prefer"
   ],
   "blocks": [
@@ -20,7 +21,7 @@
       "h1": "What the AI adds"
     },
     {
-      "p": "With **AI (artificial intelligence)** turned on, OpenTrack gains a **✨ Suggest with AI** button on the New-issue page (it fills in severity, priority, category, and tags from what you typed) and an **✨ Ask in plain English** search box. It's **off by default**, opt-in, and every suggestion is just that — a suggestion you accept or change."
+      "p": "With **AI (artificial intelligence)** turned on, OpenTrack gains a **✨ Suggest with AI** button on the New-issue page (it fills in severity, priority, category, and tags from what you typed), an **✨ Ask in plain English** search box, a **✨ Summarize thread** card on an issue, and a **🛠️ Suggest a fix** card that proposes likely causes and steps to try. It's **off by default**, opt-in, and every suggestion is just that — a suggestion you accept or change. Nothing the AI produces is ever saved automatically."
     },
     {
       "callout": {
@@ -101,10 +102,65 @@
       ]
     },
     {
+      "h1": "Step C — Add a smart cloud tier for “Suggest a fix” (optional)"
+    },
+    {
+      "p": "The local model above is great for the quick jobs — triage, search, and thread summaries. But the **🛠️ Suggest a fix** feature does harder work: it reads the issue, its notes, any log attachments, and similar already-fixed issues, then reasons out likely causes and concrete steps to try. That reasoning is where a stronger cloud model really pays off. OpenTrack lets you keep the free local model for the everyday jobs **and** add an optional **second, smarter provider** just for Suggest a fix. OpenTrack calls this second provider the **Smart** tier."
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "THIS STEP IS OPTIONAL",
+        "text": "If you skip it, nothing breaks — the local model from Step B handles **Suggest a fix** too, just with a smaller brain. Add the Smart tier only if you want the best fix suggestions and are okay with those particular calls going to the cloud."
+      }
+    },
+    {
+      "p": "To add the Smart tier, first get an **Anthropic Console** key: go to `https://console.anthropic.com` (the developer Console — a different account from the claude.ai chat site, even with the same email), open **API Keys**, select **Create Key**, name it `OpenTrack`, and copy the key (shown only once — it looks like `sk-ant-…`). Add a few dollars of credit under Billing and set a monthly spend limit. Then set these **additional** environment variables on the server, alongside the Step B settings, and restart the web app and API:"
+    },
+    {
+      "table": {
+        "headers": [
+          "Setting",
+          "Value"
+        ],
+        "rows": [
+          [
+            "`OpenTrack__Ai__Smart__Provider`",
+            "`anthropic`"
+          ],
+          [
+            "`OpenTrack__Ai__Smart__ApiKey`",
+            "`sk-ant-...` (your Anthropic Console key — keep it on the server only)"
+          ],
+          [
+            "`OpenTrack__Ai__Smart__Model`",
+            "`claude-haiku-4-5-20251001` (fast and inexpensive)"
+          ]
+        ],
+        "widths": [
+          3.3,
+          3.2
+        ]
+      }
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "IT BILLS THE ANTHROPIC CONSOLE ACCOUNT",
+        "text": "The Smart tier's cloud calls are billed to that **Anthropic Console developer account** — which is **separate** from any Claude Pro or Claude Max chat subscription (a chat plan can't be used as an app key). Costs are small (a fix suggestion is typically a fraction of a cent), but set a spend limit. Only **🛠️ Suggest a fix** uses this tier; the local model still handles triage, search, and summaries for free, so only the occasional fix-suggestion request leaves your network."
+      }
+    },
+    {
+      "steps": [
+        "Restart the web app and API so the new settings load.",
+        "Open any issue in the web app and select **Suggest a fix** in the **🛠️ Suggest a fix** card. A grounded suggestion (with likely causes, steps to try, and a confidence badge) confirms the Smart tier is working."
+      ]
+    },
+    {
       "h1": "Prefer the cloud instead?"
     },
     {
-      "p": "You can point OpenTrack at cloud Claude or OpenAI instead of local Ollama. Set `OpenTrack__Ai__Provider` to `anthropic` (with an Anthropic key) or `openai` (with an OpenAI key and no BaseUrl). Cloud is faster but bills a separate API account and sends issue text off the machine. Full details — including running Ollama on a separate box — are in **docs/guides/AI_ASSIST.md**."
+      "p": "You can point OpenTrack at cloud Claude or OpenAI for **everything** instead of local Ollama. Set `OpenTrack__Ai__Provider` to `anthropic` (with an Anthropic key) or `openai` (with an OpenAI key and no BaseUrl), and skip the local `BaseUrl`. Cloud is faster but bills a separate API account and sends issue text off the machine. Full details — including running Ollama on a separate box and the tiered local-plus-cloud setup above — are in **docs/guides/AI_ASSIST.md**."
     }
   ]
 }

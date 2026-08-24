@@ -18,7 +18,7 @@ using OpenTrack.Infrastructure.Data;
 namespace OpenTrack.Infrastructure.Intake;
 
 public readonly record struct IntakeResult(int? IssueId, string? Error);
-public readonly record struct IntakeStatus(int IssueId, string Title, IssueStatus Status);
+public readonly record struct IntakeStatus(int IssueId, string Title, IssueStatus Status, string? Key);
 
 /// <summary>
 /// The public trouble-ticket intake — the one issue-creation path that is NOT authenticated. It is
@@ -83,9 +83,11 @@ public static class PublicIntakeOperations
     {
         if (Blank(email)) return null;
         var e = email!.Trim();
-        var issue = await db.Issues.AsNoTracking()
-            .FirstOrDefaultAsync(i => i.Id == reference && i.IntakeEmail != null && i.IntakeEmail.ToLower() == e.ToLower(), ct);
-        return issue is null ? null : new IntakeStatus(issue.Id, issue.Title, issue.Status);
+        var row = await db.Issues.AsNoTracking()
+            .Where(i => i.Id == reference && i.IntakeEmail != null && i.IntakeEmail.ToLower() == e.ToLower())
+            .Select(i => new { i.Id, i.Title, i.Status, ProjectKey = i.Project.Key })
+            .FirstOrDefaultAsync(ct);
+        return row is null ? null : new IntakeStatus(row.Id, row.Title, row.Status, row.ProjectKey);
     }
 
     private static string BuildDescription(string? name, string? email, string? description)

@@ -12,6 +12,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using OpenTrack.Infrastructure.Ai;
+using OpenTrack.Infrastructure.Attachments;
 using OpenTrack.Infrastructure.Authorization;
 using OpenTrack.Infrastructure.Data;
 
@@ -24,6 +25,7 @@ public static class AiEndpoints
     public record TriageRequest(int ProjectId, string Title, string? Description);
     public record SearchRequest(string Query);
     public record SummarizeRequest(int IssueId);
+    public record ResolutionRequest(int IssueId);
 
     public static void MapAiEndpoints(this IEndpointRouteBuilder app)
     {
@@ -81,6 +83,24 @@ public static class AiEndpoints
                 .ToList();
             var summary = await ai.SummarizeIssueAsync(issue.Title, issue.Description, notes, ct);
             return Results.Ok(new { Summary = summary });
+        });
+
+        // "Suggest a fix" (Levels 1 & 2): grounded in the issue's notes, text/log attachments, and similar
+        // resolved issues. The shared builder does the ACL check (returns null → 404 so a private issue never
+        // leaks) and the grounding assembly. Routed to the "smart" AI tier by the router.
+        group.MapPost("/resolution", async (ResolutionRequest req, ClaimsPrincipal user, AppDbContext db, IAttachmentStorage storage, IAiAssistant ai, CancellationToken ct) =>
+        {
+            if (!ai.IsEnabled) return Results.Ok((object?)null);
+            var access = await ApiAccess.LoadAsync(user, db, ct);
+            if (access is null) return Results.Unauthorized();
+
+            var context = await ResolutionContextBuilder.BuildAsync(db, access, storage, req.IssueId, ct);
+            if (context is null) return Results.NotFound(); // missing or not visible to this caller
+
+            var s = await ai.SuggestResolutionAsync(context, ct);
+            return s is { } sg
+                ? Results.Ok(new { sg.Summary, sg.Causes, sg.Steps, sg.Confidence, sg.Sources })
+                : Results.Ok((object?)null);
         });
     }
 }

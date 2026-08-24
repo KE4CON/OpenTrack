@@ -53,10 +53,19 @@ public sealed class AnthropicAiAssistant(HttpClient http, AiOptions options, ILo
         return raw is null ? null : ExtractText(raw);
     }
 
-    private object BuildBody(string prompt, string toolName, string toolDesc, object schema) => new
+    public async Task<ResolutionSuggestion?> SuggestResolutionAsync(ResolutionContext context, CancellationToken ct = default)
+    {
+        if (!IsEnabled) return null;
+        var body = BuildBody(AiResolution.BuildPrompt(context),
+            AiResolution.ToolName, AiResolution.ToolDescription, AiResolution.BuildInputSchema(), maxTokens: 900);
+        var raw = await PostAsync(body, ct);
+        return raw is null ? null : ParseResolution(raw);
+    }
+
+    private object BuildBody(string prompt, string toolName, string toolDesc, object schema, int maxTokens = 512) => new
     {
         model = options.Model,
-        max_tokens = 512,
+        max_tokens = maxTokens,
         tools = new object[] { new { name = toolName, description = toolDesc, input_schema = schema } },
         tool_choice = new { type = "tool", name = toolName },
         messages = new object[] { new { role = "user", content = prompt } },
@@ -119,6 +128,9 @@ public sealed class AnthropicAiAssistant(HttpClient http, AiOptions options, ILo
 
     public static SearchCriteria? ParseSearch(string responseJson, IReadOnlyList<string> projectNames) =>
         ExtractToolInput(responseJson) is { } input ? AiSearch.FromInput(input, projectNames) : null;
+
+    public static ResolutionSuggestion? ParseResolution(string responseJson) =>
+        ExtractToolInput(responseJson) is { } input ? AiResolution.FromInput(input) : null;
 
     /// <summary>Concatenate the "text" content blocks of a (non-tool) Messages response.</summary>
     public static string? ExtractText(string responseJson)

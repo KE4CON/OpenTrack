@@ -48,6 +48,11 @@ These harden OpenTrack for real teams and let it scale past a hobby instance.
 
 - **Email-to-ticket.** Create issues by emailing an address — closes the intake
   loop alongside the v1 public web form and QR poster.
+- **Friendly per-project ticket / tracking numbers.** The public trouble-ticket
+  intake already assigns a tracking number, but it is the raw issue ID (e.g. "#42").
+  Add an optional per-project human-friendly format (e.g. `PROJ-42` from a project
+  key) shown to submitters and on the status-lookup page — nicer to quote over the
+  phone and clearer across multiple projects. The raw ID stays the internal key.
 - **Web push notifications.** Real phone/desktop push on the installed PWA (needs
   VAPID keys + a subscription store + a sender). Deferred from v1 field/mobile.
 - **Internationalization (i18n).** Localization groundwork plus a first

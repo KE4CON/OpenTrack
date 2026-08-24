@@ -2,7 +2,7 @@
 
 *How and why the code works — a maintainer's field guide, in plain language.*
 
-*Generated August 12, 2026 · Markdown is the living source of truth.*
+*Generated August 24, 2026 · Markdown is the living source of truth.*
 
 
 ---
@@ -3531,6 +3531,62 @@ The two public pages, `PublicReport.razor` and `TicketStatus.razor`, are both ma
 ```
 
 
+## Friendly ticket numbers: one helper, used at every edge
+
+
+### What it does
+
+A public submitter needs something to quote back — a reference. The raw issue id (42) works but is easy to confuse across projects, so OpenTrack can dress it up as a per-project *ticket number* like `APRS-42`. This is a display convenience layered on top of the real id: the number 42 is still the permanent internal key; `APRS-42` is just a friendlier label for it. It shows up on the thank-you page, in the acknowledgement email, and on the status page — and the status lookup accepts it back in any form.
+
+
+### Why it was built this way
+
+The rule is that the *id never moves* — only its presentation changes. A project carries an optional short key, and the whole feature is one small helper class, `TicketNumber`, so formatting and parsing live in exactly one place rather than being re-derived at each of the several edges that show or read a reference. `Project.Key` is the stored half:
+
+```csharp
+/// <summary>Optional short uppercase key (e.g. "APRS", "WEB") used to form human-friendly ticket
+/// numbers like "APRS-42" ... Null/blank falls back to "#42". The numeric issue id is always the
+/// real internal key.</summary>
+public string? Key { get; set; }
+```
+
+
+### How it works
+
+`TicketNumber` has three static methods that together cover every use. `Format` composes the display string — `APRS-42` when the project has a key, `#42` when it doesn't. `NormalizeKey` is the input-cleaner used when a Manager sets a key on the project form: uppercase, letters and digits only, capped at ten characters, and an empty result collapses to a clean null (so 'no key' has one canonical representation). `TryParseId` is the tolerant reader that pulls the numeric id back out of anything a person might type:
+
+```csharp
+public static string Format(string? projectKey, int issueId)
+{
+    var key = NormalizeKey(projectKey);
+    return key is null ? $"#{issueId}" : $"{key}-{issueId}";
+}
+
+// Accepts "42", "#42", and "APRS-42" (any case) — anything ending in digits.
+public static bool TryParseId(string? input, out int id)
+{
+    id = 0;
+    if (string.IsNullOrWhiteSpace(input)) return false;
+    var m = TrailingDigits().Match(input.Trim());   // regex: (\d+)\s*$
+    return m.Success && int.TryParse(m.Groups[1].Value, out id);
+}
+```
+
+The asymmetry is deliberate and is what makes the feature painless: *formatting is specific* (it needs the key to build `APRS-42`), but *parsing is forgiving* (it ignores any prefix and reads the trailing number). So the intake endpoint formats the reference with the project's key when it acknowledges a submission, but the status lookup doesn't care whether the visitor types `APRS-42`, `#42`, or bare `42` — all three yield id 42. Both sides of the public flow route through the one helper:
+
+```csharp
+// On submit — show the friendly, per-project reference:
+var projectKey = await db.Projects.AsNoTracking().Where(p => p.Id == projectId).Select(p => p.Key).FirstOrDefaultAsync(ct);
+var ticket = TicketNumber.Format(projectKey, issueId);
+
+// On status lookup — accept the raw number, "#42", or "APRS-42":
+if (!TicketNumber.TryParseId(form["reference"], out var reference))
+    return Results.Redirect("/report/status?nf=1");
+```
+
+> **The maintainer's rule** — Because the id is the real key and the ticket number is only a label, never store or match on the formatted string — always Format for display and TryParseId to read one back. If you surface a reference in a new place (a webhook payload, an export, another email), reuse TicketNumber rather than hand-building "KEY-id", so the single source of truth for what a ticket is called stays in one file.
+
+
 ## The QR poster: the door on a wall
 
 
@@ -3568,28 +3624,28 @@ The placement of those defenses is the lesson worth keeping. The rules that must
 > **The maintainer's rule** — If you ever add another way for an anonymous stranger to reach the database, copy this shape exactly: gate it behind an explicit, off-by-default opt-in; cap every field in the domain layer, not just the UI; put it behind the shared 'intake' rate limiter; and if it returns anyone's data, require a secret the requester already holds. An unauthenticated endpoint with none of these is not a feature — it is a spam funnel waiting to be found.
 
 
-# 20. The AI Assistant: one provider seam, three helpers
+# 20. The AI Assistant: one provider seam, two tiers, four helpers
 
-*The optional, opt-in AI layer — a single interface with two interchangeable implementations behind it (Anthropic's Claude, or any OpenAI-compatible endpoint including a local Ollama that never leaves your machine) — powering three conveniences: suggesting a triage for a new issue, turning plain-English into a search filter, and summarizing a long thread; all server-side, all best-effort, and every one of them a suggestion a human still owns.*
+*The optional, opt-in AI layer — a single interface with interchangeable implementations behind it (Anthropic's Claude, or any OpenAI-compatible endpoint including a local Ollama that never leaves your machine), routed across two tiers — powering four conveniences: suggesting a triage for a new issue, turning plain-English into a search filter, summarizing a long thread, and suggesting a grounded fix for a problem; all server-side, all best-effort, and every one of them a suggestion a human still owns.*
 
 
 ## What This Is / What It Is For
 
-Some jobs in an issue tracker are tedious in a way a language model is genuinely good at: guessing how severe a new bug is, translating a vague request like 'crashes nobody has touched in a month' into concrete filter settings, or reading a forty-comment thread and telling you where it stands. OpenTrack offers all three as *optional* AI helpers. The key word is optional: the AI is off by default, must be deliberately configured by the server operator, and never does anything a human didn't ask for and can't override.
+Some jobs in an issue tracker are tedious in a way a language model is genuinely good at: guessing how severe a new bug is, translating a vague request like 'crashes nobody has touched in a month' into concrete filter settings, reading a forty-comment thread and telling you where it stands, or — the hardest of the four — reading everything known about a problem and proposing how to fix it. OpenTrack offers all four as *optional* AI helpers. The key word is optional: the AI is off by default, must be deliberately configured by the server operator, and never does anything a human didn't ask for and can't override.
 
 Think of the AI as a smart intern who whispers suggestions. When switched on, the intern can propose a severity, sketch a search from a sentence, or summarize a long conversation. But the intern never files anything, never changes a record, and never sees anything the person they're helping couldn't already see. And the intern is entirely replaceable: you can hire a cloud one (Anthropic's Claude, or OpenAI), or a local one that works inside your own building and tells no one outside anything. The rest of OpenTrack neither knows nor cares which — it only knows there's an intern, or there isn't.
 
-> **The one-sentence version** — A single IAiAssistant interface hides which provider is in use (Anthropic or any OpenAI-compatible endpoint, cloud or local); it exposes exactly three helpers — triage, search-interpretation, and summarize — each opt-in, server-side, best-effort (returns null on any failure so nothing is ever blocked), and each producing only a suggestion or a filter a human still controls.
+> **The one-sentence version** — A single IAiAssistant interface hides which provider is in use (Anthropic or any OpenAI-compatible endpoint, cloud or local); it exposes four helpers — triage, search-interpretation, summarize, and suggest-a-fix — each opt-in, server-side, best-effort (returns null on any failure so nothing is ever blocked), and each producing only a suggestion, filter, or draft a human still controls. An optional second 'smart' provider can be configured so the reasoning-heavy fix suggestion routes to a stronger model while the menial three stay on a cheaper (often local) one.
 
 > **Jargon, in plain words** — An interface is a promise about what methods exist, with no code behind them — a socket that any matching plug can fill. 'Opt-in' means it does nothing unless someone deliberately turns it on. 'Server-side' means the calls happen on OpenTrack's own machine, never in the visitor's browser, so an API key is never exposed. 'Best-effort' means if the AI is off or the call fails, the method quietly returns null and the app carries on as if the feature weren't there. An OpenAI-compatible endpoint is any service that speaks the same request/response shape OpenAI uses — many do, including local engines like Ollama.
 
 
-## One interface, three promises
+## One interface, four promises
 
 
 ### What it does
 
-`IAiAssistant` is the seam the whole feature hangs on. It declares one property and three methods — is the assistant enabled, and the three helpers — and nothing else. Every method returns a nullable value, and that is a design decision, not an accident: null is the universal 'not available' answer that lets every caller degrade gracefully.
+`IAiAssistant` is the seam the whole feature hangs on. It declares one property and four methods — is the assistant enabled, and the four helpers — and nothing else. Every method returns a nullable value, and that is a design decision, not an accident: null is the universal 'not available' answer that lets every caller degrade gracefully. The fourth method, `SuggestResolutionAsync`, is the newest; it takes a richly-assembled `ResolutionContext` rather than loose strings, because a fix suggestion needs far more grounding than a triage does.
 
 ```csharp
 public interface IAiAssistant
@@ -3604,6 +3660,9 @@ public interface IAiAssistant
 
     Task<string?> SummarizeIssueAsync(
         string title, string? description, IReadOnlyList<string> notes, CancellationToken ct = default);
+
+    // In a tiered setup this is the "smart" task, routed to the smart provider (e.g. cloud Claude).
+    Task<ResolutionSuggestion?> SuggestResolutionAsync(ResolutionContext context, CancellationToken ct = default);
 }
 ```
 
@@ -3643,17 +3702,72 @@ Note the small but real cleverness in `HasCredentials`: a cloud provider needs a
 
 ### How the right one is chosen
 
-Which implementation you get is decided once, at startup, in dependency injection. Both concrete classes are registered as typed HTTP clients (with different timeouts — a local model can be slow to produce its first token, so it gets longer), and then `IAiAssistant` is resolved to whichever one the configured provider names:
+Which implementation you get is decided once, at startup, in dependency injection, inside `AddOpenTrackAi`. Rather than register each concrete class as its own typed client, the DI registers two *named* HTTP clients keyed by provider kind — `ai-anthropic` and `ai-openai` — with different timeouts, because a local model can be slow to produce its first token and gets the longer leash. A small local `Build` function then turns any one `AiOptions` into the matching concrete assistant:
 
 ```csharp
-services.AddHttpClient<Ai.AnthropicAiAssistant>(c => c.Timeout = TimeSpan.FromSeconds(30));
-services.AddHttpClient<Ai.OpenAiAssistant>(c => c.Timeout = TimeSpan.FromSeconds(60));
-services.AddScoped<Ai.IAiAssistant>(sp => options.IsOpenAi
-    ? sp.GetRequiredService<Ai.OpenAiAssistant>()
-    : sp.GetRequiredService<Ai.AnthropicAiAssistant>());
+services.AddHttpClient("ai-anthropic", c => c.Timeout = TimeSpan.FromSeconds(30));
+services.AddHttpClient("ai-openai", c => c.Timeout = TimeSpan.FromSeconds(60));
+
+services.AddScoped<Ai.IAiAssistant>(sp =>
+{
+    var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+
+    // Build a concrete provider for one AiOptions (cloud Anthropic or OpenAI-compatible/local).
+    Ai.IAiAssistant Build(Ai.AiOptions o) => o.IsOpenAi
+        ? new Ai.OpenAiAssistant(httpFactory.CreateClient("ai-openai"), o, loggerFactory.CreateLogger<Ai.OpenAiAssistant>())
+        : new Ai.AnthropicAiAssistant(httpFactory.CreateClient("ai-anthropic"), o, loggerFactory.CreateLogger<Ai.AnthropicAiAssistant>());
+
+    var menial = Build(options);                            // base "OpenTrack:Ai" provider
+    var smart = options.Smart is { } s ? Build(s) : null;   // optional "OpenTrack:Ai:Smart" provider
+    return new Ai.AiAssistantRouter(menial, smart);
+});
 ```
 
-Everything downstream — the web data service, the API endpoints, the pages — only ever asks for `IAiAssistant`. They are blissfully unaware of which provider answered. Swap the provider in configuration and not one line of the feature code changes. This is the same seam pattern the whole app uses for its data service (Chapter 11), applied to the AI.
+Notice what is registered as `IAiAssistant`: not a bare provider, but an `AiAssistantRouter` wrapping a base ('menial') provider and an optional 'smart' one. That router is the small structural addition that made two-tier AI possible without disturbing any caller — the next section is entirely about it. Everything downstream — the web data service, the API endpoints, the pages — only ever asks for `IAiAssistant`. They are blissfully unaware of which provider (or which tier) answered. Swap or add a provider in configuration and not one line of the feature code changes. This is the same seam pattern the whole app uses for its data service (Chapter 11), applied to the AI.
+
+
+## Two tiers: the router that splits menial from smart
+
+
+### What it does
+
+Three of the four helpers are cheap, forgiving, high-volume work — triage, search, summary. The fourth, suggesting a fix, is the one where model quality genuinely matters. So OpenTrack supports running *two* providers at once: a base ('menial') provider for the everyday jobs and an optional second ('smart') provider for the reasoning-heavy fix suggestion. The canonical deployment is a small local Ollama model doing the menial three for free and on-premises, with cloud Claude reserved for the fix. `AiAssistantRouter` is the piece that makes this invisible to everyone else: it *is* an `IAiAssistant`, and it forwards each method to the right tier.
+
+```csharp
+public sealed class AiAssistantRouter(IAiAssistant menial, IAiAssistant? smart) : IAiAssistant
+{
+    private IAiAssistant Menial => menial.IsEnabled ? menial : SmartOrMenial;
+    private IAiAssistant Smart => smart is { IsEnabled: true } ? smart : menial;
+    private IAiAssistant SmartOrMenial => smart is { IsEnabled: true } ? smart : menial;
+
+    public bool IsEnabled => menial.IsEnabled || (smart?.IsEnabled ?? false);
+
+    public Task<TriageSuggestion?> SuggestTriageAsync(...) => Menial.SuggestTriageAsync(...);
+    public Task<SearchCriteria?> InterpretSearchAsync(...) => Menial.InterpretSearchAsync(...);
+    public Task<string?> SummarizeIssueAsync(...) => Menial.SummarizeIssueAsync(...);
+    public Task<ResolutionSuggestion?> SuggestResolutionAsync(...) => Smart.SuggestResolutionAsync(...);
+}
+```
+
+
+### Why it was built this way
+
+The router earns its place with two properties. First, *graceful fallback in both directions*: if the smart tier is absent or disabled, `Smart` falls back to the menial provider, so a fix suggestion still gets attempted rather than silently vanishing; and if the menial tier is somehow disabled but a smart one exists, the menial tasks borrow the smart provider. There is no configuration in which a helper simply has no provider to call as long as either tier is enabled. Second, and most important, *the single-provider case is unchanged*: when no smart provider is configured (`smart` is null), every method — including the fix — flows to the one base provider, exactly as before the router existed. Adding tiering broke nothing.
+
+The configuration shape is deliberately minimal. `AiOptions` gained a single nullable, self-typed property — an `AiOptions` can contain another `AiOptions` as its smart tier — bound from the nested `OpenTrack:Ai:Smart` section:
+
+```csharp
+/// <summary>Optional second provider for the "smart" tier ... handles the tasks that need stronger
+/// reasoning — currently the "Suggest a fix" feature — while the base provider handles the menial tasks.
+/// Bound from the nested OpenTrack:Ai:Smart section. When absent (null) the base provider handles
+/// everything, so existing single-provider setups keep working unchanged.</summary>
+public AiOptions? Smart { get; set; }
+```
+
+Because `Smart` is itself an `AiOptions`, the smart tier is every bit as flexible as the base tier — it can be cloud Claude, OpenAI, or a second larger local model — and it is built through the very same `Build` function shown above. The whole two-tier feature is thus one nullable property, one four-line router, and the two lines of DI that assemble them; no caller, endpoint, prompt, or provider class had to learn that tiers exist.
+
+> **Jargon, in plain words** — A 'tier' here just means a level of provider: a cheap/local one for routine work and a stronger/cloud one for hard work. 'Routing' is deciding, per task, which tier to call — done here by the AiAssistantRouter forwarding each method. 'Graceful fallback' means that if the preferred tier for a task isn't available, the other one is used instead of failing, so the feature keeps working with whatever is configured.
 
 
 ## The provider-agnostic middle: shared prompts and schemas
@@ -3715,7 +3829,7 @@ if (input.TryGetProperty("category", out var c) && c.ValueKind == JsonValueKind.
 One more shared guard lives in `AiText.Cap`: every piece of user text is truncated before it is put in a prompt, so a caller "can't drive an arbitrarily large (billable) request to the AI provider." The title is capped at 500 characters, the description at 4000, a search query at 500. Cost and abuse are bounded at the prompt, once, for both providers.
 
 
-## The three helpers in action
+## The four helpers in action
 
 
 ### Helper 1 — smart triage: a suggestion, never a decision
@@ -3778,18 +3892,92 @@ var summary = await ai.SummarizeIssueAsync(issue.Title, issue.Description, notes
 Unlike triage and search, the summary asks for plain prose, not a tool call — so `AiSummary.BuildPrompt` just requests a few plain-language sentences and the provider classes return the model's text. The access discipline, though, is identical to everything else: the AI sees exactly what the human calling it sees, and not one note more.
 
 
+### Helper 4 — Suggest a fix: grounded, drafted, never applied
+
+The fourth helper is the ambitious one. Where triage reads a title and summary reads a thread, *Suggest a fix* reads everything known about a problem and proposes how to solve it: a plain-language root-cause hypothesis, a ranked list of likely causes, an ordered checklist of steps to try, a self-reported confidence, and the sources it leaned on. Its result type says exactly that, and its comment states the iron rule the whole feature obeys — "Always a draft for a human to accept or discard — never applied automatically, and never edits the issue of record on its own":
+
+```csharp
+public readonly record struct ResolutionSuggestion(
+    string Summary,
+    IReadOnlyList<string> Causes,
+    IReadOnlyList<string> Steps,
+    string Confidence,
+    IReadOnlyList<string> Sources);
+```
+
+A good suggestion is entirely a function of good grounding, and assembling that grounding is the real work. It lives in one place, `ResolutionContextBuilder`, and — this is the important architectural choice — it is *shared by both hosts*, exactly like the access-control authority of Chapter 8. The web data service and the API endpoint both call the same builder, so a fix suggestion is grounded on identical, identically access-filtered evidence no matter which host asked. The builder's own summary spells out the discipline: it assembles the issue text, its ACL-filtered notes, text/log attachment excerpts, and similar RESOLVED issues, and "Returns null if the issue is missing or the caller may not see it (so a private issue never leaks)."
+
+The very first thing the builder does after loading the issue is the same access check the summary and detail pages use — and it refuses by returning null rather than throwing, so the caller can answer a plain not-found and never even confirm that a private issue exists:
+
+```csharp
+var ctx = access.For(issue.ProjectId);
+if (!ctx.CanViewIssue(issue.Project.IsPublic, issue.IsPrivate, issue.ReporterId, issue.AssigneeId))
+    return null; // don't leak the existence of a private issue
+
+// Only ever feed the model notes this caller may see.
+var notes = issue.Notes
+    .Where(n => ctx.CanViewNote(n.IsPrivate, n.AuthorId))
+    .OrderBy(n => n.CreatedAt)
+    .Select(n => $"{n.Author.UserName ?? "unknown"}: {n.Text}")
+    .ToList();
+```
+
+Three grounding sources make the difference between a generic answer and a useful one, and each is bounded so it cannot run up an unbounded (billable) request. Notes are ACL-filtered as above. Attachment text is pulled only from files that *look textual* — by content-type or by extension (`.log`, `.txt`, `.json`, stack traces, and so on) — read through a size-capped reader, and wrapped in a try/catch so "an unreadable attachment never blocks the suggestion." And the highest-value signal is the last: similar issues that are *already resolved*, found through the same ACL-aware `SimilarIssueQuery` that powers duplicate detection, each carried with how it was fixed (its resolution plus the latest public note, which is usually where the fix was explained). That is what makes the feature compound in value: the more problems you solve, the better it gets at proposing the next solution.
+
+The provider-agnostic middle is the same story as triage and search. `AiResolution` holds the shared prompt, the shared JSON schema, and the shared parser, so both providers speak one contract. The prompt is deliberately conservative — its own comment explains why: "a problem tracker is a system of record and a confidently wrong fix is worse than a hedged one," so the model is told to use only what it is given, prefer a step that worked on a cited resolved issue, and be honest with a *low* confidence when the evidence is thin. The parser is defensive too: `FromInput` returns null when there is no usable content at all, and normalizes any unknown confidence down to *low* rather than trusting an odd value. The concrete provider then packages that shared prompt and schema as a forced tool call, just as `AnthropicAiAssistant.SuggestResolutionAsync` does via `AiResolution.BuildPrompt`/`BuildInputSchema`/`FromInput`.
+
+On the surface, `Details.razor` shows a `🛠️ Suggest a fix` card only when `aiEnabled`, and its handler is the whole contract in miniature — call, and on any empty or failed result show a calm message rather than an error, changing nothing about the issue:
+
+```csharp
+private async Task SuggestFix()
+{
+    aiFix = null;
+    aiFixMessage = null;
+    var s = await Data.SuggestResolutionAsync(Id);
+    if (s is null || (string.IsNullOrWhiteSpace(s.Summary) && s.Steps.Count == 0))
+        aiFixMessage = "AI couldn't suggest a fix right now.";
+    else
+        aiFix = s;
+}
+```
+
+The rendered card lays out the summary, causes, and steps, a color-coded confidence badge, and a 'Based on:' line of sources — and closes with the line that captures the entire feature's stance: "An AI suggestion — a starting point, not a guarantee. Verify before acting; nothing on this issue was changed." There is deliberately no 'apply' button: the helper's job ends at a draft on the screen.
+
+> **Why Level 3 — writing the actual patch — is out of scope** — The AI-assist plan frames fix suggestions in three levels: Level 1 (likely causes from the description), Level 2 (a grounded root-cause + fix from notes, logs, and similar resolved issues), and Level 3 (a proposed code diff from the repository source). OpenTrack ships Levels 1 and 2 and stops there on purpose. Level 3 needs the source tree and belongs in a developer's coding tool — the developer takes OpenTrack's grounded suggestion into Claude Code and writes the actual change there. OpenTrack is a system of record for problems, not a code-editing agent; ending at a well-grounded suggestion keeps the tracker's job clean and its blast radius small.
+
+
 ### Reached the same way from both hosts
 
-Because everything hangs off `IAiAssistant`, both front doors reach the three helpers through the same seam. The web app's `DbOpenTrackDataService` implements `IsAiEnabledAsync`, `SuggestTriageAsync`, `InterpretIssueSearchAsync`, and `SummarizeIssueAsync` by calling the injected `ai`. The desktop app reaches identical logic through the API's `/api/ai` endpoints, which are grouped behind `RequireAuthorization()` — the AI helpers are never anonymous — and repeat the same access checks before calling the assistant. Two hosts, one interface, one set of rules.
+Because everything hangs off `IAiAssistant`, both front doors reach all four helpers through the same seam. The web app's `DbOpenTrackDataService` implements `IsAiEnabledAsync`, `SuggestTriageAsync`, `InterpretIssueSearchAsync`, `SummarizeIssueAsync`, and `SuggestResolutionAsync` by calling the injected `ai`. The desktop app reaches identical logic through the API's `/api/ai` endpoints — `/triage`, `/search`, `/summarize`, and `/resolution` — grouped behind `RequireAuthorization()` so the AI helpers are never anonymous. The resolution endpoint is the clearest illustration of the shared-builder discipline: it does no ACL logic of its own, delegating the visibility check and the grounding assembly to the very same `ResolutionContextBuilder` the web host uses, and returns a plain not-found when the builder declines:
+
+```csharp
+group.MapPost("/resolution", async (ResolutionRequest req, ClaimsPrincipal user, AppDbContext db,
+    IAttachmentStorage storage, IAiAssistant ai, CancellationToken ct) =>
+{
+    if (!ai.IsEnabled) return Results.Ok((object?)null);
+    var access = await ApiAccess.LoadAsync(user, db, ct);
+    if (access is null) return Results.Unauthorized();
+
+    var context = await ResolutionContextBuilder.BuildAsync(db, access, storage, req.IssueId, ct);
+    if (context is null) return Results.NotFound(); // missing or not visible to this caller
+
+    var s = await ai.SuggestResolutionAsync(context, ct);
+    return s is { } sg
+        ? Results.Ok(new { sg.Summary, sg.Causes, sg.Steps, sg.Confidence, sg.Sources })
+        : Results.Ok((object?)null);
+});
+```
+
+Two hosts, one interface, one context builder, one set of rules — and, thanks to the router, whichever tier of provider the operator configured, reached without either host knowing tiers exist.
 
 
 ## Why It Matters / Design Takeaways
 
 The AI layer is a model of how to add a powerful-but-risky capability without letting it corrode the rest of the system. It is fenced by three consistent rules: *opt-in* (off by default, configured only by the operator, never touching the database or browser for its secrets), *server-side* (calls and keys stay on OpenTrack's machine, and a local engine can keep the data there too), and *best-effort* (every method returns null on any failure, so the AI's absence or malfunction is always survivable).
 
-Two structural choices make it maintainable. The provider seam means adding or swapping a model is a configuration change, not a code change — and the provider-agnostic prompt/schema/parse helpers mean the two providers can never quietly disagree. And the safety choices reuse the authorities that already exist: search can only build a filter the user could build by hand, and the summarizer is fed only notes the caller may already read. The AI got no special powers and no private access; it was bolted onto the existing rails, not around them.
+Three structural choices make it maintainable. The provider seam means adding or swapping a model is a configuration change, not a code change — and the provider-agnostic prompt/schema/parse helpers (`AiTriage`, `AiSearch`, `AiSummary`, `AiResolution`) mean the two providers can never quietly disagree. The two-tier router means you can run a cheap local model for the routine work and reserve a stronger cloud model for the one job that needs it, again with no caller aware of the split and the single-provider case untouched. And the safety choices reuse the authorities that already exist: search can only build a filter the user could build by hand, and both the summarizer and the fix-suggester are fed only notes the caller may already read — the fix-suggester through one shared `ResolutionContextBuilder` that both hosts call, so the ACL filtering can't drift between them. The AI got no special powers and no private access; it was bolted onto the existing rails, not around them.
 
-> **The maintainer's rule** — If you add a fourth AI helper, keep the four invariants: put its prompt, schema, and parsing in a shared provider-agnostic class so both providers stay in lock-step; cap the user text you send; return null on any failure so callers degrade; and feed the model only data the calling user is already entitled to — reuse AccessContext and WhereVisibleTo, never work around them. The AI is an intern that whispers suggestions; never let it become one that files them or reads what it shouldn't.
+> **The maintainer's rule** — The 'Suggest a fix' helper was added by following these invariants; keep them for any fifth helper. Put its prompt, schema, and parsing in a shared provider-agnostic class (like AiResolution) so both providers stay in lock-step; cap every piece of user text you send; return null on any failure so callers degrade. Feed the model only data the calling user is already entitled to — and if the grounding is non-trivial, assemble it in ONE shared builder both hosts call (like ResolutionContextBuilder), never re-implementing the access filtering per host, exactly as the ACL code insists. If the new task needs a stronger model, route it through the tier system rather than hard-wiring a provider. The AI is an intern that whispers suggestions; never let it become one that files them, edits the record, or reads what it shouldn't.
 
 
 # 21. The Blazor UI Layer: components, PWA & offline

@@ -6,6 +6,7 @@
     "What a project is and why access is granted per project",
     "The Projects list and what each column shows",
     "Creating a project, field by field",
+    "The optional Ticket key and friendly ticket numbers like APRS-42",
     "Public vs. private projects",
     "The project page and its row of action buttons",
     "Categories and versions — what they do and how to add or remove them",
@@ -77,7 +78,7 @@
       "h1": "Create a project"
     },
     {
-      "p": "Creating a project is a Manager-or-Administrator job. Select **New Project** on the Projects page to open the __New Project__ form. It has three fields and two buttons:"
+      "p": "Creating a project is a Manager-or-Administrator job. Select **New Project** on the Projects page to open the __New Project__ form. It has four fields and two buttons:"
     },
     {
       "table": {
@@ -98,6 +99,11 @@
             "Optional, but a good hint for newcomers."
           ],
           [
+            "**Ticket key**",
+            "A short code, like `APRS`, for friendly ticket numbers such as __APRS-42__.",
+            "Optional. Leave blank to use plain numbers (#42). Explained in full just below."
+          ],
+          [
             "**Public**",
             "A checkbox labeled __Public (visible to all users, not just members)__.",
             "Ticked by default. Untick it to make the project private."
@@ -114,13 +120,38 @@
       "steps": [
         "Select **Projects** in the left navigation, then **New Project**.",
         "Type a **Name**, and optionally a **Description**.",
+        "Optionally type a **Ticket key** (for example `APRS`) to get friendly ticket numbers like __APRS-42__; leave it blank for plain numbers.",
         "Decide **Public** vs. private with the checkbox (it starts ticked, meaning public).",
         "Select **Create Project**. You land on the new project's own page, ready to add issues and settings.",
         "Changed your mind? Select **Cancel** to return to the Projects list without creating anything."
       ]
     },
     {
-      "screenshot": "The New Project form with Name, Description, the Public checkbox, and the Create Project button"
+      "screenshot": "The New Project form with Name, Description, the Ticket key box, the Public checkbox, and the Create Project button"
+    },
+    {
+      "h1": "The Ticket key (friendly ticket numbers)"
+    },
+    {
+      "p": "Every issue always has a plain number behind it, like **42** — that's its permanent internal identity and it never changes. The **Ticket key** is an optional short label you can put in front of that number so tickets read more naturally. Give a project the key `APRS`, and its issues show up as **APRS-42** instead of **#42** — on the issue page, in search results, and anywhere else a ticket is named. Leave the key blank and everything just shows the plain **#42** form. This is purely about **display**: the key never changes the underlying number, and turning a key on or off (or changing it) only changes how existing numbers are shown, never the issues themselves."
+    },
+    {
+      "callout": {
+        "kind": "tip",
+        "label": "BEST WHEN ONE OPENTRACK TRACKS SEVERAL APPS",
+        "text": "Ticket keys shine when a single OpenTrack tracks more than one product. Give each project its own key — `APRS`, `WEB`, `RADIO` — and a number like **APRS-42** instantly tells everyone which product it belongs to, with no chance of confusing it with **WEB-42**. It's also much easier to quote over the phone or in an email than a bare number."
+      }
+    },
+    {
+      "p": "A few simple rules govern what a key can be. Type it however you like; OpenTrack tidies it up for you:"
+    },
+    {
+      "bullets": [
+        "It's made **uppercase** automatically — type `aprs` and it's stored as `APRS`.",
+        "Only **letters and numbers** are kept; spaces, dashes, and punctuation are dropped.",
+        "It's capped at **10 characters** — anything longer is trimmed to the first 10.",
+        "It's completely **optional**. Blank means plain `#42`-style numbers, which is a perfectly good choice."
+      ]
     },
     {
       "callout": {
@@ -252,11 +283,11 @@
       "h1": "Editing a project"
     },
     {
-      "p": "To change a project's basics, select **Edit Project** on the project page (or the **Edit** button on the Projects list). The __Edit Project__ form is the same three fields as creation — **Name**, **Description**, and the **Public** checkbox — pre-filled with the current values."
+      "p": "To change a project's basics, select **Edit Project** on the project page (or the **Edit** button on the Projects list). The __Edit Project__ form is the same four fields as creation — **Name**, **Description**, the **Ticket key**, and the **Public** checkbox — pre-filled with the current values. You can add, change, or clear the Ticket key here at any time; because the key only affects display, changing it is safe and instantly re-labels existing tickets (an issue that read __#42__ starts reading __APRS-42__, and vice versa)."
     },
     {
       "steps": [
-        "Change the **Name**, **Description**, or **Public** checkbox as needed.",
+        "Change the **Name**, **Description**, **Ticket key**, or **Public** checkbox as needed.",
         "Select **Save** to apply the changes and return to the project page, or **Cancel** to discard them."
       ]
     },
@@ -332,6 +363,8 @@
         "__I created a category/version but it's not showing.__ Check for a red error message at the top of the Settings page. A blank name is the usual culprit — a version in particular needs at least a **Version name**.",
         "__A project I made isn't in the Projects list.__ If you made it **private**, only its members see it — and you're added as its owner automatically, so it should appear for you. Confirm you're signed in as the same account that created it.",
         "__My Edit didn't save — I got a conflict message.__ Another Manager changed the project at the same time. Reopen **Edit Project**, which now shows the latest values, and reapply your change.",
+        "__I typed a Ticket key but it looks different than I typed.__ That's expected — OpenTrack forces the key to uppercase, keeps only letters and numbers, and trims it to 10 characters. So `my-app!` becomes `MYAPP`. Retype it within those rules if the result isn't what you wanted.",
+        "__My tickets still show #42, not my key.__ Confirm the project's **Ticket key** is actually filled in on **Edit Project** (a blank key always shows plain numbers). If you just set it, reopen the issue — the friendly number appears wherever the ticket is named.",
         "__I want to delete a whole project.__ Project deletion isn't done from these screens. Ask your Administrator, who manages instance-wide cleanup.",
         "__Public vs. private didn't do what I expected.__ **Public** means every signed-in user can see the project; **private** limits it to members. Neither controls the separate *public intake* page, which is for people with no account at all."
       ]
