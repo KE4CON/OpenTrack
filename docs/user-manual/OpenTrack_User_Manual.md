@@ -2,7 +2,7 @@
 
 *Every feature, explained and step by step — in plain language.*
 
-*Generated August 12, 2026 · Markdown is the living source of truth.*
+*Generated August 24, 2026 · Markdown is the living source of truth.*
 
 
 ---
@@ -276,21 +276,37 @@ If no projects exist yet, the page shows a short note instead of a table. Manage
 
 ## Create a project
 
-Creating a project is a Manager-or-Administrator job. Select **New Project** on the Projects page to open the *New Project* form. It has three fields and two buttons:
+Creating a project is a Manager-or-Administrator job. Select **New Project** on the Projects page to open the *New Project* form. It has four fields and two buttons:
 
 | Field | What to enter | Notes |
 | --- | --- | --- |
 | **Name** | A short, clear name for the project. | Required. Keep it recognizable at a glance in the list. |
 | **Description** | A sentence on what the project covers. | Optional, but a good hint for newcomers. |
+| **Ticket key** | A short code, like `APRS`, for friendly ticket numbers such as *APRS-42*. | Optional. Leave blank to use plain numbers (#42). Explained in full just below. |
 | **Public** | A checkbox labeled *Public (visible to all users, not just members)*. | Ticked by default. Untick it to make the project private. |
 
 1. Select **Projects** in the left navigation, then **New Project**.
 2. Type a **Name**, and optionally a **Description**.
-3. Decide **Public** vs. private with the checkbox (it starts ticked, meaning public).
-4. Select **Create Project**. You land on the new project's own page, ready to add issues and settings.
-5. Changed your mind? Select **Cancel** to return to the Projects list without creating anything.
+3. Optionally type a **Ticket key** (for example `APRS`) to get friendly ticket numbers like *APRS-42*; leave it blank for plain numbers.
+4. Decide **Public** vs. private with the checkbox (it starts ticked, meaning public).
+5. Select **Create Project**. You land on the new project's own page, ready to add issues and settings.
+6. Changed your mind? Select **Cancel** to return to the Projects list without creating anything.
 
-> _[Figure: The New Project form with Name, Description, the Public checkbox, and the Create Project button]_
+> _[Figure: The New Project form with Name, Description, the Ticket key box, the Public checkbox, and the Create Project button]_
+
+
+## The Ticket key (friendly ticket numbers)
+
+Every issue always has a plain number behind it, like **42** — that's its permanent internal identity and it never changes. The **Ticket key** is an optional short label you can put in front of that number so tickets read more naturally. Give a project the key `APRS`, and its issues show up as **APRS-42** instead of **#42** — on the issue page, in search results, and anywhere else a ticket is named. Leave the key blank and everything just shows the plain **#42** form. This is purely about **display**: the key never changes the underlying number, and turning a key on or off (or changing it) only changes how existing numbers are shown, never the issues themselves.
+
+> **BEST WHEN ONE OPENTRACK TRACKS SEVERAL APPS** — Ticket keys shine when a single OpenTrack tracks more than one product. Give each project its own key — `APRS`, `WEB`, `RADIO` — and a number like **APRS-42** instantly tells everyone which product it belongs to, with no chance of confusing it with **WEB-42**. It's also much easier to quote over the phone or in an email than a bare number.
+
+A few simple rules govern what a key can be. Type it however you like; OpenTrack tidies it up for you:
+
+- It's made **uppercase** automatically — type `aprs` and it's stored as `APRS`.
+- Only **letters and numbers** are kept; spaces, dashes, and punctuation are dropped.
+- It's capped at **10 characters** — anything longer is trimmed to the first 10.
+- It's completely **optional**. Blank means plain `#42`-style numbers, which is a perfectly good choice.
 
 > **PUBLIC VS. PRIVATE** — A **public** project is visible to any signed-in user of your OpenTrack (good for shared, non-sensitive work). A **private** project is visible only to the people you add as members. This is separate from the *public trouble-ticket intake* feature (covered under Settings), which lets people **without any account** file a ticket.
 
@@ -349,9 +365,9 @@ The **Versions** section (top-right) works the same way, but a version carries m
 
 ## Editing a project
 
-To change a project's basics, select **Edit Project** on the project page (or the **Edit** button on the Projects list). The *Edit Project* form is the same three fields as creation — **Name**, **Description**, and the **Public** checkbox — pre-filled with the current values.
+To change a project's basics, select **Edit Project** on the project page (or the **Edit** button on the Projects list). The *Edit Project* form is the same four fields as creation — **Name**, **Description**, the **Ticket key**, and the **Public** checkbox — pre-filled with the current values. You can add, change, or clear the Ticket key here at any time; because the key only affects display, changing it is safe and instantly re-labels existing tickets (an issue that read *#42* starts reading *APRS-42*, and vice versa).
 
-1. Change the **Name**, **Description**, or **Public** checkbox as needed.
+1. Change the **Name**, **Description**, **Ticket key**, or **Public** checkbox as needed.
 2. Select **Save** to apply the changes and return to the project page, or **Cancel** to discard them.
 
 > **IF SOMEONE ELSE EDITED IT FIRST** — If another Manager saved a change to the same project while you had the Edit form open, saving shows a red conflict message rather than silently overwriting their work. Reopen **Edit Project** to see the current values, then make your change again on top of theirs.
@@ -381,6 +397,8 @@ Here's a quick map of what each of those settings does, so you know which chapte
 - *I created a category/version but it's not showing.* Check for a red error message at the top of the Settings page. A blank name is the usual culprit — a version in particular needs at least a **Version name**.
 - *A project I made isn't in the Projects list.* If you made it **private**, only its members see it — and you're added as its owner automatically, so it should appear for you. Confirm you're signed in as the same account that created it.
 - *My Edit didn't save — I got a conflict message.* Another Manager changed the project at the same time. Reopen **Edit Project**, which now shows the latest values, and reapply your change.
+- *I typed a Ticket key but it looks different than I typed.* That's expected — OpenTrack forces the key to uppercase, keeps only letters and numbers, and trims it to 10 characters. So `my-app!` becomes `MYAPP`. Retype it within those rules if the result isn't what you wanted.
+- *My tickets still show #42, not my key.* Confirm the project's **Ticket key** is actually filled in on **Edit Project** (a blank key always shows plain numbers). If you just set it, reopen the issue — the friendly number appears wherever the ticket is named.
 - *I want to delete a whole project.* Project deletion isn't done from these screens. Ask your Administrator, who manages instance-wide cleanup.
 - *Public vs. private didn't do what I expected.* **Public** means every signed-in user can see the project; **private** limits it to members. Neither controls the separate *public intake* page, which is for people with no account at all.
 
@@ -2155,7 +2173,11 @@ When they select **Submit report**, the submission lands in your project as a ne
 
 ## The thank-you page and reference number
 
-After a successful submission the reporter sees a **Thank you** page: *Your report was received. Your reference number is #number.* It tells them to keep that number and offers a link to *check its status* anytime, plus a **Submit another** button to file a second report. That **reference number** is the ticket's issue number — the reporter's key to looking it up later (together with the email they used).
+After a successful submission the reporter sees a **Thank you** page: *Your report was received. Your reference number is* followed by the ticket's number. It tells them to keep that number and offers a link to *check its status* anytime, plus a **Submit another** button to file a second report. That **reference number** is the reporter's key to looking the ticket up later (together with the email they used).
+
+> **THE REFERENCE NUMBER USES THE PROJECT'S TICKET KEY** — If the project has a **Ticket key** (see the *Projects & Their Settings* chapter), the reference number the reporter sees is the friendly form — for example **APRS-42** — on the thank-you page, in the acknowledgement email, and on the status page. If the project has no key, it's the plain number, like **42**. Either way it's the same ticket; the key just makes it clearer and easier to quote, which is handy when one OpenTrack handles reports for several products.
+
+If the reporter left an **email**, OpenTrack also sends a short acknowledgement to that address — *We received your report (ref APRS-42)* — with the same reference number and a reminder that they can check status any time. (This only happens when your server has email set up.)
 
 
 ## How a reporter checks status later
@@ -2163,10 +2185,12 @@ After a successful submission the reporter sees a **Thank you** page: *Your repo
 The status-lookup page (the */report/status* link) lets a reporter check on a ticket without an account and without seeing anyone else's tickets. It's titled *Check your ticket* with the note *Enter the reference number you were given and the email you used.*
 
 1. The reporter opens the status link.
-2. They enter the **Reference number** they were given (for example, *42*).
+2. They enter the **Reference number** they were given. The box accepts it in any form — the friendly *APRS-42*, the plain *42*, or even *#42* — so they can just type whatever they were sent (the on-screen hint reads *e.g. APRS-42 or 42*).
 3. They enter the **Email you used** — it must match the email on the original report.
 4. They select **Check status**.
-5. If both match, a green box shows *Ticket #number*, its title, and its current **Status**. If they don't match, a yellow note reads *No matching ticket found. Double-check the reference number and the email address you submitted with.*
+5. If both match, a green box shows *Ticket APRS-42* (or the plain number if the project has no key), its title, and its current **Status**. If they don't match, a yellow note reads *No matching ticket found. Double-check the reference number and the email address you submitted with.*
+
+> **THE KEY PREFIX IS OPTIONAL WHEN LOOKING UP** — Because the number behind a ticket never changes, the status page finds the ticket whether or not the reporter includes the key. **APRS-42**, **42**, and **#42** all look up the same ticket. So a reporter who half-remembers their reference — or who only wrote down the digits — can still check status.
 
 > **EMAIL IS THE KEY** — A reporter can only look a ticket up if they gave an **email** when they filed it, and they must enter that same email plus the reference number to see it. Reference-number-only lookups don't work — this is what keeps one person from browsing another's tickets. If a reporter left the email blank, they won't be able to check status afterward.
 
@@ -2346,27 +2370,28 @@ Each snapshot is named `opentrack-YYYYMMDD-HHMMSS.db` — the date and time it w
 
 # 20. The AI Assistant (Optional)
 
-*Smart triage, plain-English search, and thread summaries — what they do, and how they get turned on.*
+*Smart triage, plain-English search, thread summaries, and a fix suggestion — what they do, and how they get turned on.*
 
-> **QUICK VERSION** — If your administrator turns it on, extra **✨** buttons appear: **✨ Suggest with AI** on a new issue, **✨ Ask in plain English** on the issues list, and **✨ Summarize thread** on a busy issue. Every result is a **suggestion you can accept or change** — the AI never files or resolves anything on its own.
+> **QUICK VERSION** — If your administrator turns it on, extra buttons appear: **✨ Suggest with AI** on a new issue, **✨ Ask in plain English** on the issues list, **✨ Summarize thread** on a busy issue, and **🛠️ Suggest a fix** on an individual issue's page. Every result is a **suggestion you can accept or change** — the AI never files, edits, or resolves anything on its own. The server can even run the three quick jobs on a **free local model** and send only the harder **Suggest a fix** to cloud Claude.
 
 
 ## What the AI assistant is
 
-OpenTrack can optionally use an **artificial intelligence (AI)** language model to speed up a few chores — proposing how to triage a new bug, turning a plain-English request into search filters, and summarizing a long, noisy issue. It is **off by default** and only ever runs after someone deliberately turns it on and points it at a provider. If it's off, OpenTrack looks and behaves exactly as it always does; the extra buttons simply aren't there.
+OpenTrack can optionally use an **artificial intelligence (AI)** language model to speed up a few chores — proposing how to triage a new bug, turning a plain-English request into search filters, summarizing a long, noisy issue, and suggesting how a problem might be fixed. It is **off by default** and only ever runs after someone deliberately turns it on and points it at a provider. If it's off, OpenTrack looks and behaves exactly as it always does; the extra buttons simply aren't there.
 
 The single most important thing to understand is that everything the AI produces is a **suggestion a person reviews**. It never creates, changes, resolves, or deletes anything by itself. You always see its proposal and decide whether to keep it, edit it, or ignore it. And if a call fails or times out, nothing breaks — you just carry on doing the same thing by hand.
 
 
-## What it can do — the three helpers
+## What it can do — the four helpers
 
-There are exactly three AI helpers, each marked with a sparkle (**✨**) so you can spot them. Each lives on a specific page:
+There are four AI helpers. Three are marked with a sparkle (**✨**); the newest, **🛠️ Suggest a fix**, uses a small wrench (**🛠️**) instead. Each lives on a specific page:
 
 | Helper | Where it appears | What it does |
 | --- | --- | --- |
 | **✨ Suggest with AI** | The **New Issue** page, next to **Submit Issue** | Reads the title and description you've typed and proposes a **severity**, **priority**, **category**, and a set of **tags** |
 | **✨ Ask in plain English** | The top of the **Issues** list | Turns a request like *high-priority crashes nobody has touched in a month* into the normal search filters |
 | **✨ Summarize thread** | The **AI summary** card on an individual issue's page | Gives a plain-language recap of the problem, what's been tried, and what's next |
+| **🛠️ Suggest a fix** | The **Suggest a fix** card on an individual issue's page | Reads the issue, its notes, any text/log attachments, and similar **already-fixed** issues, then proposes likely causes and concrete steps to try |
 
 
 ### ✨ Suggest with AI (triage a new issue)
@@ -2401,6 +2426,26 @@ At the top of the **Issues** list, above the usual row of filter dropdowns, is a
 ### ✨ Summarize thread (recap a busy issue)
 
 On an individual issue's page, when the AI is on, an **✨ AI summary** card appears with a **Summarize thread** button. A long issue with dozens of notes can be hard to catch up on; this reads the issue and its notes and gives you a short, plain-language recap of the problem, what's already been tried, and what happens next. After the first summary the button reads **Refresh** so you can regenerate it once more has been added. A small reminder underneath — *AI-generated from this issue and its notes — double-check anything important* — is there because a summary is a convenience, not a substitute for reading the details that matter.
+
+
+### 🛠️ Suggest a fix (get a grounded starting point)
+
+On an individual issue's page, when the AI is on, a **🛠️ Suggest a fix** card appears with a **Suggest a fix** button. This is the newest and most powerful helper. Where **Summarize thread** just recaps the conversation, **Suggest a fix** tries to help you actually solve the problem: it reads the issue and everything attached to it and hands back a plain-language starting point. It's especially handy on a stubborn issue, or when a newer team member picks up something they haven't seen before.
+
+It doesn't guess in a vacuum. Before it answers, OpenTrack gathers real evidence from the issue itself and feeds only that to the AI: the issue's **description and notes**, the text of any **log or text-file attachments** (things like `error.log` or `output.txt`), and a handful of **similar issues that have already been resolved** — along with how each of those was fixed. That last part is what makes it smarter the longer you use OpenTrack: your own past solutions become the material for the next suggestion.
+
+1. Open the issue you want help with.
+2. In the **🛠️ Suggest a fix** card, select the **Suggest a fix** button (it appears only when the AI is turned on).
+3. Wait a moment while it reads the issue and its evidence. When it's done, the card fills in with the suggestion.
+4. Read the **summary** (a plain-language root-cause hypothesis), the **Likely causes** list (most likely first), and the **Steps to try** (a numbered checklist, in order).
+5. Check the **confidence** badge — *low*, *medium*, or *high* — and the **Based on:** line, which names the evidence it used (for example, *issue #123, attached log*).
+6. Try the steps yourself. If the first suggestion wasn't useful, select **Try again** for a fresh pass.
+
+> _[Figure: The 🛠️ Suggest a fix card on an issue page, showing the summary, Likely causes list, numbered Steps to try, and the confidence badge with the Based on line]_
+
+> **IT NEVER CHANGES THE ISSUE** — Suggest a fix is a **read-only draft**. It does not edit the issue, add a note, change the status, or mark anything resolved — it only shows you a suggestion on the screen. The card even reminds you: *An AI suggestion — a starting point, not a guarantee. Verify before acting; nothing on this issue was changed.* You stay fully in control: try the steps, ignore them, or copy the useful parts into a note yourself.
+
+> **BE HONEST ABOUT LOW CONFIDENCE** — When there's little to go on — a bare one-line issue with no notes, no logs, and nothing similar in your history — the AI is told to **say so and set the confidence to *low***, rather than invent a confident-sounding but made-up answer. Treat a **low** badge as "here's a guess, but don't lean on it," and add more detail to the issue (notes, a log file) before trying again for a stronger result.
 
 
 ## Turning it on — a server task, in two paths
@@ -2455,7 +2500,32 @@ For **OpenAI**, use `Provider=openai`, an `sk-…` OpenAI key, and a model like 
 | `OpenTrack*Ai*BaseUrl` | The service address. Point it at a local model or an alternative cloud service; omit it for the provider's default. |
 | `OpenTrack*Ai*Model` | The exact model name to use, for example `claude-haiku-4-5-20251001`, `gpt-4o-mini`, or `llama3.1`. |
 
-> **PRIVACY IN ONE LINE** — With a **cloud** provider, generating a suggestion sends that issue's text to that provider — so don't enable a cloud provider for projects whose contents can't leave your environment; use a **local** model instead. The key is read only on the server and is never sent to the browser or stored in the database.
+
+## Two tiers: the quick jobs local, the smart fix in the cloud
+
+Everything above assumes **one** AI provider does all four jobs, which is perfectly fine. But there's an optional third arrangement that many people prefer, because it gets you the best of both worlds — free and private for the everyday chores, top-quality only where it matters. OpenTrack calls these two levels the **base** provider and the **Smart** provider:
+
+- The **base** provider (the `OpenTrack:Ai` settings you saw above) handles the three **menial** jobs — triage, plain-English search, and thread summaries. These are quick and forgiving, so a small **free local model** (Ollama on your own machine or a machine on your network) is ideal here.
+- The optional **Smart** provider (a nested `OpenTrack:Ai:Smart` block) handles the one **reasoning-heavy** job — **🛠️ Suggest a fix**. Fixing a real problem is where a stronger model earns its keep, so the classic setup points this at **cloud Claude**.
+
+The result: the everyday AI stays free and keeps your issue text on your own hardware, and only the occasional **Suggest a fix** call goes to the cloud (and bills the cloud account). If you **don't** set a Smart provider, nothing changes — the base provider simply handles **Suggest a fix** too, exactly as it handles everything else. Setting one up is a server task: add these environment variables **in addition to** the base `OpenTrack*Ai**` settings, then restart OpenTrack:
+
+```
+# Base tier — a free local model on the LAN does the quick jobs (triage, search, summaries):
+OpenTrack__Ai__Enabled=true
+OpenTrack__Ai__Provider=openai
+OpenTrack__Ai__BaseUrl=http://192.168.1.50:11434/v1   # your Ollama box — use its real address
+OpenTrack__Ai__Model=llama3.1
+
+# Smart tier — cloud Claude does the reasoning-heavy 🛠️ Suggest a fix:
+OpenTrack__Ai__Smart__Provider=anthropic
+OpenTrack__Ai__Smart__ApiKey=sk-ant-...                # your Anthropic Console key — server only
+OpenTrack__Ai__Smart__Model=claude-haiku-4-5-20251001
+```
+
+> **THE SMART TIER USES THE SAME SETTING NAMES** — The `OpenTrack*Ai*Smart__*` settings mirror the base ones exactly — `Provider`, `ApiKey`, `Model`, and `BaseUrl` all mean the same thing, just for the Smart provider. So the Smart tier can be anything the base tier can: cloud Claude, OpenAI, or even a second, larger local model. Whoever runs your server sets this; you don't touch it from the web pages.
+
+> **PRIVACY IN ONE LINE** — With a **cloud** provider, generating a suggestion sends that issue's text to that provider — so don't enable a cloud provider for projects whose contents can't leave your environment; use a **local** model instead. In a two-tier setup, remember that even if the quick jobs stay local, a cloud **Smart** provider means your **🛠️ Suggest a fix** calls (issue text, notes, and log excerpts) still go to that provider. Every key is read only on the server and is never sent to the browser or stored in the database.
 
 
 ## Troubleshooting
@@ -2465,7 +2535,11 @@ For **OpenAI**, use `Provider=openai`, an `sk-…` OpenAI key, and a model like 
 - *Plain-English search says it couldn't interpret that.* Try again with clearer wording that names a status, severity, priority, some keywords, or the word *stale*. Remember it can only ever build a filter you could set by hand — it won't find issues outside the projects you're allowed to see.
 - *The AI suggested the wrong severity or category.* That's expected sometimes — every result is just a suggestion. Change the dropdowns to what you want before selecting **Submit Issue**; the AI never has the last word.
 - *The thread summary looks incomplete or out of date.* Select **Refresh** on the **✨ AI summary** card to regenerate it after new notes are added, and always double-check anything important against the actual notes.
-- *Is my issue text being sent anywhere?* Only with a **cloud** provider, and only when you press an ✨ button. With a **local** model (Ollama or LM Studio) the text never leaves the machine. If in doubt, ask whoever runs your server which path is configured.
+- *I don't see the 🛠️ Suggest a fix card.* Like the ✨ helpers, it only appears when the AI is turned on. If the other AI cards are missing too, the AI is off — a server setting. If the ✨ cards are there but the wrench card behaves oddly, see the next bullet.
+- *Suggest a fix says it couldn't suggest a fix right now.* You'll see *AI couldn't suggest a fix right now.* when the server couldn't reach the AI provider (or the Smart provider, in a two-tier setup). Nothing on the issue is changed. Select **Try again** in a moment; if it keeps failing, ask whoever runs your server to check the AI settings.
+- *The fix suggestion has low confidence or feels generic.* That usually means the issue is thin — a one-line summary with no notes, no log attachments, and nothing similar already resolved. Add detail: write a note describing what you've observed, attach the relevant **log or text file**, then select **Try again**. More evidence makes for a stronger, higher-confidence suggestion.
+- *The fix suggestion looks wrong.* It's only ever a starting point, never a guarantee, and it changes nothing on the issue. Ignore it, or try the parts that make sense. If a step helped, jot what actually worked into a **note** — that becomes useful evidence for the next similar issue.
+- *Is my issue text being sent anywhere?* Only with a **cloud** provider, and only when you press an AI button. With a **local** model (Ollama or LM Studio) the text never leaves the machine. Note the two tiers: your server might keep the quick ✨ jobs local while sending **🛠️ Suggest a fix** to a cloud Smart provider. If in doubt, ask whoever runs your server which paths are configured.
 
 
 # 21. Integrations: Git & Chat Notifications

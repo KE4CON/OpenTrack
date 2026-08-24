@@ -135,6 +135,38 @@
     {
       "code": "@if (!enabled)\n{\n    <h1 class=\"h3 mt-4\">Report a problem</h1>\n    <div class=\"alert alert-info mt-3\">This project isn't accepting public submissions right now.</div>\n}"
     },
+    { "h1": "Friendly ticket numbers: one helper, used at every edge" },
+    { "h2": "What it does" },
+    {
+      "p": "A public submitter needs something to quote back — a reference. The raw issue id (42) works but is easy to confuse across projects, so OpenTrack can dress it up as a per-project __ticket number__ like `APRS-42`. This is a display convenience layered on top of the real id: the number 42 is still the permanent internal key; `APRS-42` is just a friendlier label for it. It shows up on the thank-you page, in the acknowledgement email, and on the status page — and the status lookup accepts it back in any form."
+    },
+    { "h2": "Why it was built this way" },
+    {
+      "p": "The rule is that the __id never moves__ — only its presentation changes. A project carries an optional short key, and the whole feature is one small helper class, `TicketNumber`, so formatting and parsing live in exactly one place rather than being re-derived at each of the several edges that show or read a reference. `Project.Key` is the stored half:"
+    },
+    {
+      "code": "/// <summary>Optional short uppercase key (e.g. \"APRS\", \"WEB\") used to form human-friendly ticket\n/// numbers like \"APRS-42\" ... Null/blank falls back to \"#42\". The numeric issue id is always the\n/// real internal key.</summary>\npublic string? Key { get; set; }"
+    },
+    { "h2": "How it works" },
+    {
+      "p": "`TicketNumber` has three static methods that together cover every use. `Format` composes the display string — `APRS-42` when the project has a key, `#42` when it doesn't. `NormalizeKey` is the input-cleaner used when a Manager sets a key on the project form: uppercase, letters and digits only, capped at ten characters, and an empty result collapses to a clean null (so 'no key' has one canonical representation). `TryParseId` is the tolerant reader that pulls the numeric id back out of anything a person might type:"
+    },
+    {
+      "code": "public static string Format(string? projectKey, int issueId)\n{\n    var key = NormalizeKey(projectKey);\n    return key is null ? $\"#{issueId}\" : $\"{key}-{issueId}\";\n}\n\n// Accepts \"42\", \"#42\", and \"APRS-42\" (any case) — anything ending in digits.\npublic static bool TryParseId(string? input, out int id)\n{\n    id = 0;\n    if (string.IsNullOrWhiteSpace(input)) return false;\n    var m = TrailingDigits().Match(input.Trim());   // regex: (\\d+)\\s*$\n    return m.Success && int.TryParse(m.Groups[1].Value, out id);\n}"
+    },
+    {
+      "p": "The asymmetry is deliberate and is what makes the feature painless: __formatting is specific__ (it needs the key to build `APRS-42`), but __parsing is forgiving__ (it ignores any prefix and reads the trailing number). So the intake endpoint formats the reference with the project's key when it acknowledges a submission, but the status lookup doesn't care whether the visitor types `APRS-42`, `#42`, or bare `42` — all three yield id 42. Both sides of the public flow route through the one helper:"
+    },
+    {
+      "code": "// On submit — show the friendly, per-project reference:\nvar projectKey = await db.Projects.AsNoTracking().Where(p => p.Id == projectId).Select(p => p.Key).FirstOrDefaultAsync(ct);\nvar ticket = TicketNumber.Format(projectKey, issueId);\n\n// On status lookup — accept the raw number, \"#42\", or \"APRS-42\":\nif (!TicketNumber.TryParseId(form[\"reference\"], out var reference))\n    return Results.Redirect(\"/report/status?nf=1\");"
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "The maintainer's rule",
+        "text": "Because the id is the real key and the ticket number is only a label, never store or match on the formatted string — always Format for display and TryParseId to read one back. If you surface a reference in a new place (a webhook payload, an export, another email), reuse TicketNumber rather than hand-building \"KEY-id\", so the single source of truth for what a ticket is called stays in one file."
+      }
+    },
     { "h1": "The QR poster: the door on a wall" },
     { "h2": "What it does" },
     {

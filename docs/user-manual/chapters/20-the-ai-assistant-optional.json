@@ -1,10 +1,12 @@
 {
   "order": 20,
   "title": "The AI Assistant (Optional)",
-  "subtitle": "Smart triage, plain-English search, and thread summaries — what they do, and how they get turned on.",
+  "subtitle": "Smart triage, plain-English search, thread summaries, and a fix suggestion — what they do, and how they get turned on.",
   "in_this_chapter": [
     "What the AI can do — and its firm limits",
-    "The three ✨ helpers and exactly where each appears",
+    "The four helpers and exactly where each appears",
+    "🛠️ Suggest a fix — a grounded draft that never touches the issue",
+    "The two tiers: a free local model for the quick jobs, cloud for the smart fix",
     "Turning it on: local & free, or a cloud provider with a key",
     "Getting an API key, the settings to enter, cost, and privacy"
   ],
@@ -13,23 +15,23 @@
       "callout": {
         "kind": "tip",
         "label": "QUICK VERSION",
-        "text": "If your administrator turns it on, extra **✨** buttons appear: **✨ Suggest with AI** on a new issue, **✨ Ask in plain English** on the issues list, and **✨ Summarize thread** on a busy issue. Every result is a **suggestion you can accept or change** — the AI never files or resolves anything on its own."
+        "text": "If your administrator turns it on, extra buttons appear: **✨ Suggest with AI** on a new issue, **✨ Ask in plain English** on the issues list, **✨ Summarize thread** on a busy issue, and **🛠️ Suggest a fix** on an individual issue's page. Every result is a **suggestion you can accept or change** — the AI never files, edits, or resolves anything on its own. The server can even run the three quick jobs on a **free local model** and send only the harder **Suggest a fix** to cloud Claude."
       }
     },
     {
       "h1": "What the AI assistant is"
     },
     {
-      "p": "OpenTrack can optionally use an **artificial intelligence (AI)** language model to speed up a few chores — proposing how to triage a new bug, turning a plain-English request into search filters, and summarizing a long, noisy issue. It is **off by default** and only ever runs after someone deliberately turns it on and points it at a provider. If it's off, OpenTrack looks and behaves exactly as it always does; the extra buttons simply aren't there."
+      "p": "OpenTrack can optionally use an **artificial intelligence (AI)** language model to speed up a few chores — proposing how to triage a new bug, turning a plain-English request into search filters, summarizing a long, noisy issue, and suggesting how a problem might be fixed. It is **off by default** and only ever runs after someone deliberately turns it on and points it at a provider. If it's off, OpenTrack looks and behaves exactly as it always does; the extra buttons simply aren't there."
     },
     {
       "p": "The single most important thing to understand is that everything the AI produces is a **suggestion a person reviews**. It never creates, changes, resolves, or deletes anything by itself. You always see its proposal and decide whether to keep it, edit it, or ignore it. And if a call fails or times out, nothing breaks — you just carry on doing the same thing by hand."
     },
     {
-      "h1": "What it can do — the three helpers"
+      "h1": "What it can do — the four helpers"
     },
     {
-      "p": "There are exactly three AI helpers, each marked with a sparkle (**✨**) so you can spot them. Each lives on a specific page:"
+      "p": "There are four AI helpers. Three are marked with a sparkle (**✨**); the newest, **🛠️ Suggest a fix**, uses a small wrench (**🛠️**) instead. Each lives on a specific page:"
     },
     {
       "table": {
@@ -53,6 +55,11 @@
             "**✨ Summarize thread**",
             "The **AI summary** card on an individual issue's page",
             "Gives a plain-language recap of the problem, what's been tried, and what's next"
+          ],
+          [
+            "**🛠️ Suggest a fix**",
+            "The **Suggest a fix** card on an individual issue's page",
+            "Reads the issue, its notes, any text/log attachments, and similar **already-fixed** issues, then proposes likely causes and concrete steps to try"
           ]
         ],
         "widths": [
@@ -116,6 +123,42 @@
     },
     {
       "p": "On an individual issue's page, when the AI is on, an **✨ AI summary** card appears with a **Summarize thread** button. A long issue with dozens of notes can be hard to catch up on; this reads the issue and its notes and gives you a short, plain-language recap of the problem, what's already been tried, and what happens next. After the first summary the button reads **Refresh** so you can regenerate it once more has been added. A small reminder underneath — __AI-generated from this issue and its notes — double-check anything important__ — is there because a summary is a convenience, not a substitute for reading the details that matter."
+    },
+    {
+      "h2": "🛠️ Suggest a fix (get a grounded starting point)"
+    },
+    {
+      "p": "On an individual issue's page, when the AI is on, a **🛠️ Suggest a fix** card appears with a **Suggest a fix** button. This is the newest and most powerful helper. Where **Summarize thread** just recaps the conversation, **Suggest a fix** tries to help you actually solve the problem: it reads the issue and everything attached to it and hands back a plain-language starting point. It's especially handy on a stubborn issue, or when a newer team member picks up something they haven't seen before."
+    },
+    {
+      "p": "It doesn't guess in a vacuum. Before it answers, OpenTrack gathers real evidence from the issue itself and feeds only that to the AI: the issue's **description and notes**, the text of any **log or text-file attachments** (things like `error.log` or `output.txt`), and a handful of **similar issues that have already been resolved** — along with how each of those was fixed. That last part is what makes it smarter the longer you use OpenTrack: your own past solutions become the material for the next suggestion."
+    },
+    {
+      "steps": [
+        "Open the issue you want help with.",
+        "In the **🛠️ Suggest a fix** card, select the **Suggest a fix** button (it appears only when the AI is turned on).",
+        "Wait a moment while it reads the issue and its evidence. When it's done, the card fills in with the suggestion.",
+        "Read the **summary** (a plain-language root-cause hypothesis), the **Likely causes** list (most likely first), and the **Steps to try** (a numbered checklist, in order).",
+        "Check the **confidence** badge — __low__, __medium__, or __high__ — and the **Based on:** line, which names the evidence it used (for example, __issue #123, attached log__).",
+        "Try the steps yourself. If the first suggestion wasn't useful, select **Try again** for a fresh pass."
+      ]
+    },
+    {
+      "screenshot": "The 🛠️ Suggest a fix card on an issue page, showing the summary, Likely causes list, numbered Steps to try, and the confidence badge with the Based on line"
+    },
+    {
+      "callout": {
+        "kind": "important",
+        "label": "IT NEVER CHANGES THE ISSUE",
+        "text": "Suggest a fix is a **read-only draft**. It does not edit the issue, add a note, change the status, or mark anything resolved — it only shows you a suggestion on the screen. The card even reminds you: __An AI suggestion — a starting point, not a guarantee. Verify before acting; nothing on this issue was changed.__ You stay fully in control: try the steps, ignore them, or copy the useful parts into a note yourself."
+      }
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "BE HONEST ABOUT LOW CONFIDENCE",
+        "text": "When there's little to go on — a bare one-line issue with no notes, no logs, and nothing similar in your history — the AI is told to **say so and set the confidence to __low__**, rather than invent a confident-sounding but made-up answer. Treat a **low** badge as \"here's a guess, but don't lean on it,\" and add more detail to the issue (notes, a log file) before trying again for a stronger result."
+      }
     },
     {
       "h1": "Turning it on — a server task, in two paths"
@@ -234,10 +277,46 @@
       }
     },
     {
+      "h1": "Two tiers: the quick jobs local, the smart fix in the cloud"
+    },
+    {
+      "p": "Everything above assumes **one** AI provider does all four jobs, which is perfectly fine. But there's an optional third arrangement that many people prefer, because it gets you the best of both worlds — free and private for the everyday chores, top-quality only where it matters. OpenTrack calls these two levels the **base** provider and the **Smart** provider:"
+    },
+    {
+      "bullets": [
+        "The **base** provider (the `OpenTrack:Ai` settings you saw above) handles the three **menial** jobs — triage, plain-English search, and thread summaries. These are quick and forgiving, so a small **free local model** (Ollama on your own machine or a machine on your network) is ideal here.",
+        "The optional **Smart** provider (a nested `OpenTrack:Ai:Smart` block) handles the one **reasoning-heavy** job — **🛠️ Suggest a fix**. Fixing a real problem is where a stronger model earns its keep, so the classic setup points this at **cloud Claude**."
+      ]
+    },
+    {
+      "p": "The result: the everyday AI stays free and keeps your issue text on your own hardware, and only the occasional **Suggest a fix** call goes to the cloud (and bills the cloud account). If you **don't** set a Smart provider, nothing changes — the base provider simply handles **Suggest a fix** too, exactly as it handles everything else. Setting one up is a server task: add these environment variables **in addition to** the base `OpenTrack__Ai__*` settings, then restart OpenTrack:"
+    },
+    {
+      "code": [
+        "# Base tier — a free local model on the LAN does the quick jobs (triage, search, summaries):",
+        "OpenTrack__Ai__Enabled=true",
+        "OpenTrack__Ai__Provider=openai",
+        "OpenTrack__Ai__BaseUrl=http://192.168.1.50:11434/v1   # your Ollama box — use its real address",
+        "OpenTrack__Ai__Model=llama3.1",
+        "",
+        "# Smart tier — cloud Claude does the reasoning-heavy 🛠️ Suggest a fix:",
+        "OpenTrack__Ai__Smart__Provider=anthropic",
+        "OpenTrack__Ai__Smart__ApiKey=sk-ant-...                # your Anthropic Console key — server only",
+        "OpenTrack__Ai__Smart__Model=claude-haiku-4-5-20251001"
+      ]
+    },
+    {
+      "callout": {
+        "kind": "note",
+        "label": "THE SMART TIER USES THE SAME SETTING NAMES",
+        "text": "The `OpenTrack__Ai__Smart__*` settings mirror the base ones exactly — `Provider`, `ApiKey`, `Model`, and `BaseUrl` all mean the same thing, just for the Smart provider. So the Smart tier can be anything the base tier can: cloud Claude, OpenAI, or even a second, larger local model. Whoever runs your server sets this; you don't touch it from the web pages."
+      }
+    },
+    {
       "callout": {
         "kind": "important",
         "label": "PRIVACY IN ONE LINE",
-        "text": "With a **cloud** provider, generating a suggestion sends that issue's text to that provider — so don't enable a cloud provider for projects whose contents can't leave your environment; use a **local** model instead. The key is read only on the server and is never sent to the browser or stored in the database."
+        "text": "With a **cloud** provider, generating a suggestion sends that issue's text to that provider — so don't enable a cloud provider for projects whose contents can't leave your environment; use a **local** model instead. In a two-tier setup, remember that even if the quick jobs stay local, a cloud **Smart** provider means your **🛠️ Suggest a fix** calls (issue text, notes, and log excerpts) still go to that provider. Every key is read only on the server and is never sent to the browser or stored in the database."
       }
     },
     {
@@ -250,7 +329,11 @@
         "__Plain-English search says it couldn't interpret that.__ Try again with clearer wording that names a status, severity, priority, some keywords, or the word __stale__. Remember it can only ever build a filter you could set by hand — it won't find issues outside the projects you're allowed to see.",
         "__The AI suggested the wrong severity or category.__ That's expected sometimes — every result is just a suggestion. Change the dropdowns to what you want before selecting **Submit Issue**; the AI never has the last word.",
         "__The thread summary looks incomplete or out of date.__ Select **Refresh** on the **✨ AI summary** card to regenerate it after new notes are added, and always double-check anything important against the actual notes.",
-        "__Is my issue text being sent anywhere?__ Only with a **cloud** provider, and only when you press an ✨ button. With a **local** model (Ollama or LM Studio) the text never leaves the machine. If in doubt, ask whoever runs your server which path is configured."
+        "__I don't see the 🛠️ Suggest a fix card.__ Like the ✨ helpers, it only appears when the AI is turned on. If the other AI cards are missing too, the AI is off — a server setting. If the ✨ cards are there but the wrench card behaves oddly, see the next bullet.",
+        "__Suggest a fix says it couldn't suggest a fix right now.__ You'll see __AI couldn't suggest a fix right now.__ when the server couldn't reach the AI provider (or the Smart provider, in a two-tier setup). Nothing on the issue is changed. Select **Try again** in a moment; if it keeps failing, ask whoever runs your server to check the AI settings.",
+        "__The fix suggestion has low confidence or feels generic.__ That usually means the issue is thin — a one-line summary with no notes, no log attachments, and nothing similar already resolved. Add detail: write a note describing what you've observed, attach the relevant **log or text file**, then select **Try again**. More evidence makes for a stronger, higher-confidence suggestion.",
+        "__The fix suggestion looks wrong.__ It's only ever a starting point, never a guarantee, and it changes nothing on the issue. Ignore it, or try the parts that make sense. If a step helped, jot what actually worked into a **note** — that becomes useful evidence for the next similar issue.",
+        "__Is my issue text being sent anywhere?__ Only with a **cloud** provider, and only when you press an AI button. With a **local** model (Ollama or LM Studio) the text never leaves the machine. Note the two tiers: your server might keep the quick ✨ jobs local while sending **🛠️ Suggest a fix** to a cloud Smart provider. If in doubt, ask whoever runs your server which paths are configured."
       ]
     }
   ]
